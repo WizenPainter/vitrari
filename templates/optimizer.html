@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Glass Optimizer</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Glass Optimizer</h1>
+            <nav>
+                <a href="/">Dashboard</a>
+                <a href="/designer">Designer</a>
+                <a href="/optimizer" class="active">Optimizer</a>
+            </nav>
+        </header>
+
+        <main class="optimizer-layout">
+            <aside class="sidebar">
+                <h3>Select Designs</h3>
+                <div id="design-list" class="design-list">
+                    <p>Loading designs...</p>
+                </div>
+
+                <h3>Glass Sheet</h3>
+                <div id="sheet-list" class="sheet-list">
+                    <p>Loading sheets...</p>
+                </div>
+
+                <h3>Algorithm</h3>
+                <select class="full-width">
+                    <option>Bottom-Left Fill</option>
+                    <option>Genetic Algorithm</option>
+                    <option>Greedy Algorithm</option>
+                </select>
+            </aside>
+
+            <div class="optimizer-main">
+                <div class="optimizer-toolbar">
+                    <button class="btn btn-primary" onclick="runOptimization()">Run Optimization</button>
+                </div>
+
+                <div id="results-area" class="results-area" style="display:none;">
+                    <h3>Results</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h4>Utilization</h4>
+                            <div class="stat-value" id="utilization">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Waste</h4>
+                            <div class="stat-value" id="waste">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Pieces Placed</h4>
+                            <div class="stat-value" id="pieces">0</div>
+                        </div>
+                    </div>
+                    <div id="visualization" class="visualization">
+                        <p>Visualization will appear here</p>
+                    </div>
+                </div>
+
+                <div class="placeholder-message">
+                    <p>Select designs and click "Run Optimization" to begin</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Load designs
+        fetch('/api/designs')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('design-list');
+                list.innerHTML = data.designs.map(d =>
+                    `<label class="design-item">
+                        <input type="checkbox" value="${d.id}">
+                        ${d.name} (${d.width}x${d.height}x${d.thickness}mm)
+                    </label>`
+                ).join('');
+            });
+
+        // Load sheets
+        fetch('/api/sheets')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('sheet-list');
+                list.innerHTML = data.sheets.map((s, i) =>
+                    `<label class="sheet-item">
+                        <input type="radio" name="sheet" value="${s.id}" ${i===0?'checked':''}>
+                        ${s.name} (${s.width}x${s.height}mm)
+                    </label>`
+                ).join('');
+            });
+
+        function runOptimization() {
+            document.querySelector('.placeholder-message').style.display = 'none';
+            document.getElementById('results-area').style.display = 'block';
+
+            fetch('/api/optimize', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    const stats = data.optimization.layout.statistics;
+                    document.getElementById('utilization').textContent = stats.utilization_rate.toFixed(1) + '%';
+                    document.getElementById('waste').textContent = stats.waste_rate.toFixed(1) + '%';
+                    document.getElementById('pieces').textContent = stats.placed_pieces;
+                });
+        }
+    </script>
+</body>
+</html>

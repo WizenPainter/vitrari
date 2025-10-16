@@ -1,0 +1,649 @@
+/* Glass Optimizer - Main Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --secondary: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --shadow: rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.header nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.header nav a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.header nav a:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.header nav a.active {
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Welcome Section */
+.welcome-section {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.welcome-section h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+.welcome-section p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Quick Actions */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.action-card {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    text-decoration: none;
+    color: var(--text);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px var(--shadow);
+}
+
+.action-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.action-card p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    text-align: center;
+}
+
+.stat-card h4 {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Buttons */
+.btn {
+    padding: 0.625rem 1.25rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* Designer Layout */
+.designer-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+    flex: 1;
+}
+
+.sidebar {
+    background: var(--surface);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    height: fit-content;
+}
+
+.sidebar h3 {
+    font-size: 1.125rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.tool-btn {
+    padding: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+}
+
+.tool-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.tool-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
+.properties {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.properties label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.properties input[type="number"] {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+/* Holes List */
+.holes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.hole-item {
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    transition: all 0.2s;
+}
+
+.hole-item.selected {
+    border-color: var(--warning);
+    background: #fffbeb;
+}
+
+.hole-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.hole-item-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+.hole-item-delete {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.hole-item-delete:hover {
+    opacity: 0.7;
+}
+
+.hole-item-props {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hole-item-props label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.hole-item-props input {
+    padding: 0.375rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    width: 100%;
+}
+
+/* Canvas Area */
+.canvas-area {
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.canvas-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+#design-canvas {
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    background: white;
+    display: block;
+    /* IMPORTANT: No CSS width/height - causes coordinate mismatch */
+    /* Canvas pixel dimensions set by JavaScript setupCanvas() */
+}
+
+.canvas-info {
+    margin-top: 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Optimizer Layout */
+.optimizer-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2rem;
+    flex: 1;
+}
+
+.optimizer-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.optimizer-toolbar {
+    margin-bottom: 1.5rem;
+}
+
+.design-list,
+.sheet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.design-item,
+.sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.design-item:hover,
+.sheet-item:hover {
+    background: #e0f2fe;
+    border-color: var(--primary);
+}
+
+.design-item input,
+.sheet-item input {
+    cursor: pointer;
+}
+
+select {
+    width: 100%;
+    padding: 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+}
+
+.full-width {
+    width: 100%;
+}
+
+/* Results Area */
+.results-area {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+}
+
+.results-area h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+}
+
+.visualization {
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-secondary);
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-message {
+    background: var(--surface);
+    padding: 3rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px var(--shadow);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Footer */
+.footer {
+    background: var(--surface);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+}
+
+/* Print Styles */
+@page {
+    margin: 0.5cm;
+    size: landscape;
+}
+
+@media print {
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* Hide all main content */
+    .container > .header,
+    .container > main,
+    .container > .footer {
+        display: none !important;
+    }
+
+    /* Print template styles */
+    .print-template {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        padding: 1rem;
+        box-sizing: border-box;
+        background: white;
+        z-index: 9999;
+    }
+
+    .print-header {
+        border-bottom: 2px solid #000;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .print-header h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .print-header p {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .print-content {
+        display: grid;
+        grid-template-columns: 65% 33%;
+        gap: 2%;
+        height: calc(100vh - 4rem);
+        align-items: start;
+    }
+
+    .print-glass-info {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: flex-start;
+    }
+
+    .print-glass-info > div:first-child {
+        flex-shrink: 0;
+    }
+
+    .print-glass-info > div:last-child {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+    }
+
+    .print-glass-info canvas {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+    }
+
+    .print-holes-info {
+        max-height: calc(100vh - 6rem);
+        overflow: hidden;
+    }
+
+    .print-glass-info h3,
+    .print-holes-info h3 {
+        font-size: 0.9rem;
+        margin: 0 0 0.5rem 0;
+        border-bottom: 1px solid #000;
+        padding-bottom: 0.25rem;
+    }
+
+    .print-property {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.8rem;
+    }
+
+    .print-property-label {
+        font-weight: 600;
+    }
+
+    .print-hole-spec {
+        margin-bottom: 0.5rem;
+        padding: 0.4rem;
+        border: 1px solid #000;
+        border-radius: 4px;
+    }
+
+    .print-hole-type {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    /* Hide regular canvas during print */
+    #design-canvas {
+        display: none !important;
+    }
+
+    /* Show only print canvas */
+    #print-canvas {
+        display: block !important;
+        max-width: 100%;
+        border: 2px solid #000;
+    }
+}
+
+/* Hide print template on screen */
+.print-template {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .designer-layout,
+    .optimizer-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        order: 2;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}

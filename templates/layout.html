@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} - {{end}}Glass Optimizer</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    {{if .PageCSS}}
+    <link rel="stylesheet" href="/static/css/{{.PageCSS}}.css">
+    {{end}}
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/assets/favicon.svg">
+
+    <!-- Meta tags -->
+    <meta name="description" content="Professional glass design and optimization tool for efficient material usage and waste reduction.">
+    <meta name="keywords" content="glass, design, optimization, manufacturing, CAD, cutting">
+    <meta name="author" content="Glass Optimizer Team">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Glass Optimizer">
+    <meta property="og:description" content="Design custom glass pieces and optimize cutting patterns">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{.BaseURL}}">
+
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="{{.BodyClass}}">
+    <!-- Application Container -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="flex items-center justify-between">
+                <!-- Brand/Logo -->
+                <div class="flex items-center gap-lg">
+                    <h1 class="nav-brand">
+                        <a href="/" class="text-on-primary">
+                            <svg width="32" height="32" viewBox="0 0 32 32" fill="currentColor" class="inline-block mr-2">
+                                <!-- Glass icon -->
+                                <rect x="4" y="6" width="24" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                                <rect x="6" y="8" width="20" height="12" fill="currentColor" opacity="0.3"/>
+                                <circle cx="12" cy="14" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                <circle cx="20" cy="14" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M4 24L28 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            Glass Optimizer
+                        </a>
+                    </h1>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="flex items-center">
+                    <ul class="nav-links">
+                        <li>
+                            <a href="/" class="nav-link {{if eq .Page "home"}}active{{end}}">
+                                <svg width="16" height="16" fill="currentColor" class="inline mr-1">
+                                    <path d="M8 1l7 7v7a1 1 0 01-1 1H2a1 1 0 01-1-1V8l7-7z"/>
+                                </svg>
+                                Home
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/designer" class="nav-link {{if eq .Page "designer"}}active{{end}}">
+                                <svg width="16" height="16" fill="currentColor" class="inline mr-1">
+                                    <rect x="2" y="2" width="12" height="12" rx="1"/>
+                                    <circle cx="6" cy="6" r="1"/>
+                                    <circle cx="10" cy="10" r="1"/>
+                                </svg>
+                                Designer
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/optimizer" class="nav-link {{if eq .Page "optimizer"}}active{{end}}">
+                                <svg width="16" height="16" fill="currentColor" class="inline mr-1">
+                                    <rect x="1" y="1" width="6" height="4"/>
+                                    <rect x="9" y="1" width="6" height="4"/>
+                                    <rect x="1" y="7" width="6" height="4"/>
+                                    <rect x="9" y="7" width="6" height="4"/>
+                                    <rect x="5" y="13" width="6" height="2"/>
+                                </svg>
+                                Optimizer
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/projects" class="nav-link {{if eq .Page "projects"}}active{{end}}">
+                                <svg width="16" height="16" fill="currentColor" class="inline mr-1">
+                                    <path d="M3 3h10a2 2 0 012 2v8a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                                    <path d="M7 1v4"/>
+                                    <path d="M11 1v4"/>
+                                </svg>
+                                Projects
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- User Menu / Actions -->
+                    <div class="flex items-center gap-sm ml-lg">
+                        <!-- Health Status Indicator -->
+                        <div class="tooltip" data-tooltip="System Status">
+                            <button id="health-indicator" class="btn-ghost btn-sm" onclick="checkSystemHealth()">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="8" cy="8" r="6"/>
+                                    <circle cx="8" cy="8" r="2" fill="currentColor"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="tooltip" data-tooltip="Settings">
+                            <button class="btn-ghost btn-sm" onclick="openSettings()">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="8" cy="8" r="3"/>
+                                    <path d="M8 1v6M8 11v6M1 8h6M11 8h6"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Help -->
+                        <div class="tooltip" data-tooltip="Help & Documentation">
+                            <button class="btn-ghost btn-sm" onclick="openHelp()">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="8" cy="8" r="7"/>
+                                    <path d="M6 6a2 2 0 014 0c0 2-2 2-2 3M8 13h.01"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Mobile Menu Toggle -->
+                <button class="btn-ghost btn-sm md:hidden" onclick="toggleMobileMenu()">
+                    <svg width="20" height="20" fill="currentColor">
+                        <path d="M3 6h18M3 12h18M3 18h18"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            {{template "content" .}}
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-md">
+                    <span>&copy; 2024 Glass Optimizer</span>
+                    <span class="text-hint">|</span>
+                    <span id="app-version">v1.0.0</span>
+                </div>
+
+                <div class="flex items-center gap-md">
+                    <!-- Connection Status -->
+                    <div class="flex items-center gap-xs">
+                        <div id="connection-status" class="w-2 h-2 rounded-full bg-success"></div>
+                        <span class="text-xs">Connected</span>
+                    </div>
+
+                    <!-- Performance Stats -->
+                    <div class="text-xs text-hint">
+                        <span id="memory-usage"></span>
+                        <span class="mx-1">•</span>
+                        <span id="response-time"></span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Global Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- Global Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+
+    <!-- Global Modal Container -->
+    <div id="modal-container"></div>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="shortcuts-modal" class="modal-backdrop" style="display: none;" onclick="closeShortcutsModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title">Keyboard Shortcuts</h2>
+                <button class="modal-close" onclick="closeShortcutsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="grid grid-cols-2 gap-md">
+                    <div>
+                        <h4>General</h4>
+                        <ul class="space-y-xs text-sm">
+                            <li><kbd>Ctrl/Cmd + S</kbd> - Save</li>
+                            <li><kbd>Ctrl/Cmd + Z</kbd> - Undo</li>
+                            <li><kbd>Ctrl/Cmd + Shift + Z</kbd> - Redo</li>
+                            <li><kbd>Escape</kbd> - Cancel/Deselect</li>
+                            <li><kbd>Delete</kbd> - Delete selected</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>Designer</h4>
+                        <ul class="space-y-xs text-sm">
+                            <li><kbd>Ctrl/Cmd + A</kbd> - Select all</li>
+                            <li><kbd>Ctrl/Cmd + C</kbd> - Copy</li>
+                            <li><kbd>Ctrl/Cmd + V</kbd> - Paste</li>
+                            <li><kbd>+</kbd> / <kbd>-</kbd> - Zoom in/out</li>
+                            <li><kbd>Ctrl/Cmd + 0</kbd> - Reset zoom</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeShortcutsModal()">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-backdrop" style="display: none;" onclick="closeSettingsModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-lg">
+                    <!-- Theme Settings -->
+                    <div class="form-group">
+                        <label class="form-label">Theme</label>
+                        <select class="form-select" id="theme-selector" onchange="changeTheme(this.value)">
+                            <option value="auto">Auto (System)</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+
+                    <!-- Units -->
+                    <div class="form-group">
+                        <label class="form-label">Default Units</label>
+                        <select class="form-select" id="units-selector" onchange="changeUnits(this.value)">
+                            <option value="mm">Millimeters (mm)</option>
+                            <option value="cm">Centimeters (cm)</option>
+                            <option value="inches">Inches</option>
+                        </select>
+                    </div>
+
+                    <!-- Grid Settings -->
+                    <div class="form-group">
+                        <label class="form-label">Grid Size</label>
+                        <input type="number" class="form-input" id="grid-size" min="5" max="50" value="20">
+                        <div class="form-error" id="grid-size-error"></div>
+                    </div>
+
+                    <!-- Precision -->
+                    <div class="form-group">
+                        <label class="form-label">Decimal Precision</label>
+                        <select class="form-select" id="precision-selector">
+                            <option value="0">0 decimal places</option>
+                            <option value="1" selected>1 decimal place</option>
+                            <option value="2">2 decimal places</option>
+                            <option value="3">3 decimal places</option>
+                        </select>
+                    </div>
+
+                    <!-- Auto-save -->
+                    <div class="form-group">
+                        <label class="flex items-center gap-sm">
+                            <input type="checkbox" id="auto-save" checked>
+                            <span>Auto-save designs</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="resetSettings()">Reset to Defaults</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://unpkg.com/htmx.org@1.9.8"></script>
+
+    <!-- Application JavaScript -->
+    <script src="/static/js/main.js"></script>
+    {{if .PageJS}}
+    <script src="/static/js/{{.PageJS}}.js"></script>
+    {{end}}
+
+    <!-- Global JavaScript Functions -->
+    <script>
+        // System health check
+        async function checkSystemHealth() {
+            try {
+                const indicator = document.getElementById('health-indicator');
+                indicator.classList.add('loading');
+
+                const response = await fetch('/api/health');
+                const health = await response.json();
+
+                if (health.status === 'healthy') {
+                    window.glassApp.notificationManager.success('System is healthy');
+                } else {
+                    window.glassApp.notificationManager.warning('System issues detected');
+                }
+            } catch (error) {
+                window.glassApp.notificationManager.error('Failed to check system health');
+            } finally {
+                const indicator = document.getElementById('health-indicator');
+                indicator.classList.remove('loading');
+            }
+        }
+
+        // Modal management
+        function openShortcutsModal() {
+            document.getElementById('shortcuts-modal').style.display = 'flex';
+        }
+
+        function closeShortcutsModal() {
+            document.getElementById('shortcuts-modal').style.display = 'none';
+        }
+
+        function openSettings() {
+            loadCurrentSettings();
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function openHelp() {
+            openShortcutsModal();
+        }
+
+        // Settings management
+        function loadCurrentSettings() {
+            const settings = JSON.parse(localStorage.getItem('glass-optimizer-settings') || '{}');
+
+            // Load current values
+            document.getElementById('theme-selector').value = settings.theme || 'auto';
+            document.getElementById('units-selector').value = settings.units || 'mm';
+            document.getElementById('grid-size').value = settings.gridSize || 20;
+            document.getElementById('precision-selector').value = settings.precision || 1;
+            document.getElementById('auto-save').checked = settings.autoSave !== false;
+        }
+
+        function saveSettings() {
+            const settings = {
+                theme: document.getElementById('theme-selector').value,
+                units: document.getElementById('units-selector').value,
+                gridSize: parseInt(document.getElementById('grid-size').value),
+                precision: parseInt(document.getElementById('precision-selector').value),
+                autoSave: document.getElementById('auto-save').checked
+            };
+
+            localStorage.setItem('glass-optimizer-settings', JSON.stringify(settings));
+            applySettings(settings);
+
+            window.glassApp.notificationManager.success('Settings saved successfully');
+            closeSettingsModal();
+        }
+
+        function resetSettings() {
+            localStorage.removeItem('glass-optimizer-settings');
+            loadCurrentSettings();
+            window.glassApp.notificationManager.info('Settings reset to defaults');
+        }
+
+        function applySettings(settings) {
+            // Apply theme
+            if (settings.theme === 'dark') {
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+            }
+
+            // Apply grid size if designer is active
+            if (window.glassDesigner) {
+                window.glassDesigner.options.gridSize = settings.gridSize;
+                window.glassDesigner.render();
+            }
+
+            // Emit settings change event
+            if (window.glassApp) {
+                window.glassApp.emit('settings:changed', settings);
+            }
+        }
+
+        function changeTheme(theme) {
+            applySettings({ theme });
+        }
+
+        function changeUnits(units) {
+            // Update UI units immediately
+            window.glassApp.emit('units:changed', units);
+        }
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+            }
+        }
+
+        // Update performance stats
+        function updatePerformanceStats() {
+            // Memory usage (if available)
+            if (performance.memory) {
+                const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                document.getElementById('memory-usage').textContent = `${used}MB`;
+            }
+
+            // Response time (simplified)
+            const responseTime = Math.round(performance.now() % 1000);
+            document.getElementById('response-time').textContent = `${responseTime}ms`;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved settings
+            const settings = JSON.parse(localStorage.getItem('glass-optimizer-settings') || '{}');
+            applySettings(settings);
+
+            // Update performance stats periodically
+            setInterval(updatePerformanceStats, 5000);
+            updatePerformanceStats();
+
+            // Global keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Help shortcut
+                if (e.key === 'F1' || (e.key === '?' && e.shiftKey)) {
+                    e.preventDefault();
+                    openHelp();
+                }
+
+                // Settings shortcut
+                if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    openSettings();
+                }
+            });
+        });
+    </script>
+
+    {{if .CustomJS}}
+    <script>
+        {{.CustomJS}}
+    </script>
+    {{end}}
+</body>
+</html>

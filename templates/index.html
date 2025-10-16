@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Glass Optimizer</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Glass Optimizer</h1>
+            <nav>
+                <a href="/" class="active">Dashboard</a>
+                <a href="/designer">Designer</a>
+                <a href="/optimizer">Optimizer</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="welcome-section">
+                <h2>Welcome to Glass Optimizer</h2>
+                <p>Design custom glass pieces and optimize cutting patterns for maximum efficiency</p>
+            </div>
+
+            <div class="quick-actions">
+                <a href="/designer" class="action-card">
+                    <h3>Glass Designer</h3>
+                    <p>Create custom glass designs with precise measurements</p>
+                    <button class="btn btn-primary">Start Designing</button>
+                </a>
+
+                <a href="/optimizer" class="action-card">
+                    <h3>Sheet Optimizer</h3>
+                    <p>Optimize cutting patterns to minimize waste</p>
+                    <button class="btn btn-outline">Optimize Layout</button>
+                </a>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Designs</h4>
+                    <div class="stat-value" id="total-designs">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Optimizations Run</h4>
+                    <div class="stat-value" id="total-optimizations">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Active Projects</h4>
+                    <div class="stat-value" id="total-projects">0</div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Load dashboard stats
+        fetch('/api/designs')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('total-designs').textContent = data.total || 0;
+            })
+            .catch(console.error);
+
+        fetch('/api/optimizations')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('total-optimizations').textContent = data.total || 0;
+            })
+            .catch(console.error);
+
+        fetch('/api/projects')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('total-projects').textContent = data.total || 0;
+            })
+            .catch(console.error);
+    </script>
+</body>
+</html>

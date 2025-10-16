@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(go run:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(xargs kill:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": false
+}
