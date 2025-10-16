@@ -348,7 +348,7 @@ class GlassDesigner {
         }
 
         if (this.holes.length === 0) {
-            listContainer.innerHTML = '<p style="color: #64748b; font-size: 0.875rem; font-style: italic;">No holes yet. Click on canvas to add.</p>';
+            listContainer.innerHTML = `<p style="color: #64748b; font-size: 0.875rem; font-style: italic;" data-i18n="noHoles">${window.i18n ? window.i18n.t('noHoles') : 'No holes yet. Click on canvas to add.'}</p>`;
             return;
         }
 
@@ -356,31 +356,33 @@ class GlassDesigner {
             const isSelected = index === this.selectedHoleIndex;
             const selectedClass = isSelected ? 'selected' : '';
 
+            const t = window.i18n ? window.i18n.t : (key) => key;
+
             if (hole.shape === 'clip') {
                 return `
                     <div class="hole-item ${selectedClass}" data-hole-index="${index}">
                         <div class="hole-item-header">
-                            <span class="hole-item-title">Edge Clip ${index + 1}</span>
+                            <span class="hole-item-title">${t('edgeClipLabel')} ${index + 1}</span>
                             <button class="hole-item-delete" onclick="designer.deleteHole(${index})" title="Delete">×</button>
                         </div>
                         <div class="hole-item-props">
                             <label>
-                                X Position (mm):
+                                ${t('xPosition')} (mm):
                                 <input type="number" value="${Math.round(hole.x)}"
                                     onchange="designer.updateHoleProperty(${index}, 'x', this.value)">
                             </label>
                             <label>
-                                Y Position (mm):
+                                ${t('yPosition')} (mm):
                                 <input type="number" value="${Math.round(hole.y)}"
                                     onchange="designer.updateHoleProperty(${index}, 'y', this.value)">
                             </label>
                             <label>
-                                Width (mm):
+                                ${t('width')} (mm):
                                 <input type="number" value="${Math.round(hole.width)}"
                                     onchange="designer.updateHoleProperty(${index}, 'width', this.value)">
                             </label>
                             <label>
-                                Depth (mm):
+                                ${t('depth')} (mm):
                                 <input type="number" value="${Math.round(hole.depth)}"
                                     onchange="designer.updateHoleProperty(${index}, 'depth', this.value)">
                             </label>
@@ -391,22 +393,22 @@ class GlassDesigner {
                 return `
                     <div class="hole-item ${selectedClass}" data-hole-index="${index}">
                         <div class="hole-item-header">
-                            <span class="hole-item-title">Circle Hole ${index + 1}</span>
+                            <span class="hole-item-title">${t('circleHoleLabel')} ${index + 1}</span>
                             <button class="hole-item-delete" onclick="designer.deleteHole(${index})" title="Delete">×</button>
                         </div>
                         <div class="hole-item-props">
                             <label>
-                                X Center (mm):
+                                ${t('xPosition')} (mm):
                                 <input type="number" value="${Math.round(hole.x)}"
                                     onchange="designer.updateHoleProperty(${index}, 'x', this.value)">
                             </label>
                             <label>
-                                Y Center (mm):
+                                ${t('yPosition')} (mm):
                                 <input type="number" value="${Math.round(hole.y)}"
                                     onchange="designer.updateHoleProperty(${index}, 'y', this.value)">
                             </label>
                             <label>
-                                Diameter (mm):
+                                ${t('diameter')} (mm):
                                 <input type="number" value="${Math.round(hole.diameter)}"
                                     onchange="designer.updateHoleProperty(${index}, 'diameter', this.value)">
                             </label>
@@ -419,27 +421,27 @@ class GlassDesigner {
                 return `
                     <div class="hole-item ${selectedClass}" data-hole-index="${index}">
                         <div class="hole-item-header">
-                            <span class="hole-item-title">Rectangle Hole ${index + 1}</span>
+                            <span class="hole-item-title">${t('rectangleHoleLabel')} ${index + 1}</span>
                             <button class="hole-item-delete" onclick="designer.deleteHole(${index})" title="Delete">×</button>
                         </div>
                         <div class="hole-item-props">
                             <label>
-                                X Center (mm):
+                                ${t('xPosition')} (mm):
                                 <input type="number" value="${Math.round(centerX)}"
                                     onchange="designer.updateHoleProperty(${index}, 'centerX', this.value)">
                             </label>
                             <label>
-                                Y Center (mm):
+                                ${t('yPosition')} (mm):
                                 <input type="number" value="${Math.round(centerY)}"
                                     onchange="designer.updateHoleProperty(${index}, 'centerY', this.value)">
                             </label>
                             <label>
-                                Width (mm):
+                                ${t('width')} (mm):
                                 <input type="number" value="${Math.round(hole.width)}"
                                     onchange="designer.updateHoleProperty(${index}, 'width', this.value)">
                             </label>
                             <label>
-                                Height (mm):
+                                ${t('height')} (mm):
                                 <input type="number" value="${Math.round(hole.height)}"
                                     onchange="designer.updateHoleProperty(${index}, 'height', this.value)">
                             </label>
@@ -560,6 +562,25 @@ class GlassDesigner {
     }
 
     renderForPrint(targetCanvas) {
+        // Calculate required padding for dimension lines
+        // Dimension lines extend 30 canvas pixels from holes plus text space
+        const dimensionPadding = 80; // Extra padding for dimension lines and text
+
+        // Store original values
+        const originalOffsetX = this.offsetX;
+        const originalOffsetY = this.offsetY;
+        const originalCanvasWidth = this.canvas.width;
+        const originalCanvasHeight = this.canvas.height;
+
+        // Set canvas size with extra padding for dimension lines
+        const printPadding = 100; // Increased padding for print
+        targetCanvas.width = this.glass.width * this.scale + printPadding * 2;
+        targetCanvas.height = this.glass.height * this.scale + printPadding * 2;
+
+        // Temporarily adjust offsets for print rendering
+        this.offsetX = printPadding;
+        this.offsetY = printPadding;
+
         const ctx = targetCanvas.getContext('2d');
 
         // Clear canvas
@@ -585,8 +606,12 @@ class GlassDesigner {
             this.drawDimensionLines(ctx, hole);
         });
 
-        // Draw glass dimensions
-        this.drawDimensionsOnCanvas(ctx);
+        // Draw glass dimensions (pass target canvas height)
+        this.drawDimensionsOnCanvas(ctx, targetCanvas.height);
+
+        // Restore original values
+        this.offsetX = originalOffsetX;
+        this.offsetY = originalOffsetY;
     }
 
     drawDimensionLines(ctx, hole) {
@@ -833,31 +858,35 @@ class GlassDesigner {
         }
     }
 
-    drawDimensionsOnCanvas(ctx) {
+    drawDimensionsOnCanvas(ctx, canvasHeight) {
+        // Use provided canvas height or fallback to this.canvas.height
+        const targetHeight = canvasHeight || this.canvas.height;
+
         ctx.fillStyle = '#64748b';
         ctx.font = '12px -apple-system, sans-serif';
         ctx.textAlign = 'center';
 
-        // Width dimension
+        // Width dimension (bottom of canvas)
         const widthText = this.glass.width + 'mm';
+        const glassBottomY = this.offsetY + (this.glass.height * this.scale);
         ctx.fillText(
             widthText,
             this.offsetX + (this.glass.width * this.scale) / 2,
-            this.canvas.height - 10
+            glassBottomY + 30
         );
 
-        // Height dimension
+        // Height dimension (left side)
         ctx.save();
-        ctx.translate(10, this.offsetY + (this.glass.height * this.scale) / 2);
+        ctx.translate(this.offsetX - 30, this.offsetY + (this.glass.height * this.scale) / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText(this.glass.height + 'mm', 0, 0);
         ctx.restore();
 
-        // Thickness
+        // Thickness (top)
         ctx.fillText(
             'Thickness: ' + this.glass.thickness + 'mm',
             this.offsetX + (this.glass.width * this.scale) / 2,
-            20
+            this.offsetY - 20
         );
     }
 
@@ -1117,6 +1146,8 @@ class GlassDesigner {
     }
 
     printDesign() {
+        const t = window.i18n ? window.i18n.t : (key) => key;
+
         // Collect unique hole specifications
         const uniqueSpecs = {
             circles: new Set(),
@@ -1158,12 +1189,12 @@ class GlassDesigner {
         // Circle holes
         if (uniqueSpecs.circles.size > 0) {
             holesSpecHTML += '<div class="print-hole-spec">';
-            holesSpecHTML += '<div class="print-hole-type">Circle Holes</div>';
+            holesSpecHTML += `<div class="print-hole-type">${t('circleHoles')}</div>`;
             Array.from(uniqueSpecs.circles).sort((a, b) => b - a).forEach(diameter => {
                 const count = circleCounts[diameter];
                 holesSpecHTML += `<div class="print-property">`;
-                holesSpecHTML += `<span class="print-property-label">Diameter: ${diameter}mm</span>`;
-                holesSpecHTML += `<span>Quantity: ${count}</span>`;
+                holesSpecHTML += `<span class="print-property-label">${t('diameter')}: ${diameter}mm</span>`;
+                holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
                 holesSpecHTML += `</div>`;
             });
             holesSpecHTML += '</div>';
@@ -1172,12 +1203,12 @@ class GlassDesigner {
         // Rectangle holes
         if (uniqueSpecs.rectangles.size > 0) {
             holesSpecHTML += '<div class="print-hole-spec">';
-            holesSpecHTML += '<div class="print-hole-type">Rectangle Holes</div>';
+            holesSpecHTML += `<div class="print-hole-type">${t('rectangleHoles')}</div>`;
             Array.from(uniqueSpecs.rectangles).forEach(spec => {
                 const count = rectangleCounts[spec];
                 holesSpecHTML += `<div class="print-property">`;
-                holesSpecHTML += `<span class="print-property-label">Size: ${spec}mm</span>`;
-                holesSpecHTML += `<span>Quantity: ${count}</span>`;
+                holesSpecHTML += `<span class="print-property-label">${t('size')}: ${spec}mm</span>`;
+                holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
                 holesSpecHTML += `</div>`;
             });
             holesSpecHTML += '</div>';
@@ -1186,44 +1217,44 @@ class GlassDesigner {
         // Edge clips
         if (uniqueSpecs.clips.size > 0) {
             holesSpecHTML += '<div class="print-hole-spec">';
-            holesSpecHTML += '<div class="print-hole-type">Edge Clips</div>';
+            holesSpecHTML += `<div class="print-hole-type">${t('edgeClips')}</div>`;
             Array.from(uniqueSpecs.clips).forEach(spec => {
                 const count = clipCounts[spec];
                 holesSpecHTML += `<div class="print-property">`;
-                holesSpecHTML += `<span class="print-property-label">Size: ${spec}mm (Width×Depth)</span>`;
-                holesSpecHTML += `<span>Quantity: ${count}</span>`;
+                holesSpecHTML += `<span class="print-property-label">${t('size')}: ${spec}mm (${t('width')}×${t('depth')})</span>`;
+                holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
                 holesSpecHTML += `</div>`;
             });
             holesSpecHTML += '</div>';
         }
 
         if (holesSpecHTML === '') {
-            holesSpecHTML = '<p style="color: #64748b; font-style: italic;">No holes or clips in design</p>';
+            holesSpecHTML = `<p style="color: #64748b; font-style: italic;">${t('noHolesClipsInDesign')}</p>`;
         }
 
         const printTemplate = `
             <div class="print-header">
-                <h1>Glass Design Specification</h1>
-                <p>Generated: ${new Date().toLocaleString()}</p>
+                <h1>${t('glassDesignSpec')}</h1>
+                <p>${t('generated')}: ${new Date().toLocaleString()}</p>
             </div>
             <div class="print-content">
                 <div class="print-glass-info">
                     <div>
-                        <h3>Glass Properties</h3>
+                        <h3>${t('glassProperties')}</h3>
                         <div class="print-property">
-                            <span class="print-property-label">Width:</span>
+                            <span class="print-property-label">${t('width')}:</span>
                             <span>${this.glass.width}mm</span>
                         </div>
                         <div class="print-property">
-                            <span class="print-property-label">Height:</span>
+                            <span class="print-property-label">${t('height')}:</span>
                             <span>${this.glass.height}mm</span>
                         </div>
                         <div class="print-property">
-                            <span class="print-property-label">Thickness:</span>
+                            <span class="print-property-label">${t('thickness')}:</span>
                             <span>${this.glass.thickness}mm</span>
                         </div>
                         <div class="print-property">
-                            <span class="print-property-label">Total Holes/Clips:</span>
+                            <span class="print-property-label">${t('totalHolesClips')}:</span>
                             <span>${this.holes.length}</span>
                         </div>
                     </div>
@@ -1232,7 +1263,7 @@ class GlassDesigner {
                     </div>
                 </div>
                 <div class="print-holes-info">
-                    <h3>Hole Specifications</h3>
+                    <h3>${t('holeSpecifications')}</h3>
                     ${holesSpecHTML}
                 </div>
             </div>
@@ -1245,8 +1276,7 @@ class GlassDesigner {
         // Render design to print canvas with dimension lines
         const printCanvas = document.getElementById('print-canvas');
         if (printCanvas) {
-            printCanvas.width = this.canvas.width;
-            printCanvas.height = this.canvas.height;
+            // renderForPrint will set the canvas size with proper padding
             this.renderForPrint(printCanvas);
         }
 
@@ -1319,7 +1349,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const data = JSON.parse(event.target.result);
                             designer.loadDesignData(data);
                         } catch (error) {
-                            alert('Error loading design file: ' + error.message);
+                            const errorMsg = window.i18n ? window.i18n.t('errorLoadingDesign') : 'Error loading design file';
+                            alert(errorMsg + ': ' + error.message);
                         }
                     };
                     reader.readAsText(file);
@@ -1329,7 +1360,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('btn-clear')?.addEventListener('click', () => {
-            if (confirm('Clear all holes? This cannot be undone.')) {
+            const confirmMsg = window.i18n ? window.i18n.t('clearAllConfirm') : 'Clear all holes? This cannot be undone.';
+            if (confirm(confirmMsg)) {
                 designer.clearDesign();
             }
         });
