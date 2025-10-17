@@ -1238,32 +1238,29 @@ class GlassDesigner {
                 <p>${t('generated')}: ${new Date().toLocaleString()}</p>
             </div>
             <div class="print-content">
-                <div class="print-glass-info">
-                    <div>
-                        <h3>${t('glassProperties')}</h3>
-                        <div class="print-property">
-                            <span class="print-property-label">${t('width')}:</span>
-                            <span>${this.glass.width}mm</span>
-                        </div>
-                        <div class="print-property">
-                            <span class="print-property-label">${t('height')}:</span>
-                            <span>${this.glass.height}mm</span>
-                        </div>
-                        <div class="print-property">
-                            <span class="print-property-label">${t('thickness')}:</span>
-                            <span>${this.glass.thickness}mm</span>
-                        </div>
-                        <div class="print-property">
-                            <span class="print-property-label">${t('totalHolesClips')}:</span>
-                            <span>${this.holes.length}</span>
-                        </div>
-                    </div>
-                    <div style="margin-top: 1rem; flex: 1;">
-                        <canvas id="print-canvas"></canvas>
-                    </div>
+                <div class="print-drawing-area">
+                    <canvas id="print-canvas"></canvas>
                 </div>
-                <div class="print-holes-info">
-                    <h3>${t('holeSpecifications')}</h3>
+                <div class="print-specs-area">
+                    <h3>${t('glassProperties')}</h3>
+                    <div class="print-property">
+                        <span class="print-property-label">${t('width')}:</span>
+                        <span>${this.glass.width}mm</span>
+                    </div>
+                    <div class="print-property">
+                        <span class="print-property-label">${t('height')}:</span>
+                        <span>${this.glass.height}mm</span>
+                    </div>
+                    <div class="print-property">
+                        <span class="print-property-label">${t('thickness')}:</span>
+                        <span>${this.glass.thickness}mm</span>
+                    </div>
+                    <div class="print-property">
+                        <span class="print-property-label">${t('totalHolesClips')}:</span>
+                        <span>${this.holes.length}</span>
+                    </div>
+
+                    <h3 style="margin-top: 1.5rem;">${t('holeSpecifications')}</h3>
                     ${holesSpecHTML}
                 </div>
             </div>
