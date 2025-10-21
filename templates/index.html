@@ -51,7 +51,74 @@
                     <div class="stat-value" id="total-projects">0</div>
                 </div>
             </div>
+
+            <!-- Projects Section -->
+            <div class="projects-section">
+                <div class="section-header">
+                    <h2>Projects</h2>
+                    <button class="btn btn-primary" id="btn-new-project">
+                        <span class="btn-icon">+</span> New Project
+                    </button>
+                </div>
+
+                <!-- Projects Tree View -->
+                <div class="projects-tree" id="projects-tree">
+                    <div class="tree-loading">Loading projects...</div>
+                </div>
+            </div>
         </main>
+
+        <!-- Create/Edit Project Modal -->
+        <div class="modal" id="project-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">New Project</h3>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <form id="project-form">
+                    <input type="hidden" id="project-id" value="">
+                    <input type="hidden" id="project-parent-id" value="">
+
+                    <div class="form-group">
+                        <label for="project-name">Project Name *</label>
+                        <input type="text" id="project-name" required maxlength="255" placeholder="Enter project name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-description">Description</label>
+                        <textarea id="project-description" rows="3" maxlength="1000" placeholder="Enter project description (optional)"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Designs <span style="color: #64748b; font-weight: normal;">(Optional)</span></label>
+                        <div id="designs-list-container">
+                            <div class="designs-placeholder">No designs added. Projects can be empty (like folders). Click "Add Design" if you want to include designs.</div>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-add-design">
+                            <span class="btn-icon">+</span> Add Design
+                        </button>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" id="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-project">Save Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Design Picker Modal -->
+        <div class="modal" id="design-picker-modal">
+            <div class="modal-content modal-sm">
+                <div class="modal-header">
+                    <h3>Select Design</h3>
+                    <button class="modal-close" id="design-picker-close">&times;</button>
+                </div>
+                <div id="design-picker-list" class="picker-list">
+                    <div class="picker-loading">Loading designs...</div>
+                </div>
+            </div>
+        </div>
 
         <footer class="footer">
             <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
@@ -59,6 +126,8 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/projects.js"></script>
     <script>
         // Load dashboard stats
         fetch('/api/designs')

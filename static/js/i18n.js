@@ -13,8 +13,10 @@ const translations = {
         // Tools
         tools: 'Tools',
         select: 'Select',
+        taladro: 'Drill Hole',
         circleHole: 'Circle Hole',
         rectangleHole: 'Rectangle Hole',
+        avellanado: 'Countersink',
         edgeClip: 'Edge Clip',
 
         // Glass Properties
@@ -26,12 +28,16 @@ const translations = {
         // Holes List
         holesList: 'Holes List',
         noHoles: 'No holes yet. Click on canvas to add.',
+        taladroLabel: 'Drill Hole',
         edgeClipLabel: 'Edge Clip',
         circleHoleLabel: 'Circle Hole',
         rectangleHoleLabel: 'Rectangle Hole',
+        avellanadoLabel: 'Countersink',
         xPosition: 'X Position',
         yPosition: 'Y Position',
         diameter: 'Diameter',
+        counterDiameter: 'Countersink Diameter',
+        holeDiameter: 'Hole Diameter',
         depth: 'Depth',
 
         // Buttons
@@ -54,8 +60,11 @@ const translations = {
         generated: 'Generated',
         totalHolesClips: 'Total Holes/Clips',
         holeSpecifications: 'Hole Specifications',
+        worksList: 'Work List',
         circleHoles: 'Circle Holes',
         rectangleHoles: 'Rectangle Holes',
+        drillHoles: 'Drill Holes',
+        countersinkHoles: 'Countersink Holes',
         edgeClips: 'Edge Clips',
         quantity: 'Quantity',
         size: 'Size',
@@ -74,8 +83,10 @@ const translations = {
         // Herramientas
         tools: 'Herramientas',
         select: 'Seleccionar',
-        circleHole: 'Agujero Circular',
-        rectangleHole: 'Agujero Rectangular',
+        taladro: 'Taladro',
+        circleHole: 'Resaque Circular',
+        rectangleHole: 'Resaque Rectangular',
+        avellanado: 'Avellanado',
         edgeClip: 'Clip de Borde',
 
         // Propiedades del Vidrio
@@ -84,15 +95,19 @@ const translations = {
         height: 'Alto',
         thickness: 'Espesor',
 
-        // Lista de Agujeros
-        holesList: 'Lista de Agujeros',
-        noHoles: 'Sin agujeros aún. Haz clic en el lienzo para agregar.',
+        // Lista de Resaques
+        holesList: 'Lista de Resaques',
+        noHoles: 'Sin resaques aún. Haz clic en el lienzo para agregar.',
+        taladroLabel: 'Taladro',
         edgeClipLabel: 'Clip de Borde',
-        circleHoleLabel: 'Agujero Circular',
-        rectangleHoleLabel: 'Agujero Rectangular',
+        circleHoleLabel: 'Resaque Circular',
+        rectangleHoleLabel: 'Resaque Rectangular',
+        avellanadoLabel: 'Avellanado',
         xPosition: 'Posición X',
         yPosition: 'Posición Y',
         diameter: 'Diámetro',
+        counterDiameter: 'Diámetro de Avellanado',
+        holeDiameter: 'Diámetro de Taladro',
         depth: 'Profundidad',
 
         // Botones
@@ -104,26 +119,29 @@ const translations = {
         // Instrucciones
         instructions: 'Instrucciones:',
         instruction1: 'Selecciona una herramienta de la barra lateral izquierda',
-        instruction2: 'Haz clic y arrastra en el lienzo para crear agujeros',
-        instruction3: 'Usa la herramienta Seleccionar para mover agujeros existentes',
-        instruction4: 'Edita las propiedades del agujero en la barra lateral cuando esté seleccionado',
-        instruction5: 'Presiona la tecla Suprimir para eliminar el agujero seleccionado',
+        instruction2: 'Haz clic y arrastra en el lienzo para crear resaques',
+        instruction3: 'Usa la herramienta Seleccionar para mover resaques existentes',
+        instruction4: 'Edita las propiedades del resaque en la barra lateral cuando esté seleccionado',
+        instruction5: 'Presiona la tecla Suprimir para eliminar el resaque seleccionado',
         instruction6: 'Guarda tu diseño en un archivo JSON para usarlo más tarde',
 
         // Plantilla de impresión
         glassDesignSpec: 'Especificación de Diseño de Vidrio',
         generated: 'Generado',
-        totalHolesClips: 'Total de Agujeros/Clips',
-        holeSpecifications: 'Especificaciones de Agujeros',
-        circleHoles: 'Agujeros Circulares',
-        rectangleHoles: 'Agujeros Rectangulares',
+        totalHolesClips: 'Total de Resaques/Clips',
+        holeSpecifications: 'Especificaciones de Resaques',
+        worksList: 'Lista de trabajos',
+        circleHoles: 'Resaques Circulares',
+        rectangleHoles: 'Resaques Rectangulares',
+        drillHoles: 'Taladros',
+        countersinkHoles: 'Avellanados',
         edgeClips: 'Clips de Borde',
         quantity: 'Cantidad',
         size: 'Tamaño',
-        noHolesClipsInDesign: 'Sin agujeros o clips en el diseño',
+        noHolesClipsInDesign: 'Sin resaques o clips en el diseño',
 
         // Mensajes de confirmación
-        clearAllConfirm: '¿Limpiar todos los agujeros? Esto no se puede deshacer.',
+        clearAllConfirm: '¿Limpiar todos los resaques? Esto no se puede deshacer.',
         errorLoadingDesign: 'Error al cargar el archivo de diseño'
     }
 };

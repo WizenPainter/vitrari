@@ -15,6 +15,7 @@ type Design struct {
 	Thickness   float64   `json:"thickness" db:"thickness"` // in millimeters
 	DesignData  string    `json:"-" db:"design_data"`       // JSON blob
 	Elements    Elements  `json:"elements"`                 // Parsed design elements
+	ProjectID   *int      `json:"project_id,omitempty" db:"project_id"` // Link to project
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }

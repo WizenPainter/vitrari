@@ -5,13 +5,18 @@ import (
 	"time"
 )
 
-// Project represents a collection of designs for optimization
+// Project represents a collection of designs for optimization with hierarchical support
 type Project struct {
 	ID          int                 `json:"id" db:"id"`
 	Name        string              `json:"name" db:"name"`
 	Description string              `json:"description" db:"description"`
-	Designs     string              `json:"-" db:"designs"` // JSON array of design IDs with quantities
-	DesignList  []ProjectDesignItem `json:"designs_list"`   // Parsed design list
+	ParentID    *int                `json:"parent_id,omitempty" db:"parent_id"` // NULL for root projects
+	Path        string              `json:"path" db:"path"`                     // Hierarchical path like /project1/subproject1
+	Designs     string              `json:"-" db:"designs"`                     // JSON array of design IDs with quantities
+	DesignList  []ProjectDesignItem `json:"designs_list"`                       // Parsed design list
+	Children    []Project           `json:"children,omitempty"`                 // Child projects (subprojects)
+	DesignCount int                 `json:"design_count"`                       // Number of designs in this project
+	OptCount    int                 `json:"optimization_count"`                 // Number of optimizations in this project
 	CreatedAt   time.Time           `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time           `json:"updated_at" db:"updated_at"`
 }
@@ -70,11 +75,10 @@ func (p *Project) Validate() error {
 	if len(p.Description) > 1000 {
 		return NewValidationError("description cannot exceed 1000 characters")
 	}
-	if len(p.DesignList) == 0 {
-		return NewValidationError("at least one design is required")
-	}
 
-	// Validate each design item
+	// Projects can be empty (like directories) - no design requirement
+
+	// Validate each design item if any exist
 	for _, item := range p.DesignList {
 		if item.DesignID <= 0 {
 			return NewValidationFieldError("designs_list", "invalid design ID")
@@ -268,6 +272,57 @@ func (p *Project) Clone() (*Project, error) {
 	clone.UpdatedAt = time.Time{}
 
 	return &clone, nil
+}
+
+// IsRoot returns true if this is a root project (no parent)
+func (p *Project) IsRoot() bool {
+	return p.ParentID == nil
+}
+
+// GetDepth returns the depth level of this project in the hierarchy
+func (p *Project) GetDepth() int {
+	if p.Path == "/" {
+		return 0
+	}
+	depth := 0
+	for _, char := range p.Path {
+		if char == '/' {
+			depth++
+		}
+	}
+	return depth
+}
+
+// GetParentPath returns the path of the parent project
+func (p *Project) GetParentPath() string {
+	if p.IsRoot() {
+		return "/"
+	}
+	lastSlash := 0
+	for i := len(p.Path) - 1; i >= 0; i-- {
+		if p.Path[i] == '/' {
+			lastSlash = i
+			break
+		}
+	}
+	if lastSlash == 0 {
+		return "/"
+	}
+	return p.Path[:lastSlash]
+}
+
+// BuildPath constructs the hierarchical path from parent path and project name
+func BuildPath(parentPath, projectName string) string {
+	if parentPath == "/" {
+		return "/" + projectName
+	}
+	return parentPath + "/" + projectName
+}
+
+// ProjectTreeNode represents a project in a tree structure
+type ProjectTreeNode struct {
+	Project  *Project           `json:"project"`
+	Children []ProjectTreeNode  `json:"children,omitempty"`
 }
 
 // CalculateItemCosts calculates individual item costs based on design areas

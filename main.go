@@ -4,15 +4,42 @@ import (
 	"encoding/json"
 	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+
+	"glass-optimizer/internal/handlers"
+	"glass-optimizer/internal/models"
+	"glass-optimizer/internal/storage"
 )
 
 var templates *template.Template
 
 func main() {
+	// Setup logger
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	// Initialize database
+	dbPath := getEnv("DB_PATH", "./database/glass_optimizer.db")
+
+	// Ensure database directory exists
+	os.MkdirAll("./database", 0755)
+
+	db, err := storage.InitializeDatabase(dbPath, logger)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.Close()
+
+	// Create storage layer
+	store := storage.NewSQLiteStorage(db, logger)
+
+	// Create handlers
+	projectHandler := handlers.NewProjectHandler(store, logger)
+
 	// Load templates
-	var err error
 	templates, err = template.ParseGlob("templates/*.html")
 	if err != nil {
 		log.Printf("Warning: Failed to load templates: %v", err)
@@ -26,12 +53,44 @@ func main() {
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/designer", handleDesigner)
 	http.HandleFunc("/optimizer", handleOptimizer)
+	http.HandleFunc("/projects/", handleProjectDetail)
 
 	// API routes
 	http.HandleFunc("/api/health", handleHealth)
-	http.HandleFunc("/api/designs", handleDesigns)
+
+	// Design routes
+	http.HandleFunc("/api/designs/", func(w http.ResponseWriter, r *http.Request) {
+		// Route to specific design operations
+		if strings.HasPrefix(r.URL.Path, "/api/designs/") && r.URL.Path != "/api/designs/" {
+			handleDesignByID(w, r, store, logger)
+		} else {
+			handleDesigns(w, r, store, logger)
+		}
+	})
+	http.HandleFunc("/api/designs", func(w http.ResponseWriter, r *http.Request) {
+		handleDesigns(w, r, store, logger)
+	})
+
 	http.HandleFunc("/api/sheets", handleSheets)
-	http.HandleFunc("/api/projects", handleProjects)
+
+	// Project routes
+	http.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
+		// Route to specific project operations
+		if strings.HasPrefix(r.URL.Path, "/api/projects/") && r.URL.Path != "/api/projects/" {
+			// Check for sub-routes like /designs or /optimizations
+			if strings.Contains(r.URL.Path, "/designs") {
+				projectHandler.HandleProjectDesigns(w, r)
+			} else if strings.Contains(r.URL.Path, "/optimizations") {
+				projectHandler.HandleProjectOptimizations(w, r)
+			} else {
+				projectHandler.HandleProjectByID(w, r)
+			}
+		} else {
+			projectHandler.HandleProjects(w, r)
+		}
+	})
+	http.HandleFunc("/api/projects", projectHandler.HandleProjects)
+
 	http.HandleFunc("/api/optimizations", handleOptimizations)
 	http.HandleFunc("/api/optimize", handleOptimize)
 
@@ -92,6 +151,18 @@ func handleOptimizer(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleProjectDetail(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Project Details",
+		"Page":  "project",
+	}
+
+	if err := templates.ExecuteTemplate(w, "project.html", data); err != nil {
+		log.Printf("Template error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -100,32 +171,124 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleDesigns(w http.ResponseWriter, r *http.Request) {
+
+func handleDesigns(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
 
-	designs := []map[string]interface{}{
-		{
-			"id": 1,
-			"name": "Window Panel",
-			"width": 1200,
-			"height": 800,
-			"thickness": 6,
-			"created_at": "2024-01-01T00:00:00Z",
-		},
-		{
-			"id": 2,
-			"name": "Door Glass",
-			"width": 600,
-			"height": 1800,
-			"thickness": 8,
-			"created_at": "2024-01-02T00:00:00Z",
-		},
+	switch r.Method {
+	case http.MethodGet:
+		designs, total, err := store.GetDesigns(100, 0)
+		if err != nil {
+			logger.Error("Failed to get designs", "error", err)
+			http.Error(w, "Failed to get designs", http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"designs": designs,
+			"total":   total,
+		})
+
+	case http.MethodPost:
+		var design models.Design
+		if err := json.NewDecoder(r.Body).Decode(&design); err != nil {
+			logger.Error("Failed to decode design", "error", err)
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if err := store.CreateDesign(&design); err != nil {
+			logger.Error("Failed to create design", "error", err)
+			http.Error(w, "Failed to create design", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"design":  design,
+			"message": "Design created successfully",
+		})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Extract ID from path
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"designs": designs,
-		"total": len(designs),
-	})
+	id, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.Error(w, "Invalid design ID", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		design, err := store.GetDesign(id)
+		if err != nil {
+			logger.Error("Failed to get design", "error", err, "id", id)
+			if models.IsNotFoundError(err) {
+				http.Error(w, "Design not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Failed to get design", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"design": design,
+		})
+
+	case http.MethodPut:
+		var design models.Design
+		if err := json.NewDecoder(r.Body).Decode(&design); err != nil {
+			logger.Error("Failed to decode design", "error", err)
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		design.ID = id
+		if err := store.UpdateDesign(&design); err != nil {
+			logger.Error("Failed to update design", "error", err, "id", id)
+			if models.IsNotFoundError(err) {
+				http.Error(w, "Design not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Failed to update design", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"design":  design,
+			"message": "Design updated successfully",
+		})
+
+	case http.MethodDelete:
+		if err := store.DeleteDesign(id); err != nil {
+			logger.Error("Failed to delete design", "error", err, "id", id)
+			if models.IsNotFoundError(err) {
+				http.Error(w, "Design not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Failed to delete design", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "Design deleted successfully",
+		})
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func handleSheets(w http.ResponseWriter, r *http.Request) {
@@ -158,23 +321,6 @@ func handleSheets(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleProjects(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	projects := []map[string]interface{}{
-		{
-			"id": 1,
-			"name": "Office Renovation",
-			"description": "Glass panels for office",
-			"designs": []int{1, 2},
-		},
-	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"projects": projects,
-		"total": len(projects),
-	})
-}
 
 func handleOptimizations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

@@ -42,12 +42,32 @@ class GlassDesigner {
     }
 
     setupCanvas() {
-        // Set canvas size based on glass dimensions
-        const padding = 50;
-        this.canvas.width = this.glass.width * this.scale + padding * 2;
-        this.canvas.height = this.glass.height * this.scale + padding * 2;
-        this.offsetX = padding;
-        this.offsetY = padding;
+        // Set canvas to a FIXED size - it never changes
+        const fixedCanvasWidth = 800;   // Fixed canvas width
+        const fixedCanvasHeight = 600;  // Fixed canvas height
+        const padding = 80;             // Padding around the glass
+
+        // Set canvas to fixed size
+        this.canvas.width = fixedCanvasWidth;
+        this.canvas.height = fixedCanvasHeight;
+
+        // Calculate scale to fit glass within available space while maintaining aspect ratio
+        const availableWidth = fixedCanvasWidth - padding * 2;
+        const availableHeight = fixedCanvasHeight - padding * 2;
+
+        const scaleX = availableWidth / this.glass.width;
+        const scaleY = availableHeight / this.glass.height;
+
+        // Use the smaller scale to ensure glass fits in both dimensions
+        this.scale = Math.min(scaleX, scaleY);
+
+        // Calculate actual glass size on canvas
+        const glassCanvasWidth = this.glass.width * this.scale;
+        const glassCanvasHeight = this.glass.height * this.scale;
+
+        // Center the glass in the fixed canvas
+        this.offsetX = (fixedCanvasWidth - glassCanvasWidth) / 2;
+        this.offsetY = (fixedCanvasHeight - glassCanvasHeight) / 2;
     }
 
     setupEventListeners() {
@@ -139,6 +159,31 @@ class GlassDesigner {
                 y: glassCoords.y,  // Center Y
                 diameter: 50,
                 shape: 'circle'
+            };
+            this.holes.push(newHole);
+            this.selectedHoleIndex = this.holes.length - 1;
+            this.updatePropertiesPanel();
+            this.render();
+        } else if (this.currentTool === 'taladro') {
+            // Create a new drill hole centered on cursor (smaller, 6mm diameter)
+            const newHole = {
+                x: glassCoords.x,  // Center X
+                y: glassCoords.y,  // Center Y
+                diameter: 6,
+                shape: 'taladro'
+            };
+            this.holes.push(newHole);
+            this.selectedHoleIndex = this.holes.length - 1;
+            this.updatePropertiesPanel();
+            this.render();
+        } else if (this.currentTool === 'avellanado') {
+            // Create a new countersink hole centered on cursor
+            const newHole = {
+                x: glassCoords.x,  // Center X
+                y: glassCoords.y,  // Center Y
+                diameter: 20,      // Outer countersink diameter
+                holeDiameter: 6,   // Inner hole diameter
+                shape: 'avellanado'
             };
             this.holes.push(newHole);
             this.selectedHoleIndex = this.holes.length - 1;
@@ -291,7 +336,7 @@ class GlassDesigner {
                 if (!(hasNeg && hasPos)) {
                     return i;
                 }
-            } else if (hole.shape === 'circle') {
+            } else if (hole.shape === 'circle' || hole.shape === 'taladro' || hole.shape === 'avellanado') {
                 const radius = hole.diameter / 2;
                 const dx = x - hole.x;
                 const dy = y - hole.y;
@@ -389,11 +434,12 @@ class GlassDesigner {
                         </div>
                     </div>
                 `;
-            } else if (hole.shape === 'circle') {
+            } else if (hole.shape === 'circle' || hole.shape === 'taladro') {
+                const label = hole.shape === 'taladro' ? t('taladroLabel') : t('circleHoleLabel');
                 return `
                     <div class="hole-item ${selectedClass}" data-hole-index="${index}">
                         <div class="hole-item-header">
-                            <span class="hole-item-title">${t('circleHoleLabel')} ${index + 1}</span>
+                            <span class="hole-item-title">${label} ${index + 1}</span>
                             <button class="hole-item-delete" onclick="designer.deleteHole(${index})" title="Delete">×</button>
                         </div>
                         <div class="hole-item-props">
@@ -411,6 +457,37 @@ class GlassDesigner {
                                 ${t('diameter')} (mm):
                                 <input type="number" value="${Math.round(hole.diameter)}"
                                     onchange="designer.updateHoleProperty(${index}, 'diameter', this.value)">
+                            </label>
+                        </div>
+                    </div>
+                `;
+            } else if (hole.shape === 'avellanado') {
+                return `
+                    <div class="hole-item ${selectedClass}" data-hole-index="${index}">
+                        <div class="hole-item-header">
+                            <span class="hole-item-title">${t('avellanadoLabel')} ${index + 1}</span>
+                            <button class="hole-item-delete" onclick="designer.deleteHole(${index})" title="Delete">×</button>
+                        </div>
+                        <div class="hole-item-props">
+                            <label>
+                                ${t('xPosition')} (mm):
+                                <input type="number" value="${Math.round(hole.x)}"
+                                    onchange="designer.updateHoleProperty(${index}, 'x', this.value)">
+                            </label>
+                            <label>
+                                ${t('yPosition')} (mm):
+                                <input type="number" value="${Math.round(hole.y)}"
+                                    onchange="designer.updateHoleProperty(${index}, 'y', this.value)">
+                            </label>
+                            <label>
+                                ${t('counterDiameter')} (mm):
+                                <input type="number" value="${Math.round(hole.diameter)}"
+                                    onchange="designer.updateHoleProperty(${index}, 'diameter', this.value)">
+                            </label>
+                            <label>
+                                ${t('holeDiameter')} (mm):
+                                <input type="number" value="${Math.round(hole.holeDiameter)}"
+                                    onchange="designer.updateHoleProperty(${index}, 'holeDiameter', this.value)">
                             </label>
                         </div>
                     </div>
@@ -476,10 +553,15 @@ class GlassDesigner {
             else if (property === 'y') hole.y = numValue;
             else if (property === 'width') hole.width = numValue;
             else if (property === 'depth') hole.depth = numValue;
-        } else if (hole.shape === 'circle') {
+        } else if (hole.shape === 'circle' || hole.shape === 'taladro') {
             if (property === 'x') hole.x = numValue;
             else if (property === 'y') hole.y = numValue;
             else if (property === 'diameter') hole.diameter = numValue;
+        } else if (hole.shape === 'avellanado') {
+            if (property === 'x') hole.x = numValue;
+            else if (property === 'y') hole.y = numValue;
+            else if (property === 'diameter') hole.diameter = numValue;
+            else if (property === 'holeDiameter') hole.holeDiameter = numValue;
         } else if (hole.shape === 'rectangle') {
             if (property === 'centerX') {
                 hole.x = numValue - hole.width / 2;
@@ -541,11 +623,18 @@ class GlassDesigner {
     render() {
         const ctx = this.ctx;
 
+        // Enable smooth rendering
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
         // Clear canvas
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw background
-        ctx.fillStyle = '#f8fafc';
+        // Draw modern gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#f0f9ff');
+        gradient.addColorStop(1, '#e0f2fe');
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw grid
@@ -828,33 +917,174 @@ class GlassDesigner {
         } else if (hole.shape === 'circle') {
             const radius = (hole.diameter / 2) * this.scale;
 
+            // Draw hole with radial gradient for depth
+            const holeGradient = ctx.createRadialGradient(
+                canvasPos.x, canvasPos.y, 0,
+                canvasPos.x, canvasPos.y, radius
+            );
+            holeGradient.addColorStop(0, '#ffffff');
+            holeGradient.addColorStop(0.7, '#f1f5f9');
+            holeGradient.addColorStop(1, '#e2e8f0');
+
+            ctx.fillStyle = isPreview ? 'rgba(239, 68, 68, 0.3)' : holeGradient;
             ctx.beginPath();
             ctx.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
             ctx.fill();
+
+            // Reset shadow before stroke
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // Draw border
+            const borderGradient = ctx.createRadialGradient(
+                canvasPos.x, canvasPos.y, radius * 0.8,
+                canvasPos.x, canvasPos.y, radius
+            );
+            borderGradient.addColorStop(0, isSelected ? '#f59e0b' : '#ef4444');
+            borderGradient.addColorStop(1, isSelected ? '#dc2626' : '#dc2626');
+
+            ctx.strokeStyle = borderGradient;
             ctx.stroke();
 
-            // Draw center point
+            // Draw center point with glow
+            ctx.shadowColor = isSelected ? 'rgba(245, 158, 11, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+            ctx.shadowBlur = 6;
             ctx.fillStyle = isSelected ? '#f59e0b' : '#ef4444';
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+        } else if (hole.shape === 'taladro') {
+            const radius = (hole.diameter / 2) * this.scale;
+
+            // Taladro has distinct styling with blue tones
+            const taladroGradient = ctx.createRadialGradient(
+                canvasPos.x, canvasPos.y, 0,
+                canvasPos.x, canvasPos.y, radius
+            );
+            taladroGradient.addColorStop(0, '#3b82f6');
+            taladroGradient.addColorStop(0.5, '#2563eb');
+            taladroGradient.addColorStop(1, '#1e40af');
+
+            ctx.fillStyle = isPreview ? 'rgba(59, 130, 246, 0.3)' : taladroGradient;
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Reset shadow before stroke
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // Draw border
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#1e3a8a';
+            ctx.lineWidth = isSelected ? 4 : 2.5;
+            ctx.stroke();
+
+            // Draw center crosshair for drill holes with glow
+            ctx.shadowColor = isSelected ? 'rgba(245, 158, 11, 0.6)' : 'rgba(96, 165, 250, 0.8)';
+            ctx.shadowBlur = 4;
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#bfdbfe';
+            ctx.lineWidth = 2;
+            const crosshairSize = Math.max(6, radius * 0.6);
+            ctx.beginPath();
+            ctx.moveTo(canvasPos.x - crosshairSize, canvasPos.y);
+            ctx.lineTo(canvasPos.x + crosshairSize, canvasPos.y);
+            ctx.moveTo(canvasPos.x, canvasPos.y - crosshairSize);
+            ctx.lineTo(canvasPos.x, canvasPos.y + crosshairSize);
+            ctx.stroke();
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+        } else if (hole.shape === 'avellanado') {
+            const outerRadius = (hole.diameter / 2) * this.scale;
+            const innerRadius = (hole.holeDiameter / 2) * this.scale;
+
+            // Draw outer countersink with gradient (conical depression)
+            const counterGradient = ctx.createRadialGradient(
+                canvasPos.x, canvasPos.y, innerRadius,
+                canvasPos.x, canvasPos.y, outerRadius
+            );
+            counterGradient.addColorStop(0, '#cbd5e1');
+            counterGradient.addColorStop(0.5, '#e2e8f0');
+            counterGradient.addColorStop(1, '#f1f5f9');
+
+            ctx.fillStyle = isPreview ? 'rgba(168, 85, 247, 0.3)' : counterGradient;
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#8b5cf6';
+            ctx.lineWidth = isSelected ? 3 : 2;
+
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, outerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw inner hole
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#7c3aed';
+            ctx.lineWidth = isSelected ? 2 : 1.5;
+
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, innerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw center point with glow
+            ctx.shadowColor = isSelected ? 'rgba(245, 158, 11, 0.6)' : 'rgba(139, 92, 246, 0.6)';
+            ctx.shadowBlur = 4;
+            ctx.fillStyle = isSelected ? '#f59e0b' : '#8b5cf6';
             ctx.beginPath();
             ctx.arc(canvasPos.x, canvasPos.y, 3, 0, Math.PI * 2);
             ctx.fill();
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
 
         } else if (hole.shape === 'rectangle') {
             const width = hole.width * this.scale;
             const height = hole.height * this.scale;
 
+            // Draw rectangle with gradient
+            const rectGradient = ctx.createLinearGradient(
+                canvasPos.x, canvasPos.y - height,
+                canvasPos.x + width, canvasPos.y
+            );
+            rectGradient.addColorStop(0, '#ffffff');
+            rectGradient.addColorStop(0.5, '#f1f5f9');
+            rectGradient.addColorStop(1, '#e2e8f0');
+
+            ctx.fillStyle = isPreview ? 'rgba(239, 68, 68, 0.3)' : rectGradient;
             ctx.fillRect(canvasPos.x, canvasPos.y - height, width, height);
+
+            // Reset shadow before stroke
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+
+            // Draw border
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#ef4444';
+            ctx.lineWidth = isSelected ? 4 : 2.5;
             ctx.strokeRect(canvasPos.x, canvasPos.y - height, width, height);
 
-            // Draw center point
+            // Draw center point with glow
             const centerX = hole.x + hole.width / 2;
             const centerY = hole.y + hole.height / 2;
             const centerCanvasPos = this.glassToCanvas(centerX, centerY);
 
+            ctx.shadowColor = isSelected ? 'rgba(245, 158, 11, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+            ctx.shadowBlur = 6;
             ctx.fillStyle = isSelected ? '#f59e0b' : '#ef4444';
             ctx.beginPath();
-            ctx.arc(centerCanvasPos.x, centerCanvasPos.y, 3, 0, Math.PI * 2);
+            ctx.arc(centerCanvasPos.x, centerCanvasPos.y, 4, 0, Math.PI * 2);
             ctx.fill();
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
         }
     }
 
@@ -893,11 +1123,37 @@ class GlassDesigner {
     drawGrid() {
         const ctx = this.ctx;
         const gridSize = 100; // 100mm grid
+        const minorGridSize = 10; // 10mm minor grid
 
-        ctx.strokeStyle = '#e2e8f0';
+        // Draw minor grid (lighter)
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.3)';
+        ctx.lineWidth = 0.5;
+
+        // Minor vertical lines
+        for (let x = 0; x <= this.glass.width; x += minorGridSize) {
+            if (x % gridSize === 0) continue; // Skip major grid lines
+            const canvasX = x * this.scale + this.offsetX;
+            ctx.beginPath();
+            ctx.moveTo(canvasX, this.offsetY);
+            ctx.lineTo(canvasX, this.glass.height * this.scale + this.offsetY);
+            ctx.stroke();
+        }
+
+        // Minor horizontal lines
+        for (let y = 0; y <= this.glass.height; y += minorGridSize) {
+            if (y % gridSize === 0) continue; // Skip major grid lines
+            const canvasY = y * this.scale + this.offsetY;
+            ctx.beginPath();
+            ctx.moveTo(this.offsetX, canvasY);
+            ctx.lineTo(this.glass.width * this.scale + this.offsetX, canvasY);
+            ctx.stroke();
+        }
+
+        // Draw major grid (darker)
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
         ctx.lineWidth = 1;
 
-        // Vertical lines
+        // Major vertical lines
         for (let x = 0; x <= this.glass.width; x += gridSize) {
             const canvasX = x * this.scale + this.offsetX;
             ctx.beginPath();
@@ -906,7 +1162,7 @@ class GlassDesigner {
             ctx.stroke();
         }
 
-        // Horizontal lines
+        // Major horizontal lines
         for (let y = 0; y <= this.glass.height; y += gridSize) {
             const canvasY = y * this.scale + this.offsetY;
             ctx.beginPath();
@@ -919,23 +1175,53 @@ class GlassDesigner {
     drawGlass() {
         const ctx = this.ctx;
 
-        ctx.fillStyle = '#e0f2fe';
-        ctx.strokeStyle = '#2563eb';
+        const glassWidth = this.glass.width * this.scale;
+        const glassHeight = this.glass.height * this.scale;
+
+        // Draw shadow for depth
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
+
+        // Draw glass with gradient
+        const glassGradient = ctx.createLinearGradient(
+            this.offsetX,
+            this.offsetY,
+            this.offsetX + glassWidth,
+            this.offsetY + glassHeight
+        );
+        glassGradient.addColorStop(0, '#dbeafe');
+        glassGradient.addColorStop(0.5, '#bfdbfe');
+        glassGradient.addColorStop(1, '#93c5fd');
+
+        ctx.fillStyle = glassGradient;
+        ctx.fillRect(this.offsetX, this.offsetY, glassWidth, glassHeight);
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Draw border with gradient
+        const borderGradient = ctx.createLinearGradient(
+            this.offsetX,
+            this.offsetY,
+            this.offsetX + glassWidth,
+            this.offsetY + glassHeight
+        );
+        borderGradient.addColorStop(0, '#2563eb');
+        borderGradient.addColorStop(1, '#1e40af');
+
+        ctx.strokeStyle = borderGradient;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(this.offsetX, this.offsetY, glassWidth, glassHeight);
+
+        // Add inner highlight for glass effect
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
         ctx.lineWidth = 2;
-
-        ctx.fillRect(
-            this.offsetX,
-            this.offsetY,
-            this.glass.width * this.scale,
-            this.glass.height * this.scale
-        );
-
-        ctx.strokeRect(
-            this.offsetX,
-            this.offsetY,
-            this.glass.width * this.scale,
-            this.glass.height * this.scale
-        );
+        ctx.strokeRect(this.offsetX + 2, this.offsetY + 2, glassWidth - 4, glassHeight - 4);
     }
 
     drawHoles() {
@@ -949,9 +1235,17 @@ class GlassDesigner {
         const ctx = this.ctx;
         const canvasPos = this.glassToCanvas(hole.x, hole.y);
 
+        // Add shadow for depth (except for previews)
+        if (!isPreview) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+
         ctx.fillStyle = isPreview ? 'rgba(239, 68, 68, 0.3)' : '#ffffff';
         ctx.strokeStyle = isSelected ? '#f59e0b' : '#ef4444';
-        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.lineWidth = isSelected ? 4 : 2.5;
 
         if (hole.shape === 'clip') {
             // Draw edge clip - triangular notch cut into the edge
@@ -1059,6 +1353,87 @@ class GlassDesigner {
                 canvasPos.y - 5
             );
 
+        } else if (hole.shape === 'taladro') {
+            const radius = (hole.diameter / 2) * this.scale;
+
+            // Taladro has distinct styling
+            ctx.fillStyle = isPreview ? 'rgba(59, 130, 246, 0.3)' : '#1e40af';
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#3b82f6';
+
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw center crosshair
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#60a5fa';
+            ctx.lineWidth = 1;
+            const crosshairSize = 5;
+            ctx.beginPath();
+            ctx.moveTo(canvasPos.x - crosshairSize, canvasPos.y);
+            ctx.lineTo(canvasPos.x + crosshairSize, canvasPos.y);
+            ctx.moveTo(canvasPos.x, canvasPos.y - crosshairSize);
+            ctx.lineTo(canvasPos.x, canvasPos.y + crosshairSize);
+            ctx.stroke();
+
+            // Draw coordinate label
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px -apple-system, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(
+                '(' + Math.round(hole.x) + ', ' + Math.round(hole.y) + ')',
+                canvasPos.x + radius + 5,
+                canvasPos.y - 5
+            );
+
+        } else if (hole.shape === 'avellanado') {
+            const outerRadius = (hole.diameter / 2) * this.scale;
+            const innerRadius = (hole.holeDiameter / 2) * this.scale;
+
+            // Draw outer countersink with gradient (conical depression)
+            const counterGradient = ctx.createRadialGradient(
+                canvasPos.x, canvasPos.y, innerRadius,
+                canvasPos.x, canvasPos.y, outerRadius
+            );
+            counterGradient.addColorStop(0, '#cbd5e1');
+            counterGradient.addColorStop(0.5, '#e2e8f0');
+            counterGradient.addColorStop(1, '#f1f5f9');
+
+            ctx.fillStyle = isPreview ? 'rgba(168, 85, 247, 0.3)' : counterGradient;
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#8b5cf6';
+            ctx.lineWidth = isSelected ? 3 : 2;
+
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, outerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw inner hole
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = isSelected ? '#f59e0b' : '#7c3aed';
+            ctx.lineWidth = isSelected ? 2 : 1.5;
+
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, innerRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw center point
+            ctx.fillStyle = isSelected ? '#f59e0b' : '#8b5cf6';
+            ctx.beginPath();
+            ctx.arc(canvasPos.x, canvasPos.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw coordinate label
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px -apple-system, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(
+                '(' + Math.round(hole.x) + ', ' + Math.round(hole.y) + ')',
+                canvasPos.x + outerRadius + 5,
+                canvasPos.y - 5
+            );
+
         } else if (hole.shape === 'rectangle') {
             const width = hole.width * this.scale;
             const height = hole.height * this.scale;
@@ -1091,9 +1466,16 @@ class GlassDesigner {
     drawDimensions() {
         const ctx = this.ctx;
 
-        ctx.fillStyle = '#64748b';
-        ctx.font = '12px -apple-system, sans-serif';
+        // Modern dimension text styling
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
+
+        // Add subtle shadow to text
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
 
         // Width dimension
         const widthText = this.glass.width + 'mm';
@@ -1112,10 +1494,16 @@ class GlassDesigner {
 
         // Thickness
         ctx.fillText(
-            'Thickness: ' + this.glass.thickness + 'mm',
+            'Espesor: ' + this.glass.thickness + 'mm',
             this.offsetX + (this.glass.width * this.scale) / 2,
             20
         );
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
     }
 
     getDesignData() {
@@ -1152,6 +1540,8 @@ class GlassDesigner {
         const uniqueSpecs = {
             circles: new Set(),
             rectangles: new Set(),
+            taladros: new Set(),
+            avellanados: new Set(),
             clips: new Set()
         };
 
@@ -1160,6 +1550,10 @@ class GlassDesigner {
                 uniqueSpecs.circles.add(Math.round(hole.diameter));
             } else if (hole.shape === 'rectangle') {
                 uniqueSpecs.rectangles.add(`${Math.round(hole.width)}×${Math.round(hole.height)}`);
+            } else if (hole.shape === 'taladro') {
+                uniqueSpecs.taladros.add(Math.round(hole.diameter));
+            } else if (hole.shape === 'avellanado') {
+                uniqueSpecs.avellanados.add(`${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`);
             } else if (hole.shape === 'clip') {
                 uniqueSpecs.clips.add(`${Math.round(hole.width)}×${Math.round(hole.depth)}`);
             }
@@ -1168,6 +1562,8 @@ class GlassDesigner {
         // Count holes by type
         const circleCounts = {};
         const rectangleCounts = {};
+        const taladroCounts = {};
+        const avellanadoCounts = {};
         const clipCounts = {};
 
         this.holes.forEach(hole => {
@@ -1177,6 +1573,12 @@ class GlassDesigner {
             } else if (hole.shape === 'rectangle') {
                 const spec = `${Math.round(hole.width)}×${Math.round(hole.height)}`;
                 rectangleCounts[spec] = (rectangleCounts[spec] || 0) + 1;
+            } else if (hole.shape === 'taladro') {
+                const d = Math.round(hole.diameter);
+                taladroCounts[d] = (taladroCounts[d] || 0) + 1;
+            } else if (hole.shape === 'avellanado') {
+                const spec = `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`;
+                avellanadoCounts[spec] = (avellanadoCounts[spec] || 0) + 1;
             } else if (hole.shape === 'clip') {
                 const spec = `${Math.round(hole.width)}×${Math.round(hole.depth)}`;
                 clipCounts[spec] = (clipCounts[spec] || 0) + 1;
@@ -1194,6 +1596,35 @@ class GlassDesigner {
                 const count = circleCounts[diameter];
                 holesSpecHTML += `<div class="print-property">`;
                 holesSpecHTML += `<span class="print-property-label">${t('diameter')}: ${diameter}mm</span>`;
+                holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
+                holesSpecHTML += `</div>`;
+            });
+            holesSpecHTML += '</div>';
+        }
+
+        // Drill holes (taladros)
+        if (uniqueSpecs.taladros.size > 0) {
+            holesSpecHTML += '<div class="print-hole-spec">';
+            holesSpecHTML += `<div class="print-hole-type">${t('drillHoles')}</div>`;
+            Array.from(uniqueSpecs.taladros).sort((a, b) => b - a).forEach(diameter => {
+                const count = taladroCounts[diameter];
+                holesSpecHTML += `<div class="print-property">`;
+                holesSpecHTML += `<span class="print-property-label">${t('diameter')}: ${diameter}mm</span>`;
+                holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
+                holesSpecHTML += `</div>`;
+            });
+            holesSpecHTML += '</div>';
+        }
+
+        // Countersink holes (avellanados)
+        if (uniqueSpecs.avellanados.size > 0) {
+            holesSpecHTML += '<div class="print-hole-spec">';
+            holesSpecHTML += `<div class="print-hole-type">${t('countersinkHoles')}</div>`;
+            Array.from(uniqueSpecs.avellanados).forEach(spec => {
+                const count = avellanadoCounts[spec];
+                const [counterDia, holeDia] = spec.split('/');
+                holesSpecHTML += `<div class="print-property">`;
+                holesSpecHTML += `<span class="print-property-label">${t('counterDiameter')}: ${counterDia}mm / ${t('holeDiameter')}: ${holeDia}mm</span>`;
                 holesSpecHTML += `<span>${t('quantity')}: ${count}</span>`;
                 holesSpecHTML += `</div>`;
             });
@@ -1260,7 +1691,7 @@ class GlassDesigner {
                         <span>${this.holes.length}</span>
                     </div>
 
-                    <h3 style="margin-top: 1.5rem;">${t('holeSpecifications')}</h3>
+                    <h3 style="margin-top: 1.5rem;">${t('worksList')}</h3>
                     ${holesSpecHTML}
                 </div>
             </div>
@@ -1303,8 +1734,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const widthInput = document.getElementById('glass-width');
         const heightInput = document.getElementById('glass-height');
         const thicknessInput = document.getElementById('glass-thickness');
+        const thicknessSelect = document.getElementById('glass-thickness-select');
 
-        if (widthInput && heightInput && thicknessInput) {
+        if (widthInput && heightInput && thicknessInput && thicknessSelect) {
             const updateDimensions = () => {
                 designer.updateGlassDimensions(
                     widthInput.value,
@@ -1313,9 +1745,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             };
 
+            // Handle thickness select dropdown
+            thicknessSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    // Show custom input, hide select
+                    thicknessSelect.style.display = 'none';
+                    thicknessInput.style.display = 'block';
+                    thicknessInput.focus();
+                } else {
+                    // Update thickness with selected value
+                    thicknessInput.value = this.value;
+                    updateDimensions();
+                }
+            });
+
+            // Handle custom thickness input blur (going back to select)
+            thicknessInput.addEventListener('blur', function() {
+                // Check if the value matches a preset
+                const presetValues = ['4', '6', '8', '9.5', '12'];
+                if (presetValues.includes(this.value)) {
+                    // Value matches preset, go back to select
+                    thicknessSelect.value = this.value;
+                    thicknessInput.style.display = 'none';
+                    thicknessSelect.style.display = 'block';
+                } else {
+                    // Custom value, keep input shown but update to show it's custom
+                    thicknessInput.style.display = 'none';
+                    thicknessSelect.style.display = 'block';
+                    thicknessSelect.value = 'custom';
+                }
+            });
+
+            // Handle custom thickness input change
+            thicknessInput.addEventListener('change', function() {
+                updateDimensions();
+            });
+
             widthInput.addEventListener('change', updateDimensions);
             heightInput.addEventListener('change', updateDimensions);
-            thicknessInput.addEventListener('change', updateDimensions);
         }
 
         // Hole properties are now handled inline in the holes list
@@ -1367,7 +1834,277 @@ document.addEventListener('DOMContentLoaded', () => {
             designer.printDesign();
         });
 
+        // Save to Project button
+        document.getElementById('btn-save-to-project')?.addEventListener('click', () => {
+            openSaveToProjectModal();
+        });
+
         // Delete button is now in each hole item
+    }
+});
+
+// Save to Project functionality
+let selectedProjectId = null;
+let selectedProjectPath = '';
+let projectsData = [];
+
+function openSaveToProjectModal() {
+    selectedProjectId = null;
+    selectedProjectPath = '';
+
+    // Clear form
+    document.getElementById('design-name-input').value = '';
+    document.getElementById('design-description-input').value = '';
+    document.getElementById('selected-project-path').style.display = 'none';
+
+    // Load projects
+    loadProjectsForSelection();
+
+    // Show modal
+    document.getElementById('save-to-project-modal').classList.add('active');
+}
+
+function closeSaveToProjectModal() {
+    document.getElementById('save-to-project-modal').classList.remove('active');
+}
+
+async function loadProjectsForSelection() {
+    try {
+        const response = await fetch('/api/projects?tree=true');
+        const data = await response.json();
+        projectsData = data.projects || [];
+        renderProjectTreeSelector();
+    } catch (error) {
+        console.error('Failed to load projects:', error);
+        document.getElementById('project-tree-selector').innerHTML =
+            '<div class="error-message">Failed to load projects</div>';
+    }
+}
+
+function renderProjectTreeSelector() {
+    const container = document.getElementById('project-tree-selector');
+
+    if (projectsData.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="padding: 1.5rem;">
+                <p>No projects available. You can still save without selecting a project.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = projectsData.map(project =>
+        renderProjectTreeNode(project, 0)
+    ).join('');
+}
+
+function renderProjectTreeNode(project, depth = 0) {
+    const hasChildren = project.children && project.children.length > 0;
+    const indent = depth > 0 ? 'tree-project-children' : '';
+    const isSelected = selectedProjectId === project.id;
+
+    // Escape path properly for onclick
+    const escapedPath = project.path.replace(/'/g, "\\'");
+    const escapedName = project.name.replace(/'/g, "\\'");
+
+    let html = `
+        <div class="tree-project-item ${isSelected ? 'selected' : ''}"
+             onclick="selectProject(${project.id}, '${escapedPath}', '${escapedName}')">
+            <div class="tree-project-name">${escapeHtml(project.name)}</div>
+            <div class="tree-project-path">${escapeHtml(project.path)}</div>
+        </div>
+    `;
+
+    // Add children recursively
+    if (hasChildren) {
+        html += '<div class="' + indent + '">';
+        html += project.children.map(child =>
+            renderProjectTreeNode(child, depth + 1)
+        ).join('');
+        html += '</div>';
+    }
+
+    return html;
+}
+
+function selectProject(projectId, projectPath, projectName) {
+    selectedProjectId = projectId;
+    selectedProjectPath = projectPath;
+
+    // Update UI - remove all selected classes
+    document.querySelectorAll('.tree-project-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+
+    // Re-render tree to update selection
+    renderProjectTreeSelector();
+
+    // Show selected path
+    document.getElementById('selected-path-text').textContent = projectPath;
+    document.getElementById('selected-project-path').style.display = 'block';
+}
+
+/**
+ * Convert frontend hole format to backend Elements format
+ * @param {Array} holes - Array of holes from designer
+ * @returns {Object} Elements object compatible with backend
+ */
+function convertToBackendFormat(holes) {
+    const elements = {
+        shapes: [],
+        holes: [],
+        cuts: [],
+        notes: []
+    };
+
+    holes.forEach((hole, index) => {
+        const defaultStyle = {
+            stroke_color: '#000000',
+            stroke_width: 2,
+            fill_color: '#ffffff',
+            fill_opacity: 1,
+            line_dash: [],
+            font_size: 12,
+            font_family: 'Arial, sans-serif',
+            text_color: '#000000'
+        };
+
+        if (hole.shape === 'clip') {
+            // Edge clips are represented as notched cuts in the backend
+            elements.cuts.push({
+                id: `cut-${Date.now()}-${index}`,
+                type: 'notched',
+                start_x: hole.x - hole.width / 2,
+                start_y: hole.y,
+                end_x: hole.x + hole.width / 2,
+                end_y: hole.y,
+                depth: hole.depth,
+                angle: 0,
+                style: { ...defaultStyle, stroke_color: '#10b981' },
+                locked: false,
+                visible: true
+            });
+        } else if (hole.shape === 'circle' || hole.shape === 'taladro') {
+            // Circular holes (both regular circles and drill holes)
+            elements.holes.push({
+                id: `hole-${Date.now()}-${index}`,
+                type: 'circular',
+                center: { x: hole.x, y: hole.y },
+                radius: hole.diameter / 2,
+                width: 0,
+                height: 0,
+                points: [],
+                style: {
+                    ...defaultStyle,
+                    stroke_color: hole.shape === 'taladro' ? '#3b82f6' : '#ef4444'
+                },
+                tolerance: 0,
+                locked: false,
+                visible: true
+            });
+        } else if (hole.shape === 'avellanado') {
+            // Countersink holes - currently stored as circular with inner diameter in tolerance
+            // TODO: Backend should be enhanced to properly support countersink holes
+            elements.holes.push({
+                id: `hole-${Date.now()}-${index}`,
+                type: 'circular',
+                center: { x: hole.x, y: hole.y },
+                radius: hole.diameter / 2,  // Outer diameter
+                width: 0,
+                height: 0,
+                points: [],
+                style: { ...defaultStyle, stroke_color: '#8b5cf6' },
+                tolerance: hole.holeDiameter,  // Store inner diameter here temporarily
+                locked: false,
+                visible: true
+            });
+        } else if (hole.shape === 'rectangle') {
+            // Rectangular holes
+            elements.holes.push({
+                id: `hole-${Date.now()}-${index}`,
+                type: 'rectangular',
+                center: {
+                    x: hole.x + hole.width / 2,
+                    y: hole.y + hole.height / 2
+                },
+                width: hole.width,
+                height: hole.height,
+                radius: 0,
+                points: [],
+                style: { ...defaultStyle, stroke_color: '#ef4444' },
+                tolerance: 0,
+                locked: false,
+                visible: true
+            });
+        }
+    });
+
+    return elements;
+}
+
+async function saveDesignToProject() {
+    const designName = document.getElementById('design-name-input').value.trim();
+    const description = document.getElementById('design-description-input').value.trim();
+
+    if (!designName) {
+        alert('Please enter a design name');
+        return;
+    }
+
+    const designData = designer.getDesignData();
+
+    // Convert frontend format to backend Elements format
+    const elements = convertToBackendFormat(designData.holes);
+
+    const payload = {
+        name: designName,
+        description: description,
+        width: designData.glass.width,
+        height: designData.glass.height,
+        thickness: designData.glass.thickness,
+        elements: elements,  // Send as 'elements' object, not 'design_data' string
+        project_id: selectedProjectId  // Can be null
+    };
+
+    try {
+        const response = await fetch('/api/designs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || 'Failed to save design');
+        }
+
+        const result = await response.json();
+
+        alert('Design saved successfully!' + (selectedProjectPath ? `\nSaved to: ${selectedProjectPath}` : ''));
+        closeSaveToProjectModal();
+    } catch (error) {
+        console.error('Failed to save design:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Modal event listeners
+document.getElementById('save-project-close')?.addEventListener('click', closeSaveToProjectModal);
+document.getElementById('btn-cancel-save')?.addEventListener('click', closeSaveToProjectModal);
+document.getElementById('btn-confirm-save')?.addEventListener('click', saveDesignToProject);
+
+// Close modal when clicking outside
+document.getElementById('save-to-project-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'save-to-project-modal') {
+        closeSaveToProjectModal();
     }
 });
 

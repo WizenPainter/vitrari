@@ -6,7 +6,10 @@
       "Bash(go run:*)",
       "Bash(curl:*)",
       "Bash(pkill:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(go build:*)",
+      "Bash(./glass-optimizer)",
+      "Bash(python3:*)"
     ]
   },
   "enableAllProjectMcpServers": false

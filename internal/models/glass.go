@@ -84,6 +84,7 @@ type Optimization struct {
 	TotalCost       float64      `json:"total_cost"`                         // Total material cost
 	Algorithm       string       `json:"algorithm" db:"algorithm"`           // Algorithm used
 	ExecutionTime   float64      `json:"execution_time" db:"execution_time"` // Time taken in seconds
+	ProjectID       *int         `json:"project_id,omitempty" db:"project_id"` // Link to project
 	CreatedAt       time.Time    `json:"created_at" db:"created_at"`
 }
 
