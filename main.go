@@ -94,7 +94,7 @@ func main() {
 	http.HandleFunc("/api/optimizations", handleOptimizations)
 	http.HandleFunc("/api/optimize", handleOptimize)
 
-	port := getEnv("PORT", "8080")
+	port := getEnv("PORT", "9995")
 	log.Printf("Starting server on port %s", port)
 	log.Printf("Open http://localhost:%s in your browser", port)
 
@@ -166,11 +166,10 @@ func handleProjectDetail(w http.ResponseWriter, r *http.Request) {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "healthy",
+		"status":  "healthy",
 		"version": "1.0.0",
 	})
 }
-
 
 func handleDesigns(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
 	w.Header().Set("Content-Type", "application/json")
@@ -296,37 +295,36 @@ func handleSheets(w http.ResponseWriter, r *http.Request) {
 
 	sheets := []map[string]interface{}{
 		{
-			"id": 1,
-			"name": "Standard 2m x 3m",
-			"width": 2000,
-			"height": 3000,
-			"thickness": 6,
+			"id":            1,
+			"name":          "Standard 2m x 3m",
+			"width":         2000,
+			"height":        3000,
+			"thickness":     6,
 			"price_per_sqm": 45.50,
-			"in_stock": 15,
+			"in_stock":      15,
 		},
 		{
-			"id": 2,
-			"name": "Large 2.5m x 3.5m",
-			"width": 2500,
-			"height": 3500,
-			"thickness": 6,
+			"id":            2,
+			"name":          "Large 2.5m x 3.5m",
+			"width":         2500,
+			"height":        3500,
+			"thickness":     6,
 			"price_per_sqm": 48.00,
-			"in_stock": 8,
+			"in_stock":      8,
 		},
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"sheets": sheets,
-		"total": len(sheets),
+		"total":  len(sheets),
 	})
 }
-
 
 func handleOptimizations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"optimizations": []interface{}{},
-		"total": 0,
+		"total":         0,
 	})
 }
 
@@ -340,22 +338,22 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 
 	result := map[string]interface{}{
 		"optimization": map[string]interface{}{
-			"id": 1,
+			"id":   1,
 			"name": "Optimization Result",
 			"layout": map[string]interface{}{
-				"sheet_width": 3000,
+				"sheet_width":  3000,
 				"sheet_height": 2000,
-				"pieces": []interface{}{},
+				"pieces":       []interface{}{},
 				"statistics": map[string]interface{}{
 					"utilization_rate": 75.5,
-					"waste_rate": 24.5,
-					"placed_pieces": 0,
-					"cutting_length": 0,
-					"cutting_time": 0,
+					"waste_rate":       24.5,
+					"placed_pieces":    0,
+					"cutting_length":   0,
+					"cutting_time":     0,
 				},
 			},
 			"execution_time": 0.5,
-			"total_cost": 273.0,
+			"total_cost":     273.0,
 		},
 	}
 
