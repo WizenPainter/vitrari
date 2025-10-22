@@ -1713,6 +1713,121 @@ class GlassDesigner {
     }
 }
 
+/**
+ * Convert backend Elements format to frontend hole format
+ * @param {Object} elements - Elements object from backend
+ * @returns {Array} Array of holes in frontend format
+ */
+function convertFromBackendFormat(elements) {
+    const holes = [];
+
+    if (!elements) return holes;
+
+    // Convert holes
+    if (elements.holes && Array.isArray(elements.holes)) {
+        elements.holes.forEach(hole => {
+            if (hole.type === 'circular') {
+                // Check if this is a countersink (has tolerance value representing inner diameter)
+                if (hole.tolerance && hole.tolerance > 0) {
+                    // Countersink hole
+                    holes.push({
+                        x: hole.center.x,
+                        y: hole.center.y,
+                        diameter: hole.radius * 2,  // Outer diameter
+                        holeDiameter: hole.tolerance,  // Inner diameter (stored in tolerance)
+                        shape: 'avellanado'
+                    });
+                } else if (hole.style && hole.style.stroke_color === '#3b82f6') {
+                    // Drill hole (taladro) - identified by blue color
+                    holes.push({
+                        x: hole.center.x,
+                        y: hole.center.y,
+                        diameter: hole.radius * 2,
+                        shape: 'taladro'
+                    });
+                } else {
+                    // Regular circular hole
+                    holes.push({
+                        x: hole.center.x,
+                        y: hole.center.y,
+                        diameter: hole.radius * 2,
+                        shape: 'circle'
+                    });
+                }
+            } else if (hole.type === 'rectangular') {
+                // Rectangular hole - convert center to bottom-left corner
+                holes.push({
+                    x: hole.center.x - hole.width / 2,
+                    y: hole.center.y - hole.height / 2,
+                    width: hole.width,
+                    height: hole.height,
+                    shape: 'rectangle'
+                });
+            }
+        });
+    }
+
+    // Convert cuts (edge clips)
+    if (elements.cuts && Array.isArray(elements.cuts)) {
+        elements.cuts.forEach(cut => {
+            if (cut.type === 'notched') {
+                holes.push({
+                    x: (cut.start_x + cut.end_x) / 2,  // Center X
+                    y: cut.start_y,  // Y position
+                    width: Math.abs(cut.end_x - cut.start_x),
+                    depth: cut.depth,
+                    shape: 'clip'
+                });
+            }
+        });
+    }
+
+    return holes;
+}
+
+/**
+ * Load design from backend by ID
+ * @param {number} designId - The design ID to load
+ */
+async function loadDesignFromBackend(designId) {
+    try {
+        const response = await fetch(`/api/designs/${designId}`);
+        if (!response.ok) {
+            throw new Error('Failed to load design');
+        }
+
+        const data = await response.json();
+        const design = data.design;
+
+        if (!design) {
+            throw new Error('Design not found');
+        }
+
+        // Convert backend format to frontend format
+        const holes = convertFromBackendFormat(design.elements);
+
+        // Load into designer
+        designer.loadDesignData({
+            glass: {
+                width: design.width,
+                height: design.height,
+                thickness: design.thickness
+            },
+            holes: holes
+        });
+
+        // Update glass dimension inputs
+        document.getElementById('glass-width').value = design.width;
+        document.getElementById('glass-height').value = design.height;
+        document.getElementById('glass-thickness').value = design.thickness;
+
+        console.log('Design loaded successfully:', design.name);
+    } catch (error) {
+        console.error('Failed to load design:', error);
+        alert('Error loading design: ' + error.message);
+    }
+}
+
 // Initialize when page loads
 let designer = null;
 
@@ -1840,6 +1955,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Delete button is now in each hole item
+
+        // Check if there's a design ID in the URL to load
+        const urlParams = new URLSearchParams(window.location.search);
+        const designId = urlParams.get('design');
+        if (designId) {
+            loadDesignFromBackend(parseInt(designId));
+        }
     }
 });
 
