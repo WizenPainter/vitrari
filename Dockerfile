@@ -42,10 +42,10 @@ COPY --from=builder /app/templates ./templates
 RUN mkdir -p ./database
 
 # Expose port
-EXPOSE 8080
+EXPOSE 9995
 
 # Set environment variable for port
-ENV PORT=8080
+ENV PORT=9995
 
 # Run the application
 CMD ["./main"]
