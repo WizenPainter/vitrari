@@ -2183,6 +2183,8 @@ async function loadProjectsForSelection() {
     const response = await fetch("/api/projects?tree=true");
     const data = await response.json();
     projectsData = data.projects || [];
+    // Reset expanded state when loading new data
+    expandedProjects.clear();
     renderProjectTreeSelector();
   } catch (error) {
     console.error("Failed to load projects:", error);
@@ -2203,15 +2205,35 @@ function renderProjectTreeSelector() {
     return;
   }
 
-  container.innerHTML = projectsData
-    .map((project) => renderProjectTreeNode(project, 0))
-    .join("");
+  // Show help text if no projects are expanded
+  const hasExpandedProjects = expandedProjects.size > 0;
+  const helpText = hasExpandedProjects
+    ? ""
+    : `
+    <div class="tree-help-text" style="padding: 0.5rem; margin-bottom: 0.5rem; background: #f8fafc; border-radius: 4px; font-size: 0.875rem; color: #64748b;">
+      💡 Click the ▶ arrows to expand projects and see subprojects
+    </div>
+  `;
+
+  container.innerHTML =
+    helpText +
+    projectsData.map((project) => renderProjectTreeNode(project, 0)).join("");
+
+  // Add click handlers for expand/collapse buttons
+  container.querySelectorAll(".tree-expand-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const projectId = parseInt(btn.dataset.projectId);
+      toggleProjectExpanded(projectId);
+    });
+  });
 }
 
 function renderProjectTreeNode(project, depth = 0) {
   const hasChildren = project.children && project.children.length > 0;
   const indent = depth > 0 ? "tree-project-children" : "";
   const isSelected = selectedProjectId === project.id;
+  const isExpanded = expandedProjects.has(project.id);
 
   // Escape path properly for onclick
   const escapedPath = project.path.replace(/'/g, "\\'");
@@ -2220,13 +2242,26 @@ function renderProjectTreeNode(project, depth = 0) {
   let html = `
         <div class="tree-project-item ${isSelected ? "selected" : ""}"
              onclick="selectProject(${project.id}, '${escapedPath}', '${escapedName}')">
-            <div class="tree-project-name">${escapeHtml(project.name)}</div>
-            <div class="tree-project-path">${escapeHtml(project.path)}</div>
+            <div class="tree-project-header">
+                ${
+                  hasChildren
+                    ? `
+                    <button class="tree-expand-btn" data-project-id="${project.id}">
+                        <span class="expand-icon ${isExpanded ? "expanded" : ""}">${isExpanded ? "▼" : "▶"}</span>
+                    </button>
+                `
+                    : '<span class="tree-expand-spacer"></span>'
+                }
+                <div class="tree-project-content">
+                    <div class="tree-project-name">${escapeHtml(project.name)}</div>
+                    <div class="tree-project-path">${escapeHtml(project.path)}</div>
+                </div>
+            </div>
         </div>
     `;
 
-  // Add children recursively
-  if (hasChildren) {
+  // Add children recursively if expanded
+  if (hasChildren && isExpanded) {
     html += '<div class="' + indent + '">';
     html += project.children
       .map((child) => renderProjectTreeNode(child, depth + 1))
@@ -2249,9 +2284,85 @@ function selectProject(projectId, projectPath, projectName) {
   // Re-render tree to update selection
   renderProjectTreeSelector();
 
-  // Show selected path
-  document.getElementById("selected-path-text").textContent = projectPath;
+  // Show selected project path
   document.getElementById("selected-project-path").style.display = "block";
+  document.getElementById("selected-path-text").textContent = projectPath;
+}
+
+// Global variable to track expanded projects
+let expandedProjects = new Set();
+
+function toggleProjectExpanded(projectId) {
+  if (expandedProjects.has(projectId)) {
+    // Collapse this project and all its descendants
+    collapseProjectAndDescendants(projectId);
+  } else {
+    // Collapse siblings at the same level when expanding
+    collapseSiblings(projectId);
+    expandedProjects.add(projectId);
+  }
+  renderProjectTreeSelector();
+}
+
+function collapseProjectAndDescendants(projectId) {
+  expandedProjects.delete(projectId);
+
+  // Find and collapse all descendants
+  const project = findProjectById(projectsData, projectId);
+  if (project && project.children) {
+    project.children.forEach((child) => {
+      collapseProjectAndDescendants(child.id);
+    });
+  }
+}
+
+function collapseSiblings(projectId) {
+  const project = findProjectById(projectsData, projectId);
+  if (!project) return;
+
+  // Find parent and collapse all siblings
+  const parent = findParentProject(projectsData, projectId);
+  if (parent && parent.children) {
+    parent.children.forEach((sibling) => {
+      if (sibling.id !== projectId) {
+        collapseProjectAndDescendants(sibling.id);
+      }
+    });
+  } else {
+    // This is a top-level project, collapse other top-level projects
+    projectsData.forEach((topLevel) => {
+      if (topLevel.id !== projectId) {
+        collapseProjectAndDescendants(topLevel.id);
+      }
+    });
+  }
+}
+
+function findProjectById(projects, projectId) {
+  for (const project of projects) {
+    if (project.id === projectId) {
+      return project;
+    }
+    if (project.children) {
+      const found = findProjectById(project.children, projectId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function findParentProject(projects, childId, parent = null) {
+  for (const project of projects) {
+    if (project.children) {
+      const childFound = project.children.find((child) => child.id === childId);
+      if (childFound) {
+        return project;
+      }
+      const found = findParentProject(project.children, childId, project);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /**

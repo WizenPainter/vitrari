@@ -19,6 +19,7 @@ class ProjectManager {
     this.loadProjects();
     this.loadDesigns();
     this.handleUrlParameters();
+    this.setupDocumentClickHandler();
   }
 
   setupEventListeners() {
@@ -123,15 +124,22 @@ class ProjectManager {
                             ${this.escapeHtml(project.name)}
                         </div>
                         <div class="project-actions">
-                            <button class="project-btn" onclick="event.stopPropagation(); projectManager.openSubprojectModal(${project.id})">
-                                + Subproject
-                            </button>
-                            <button class="project-btn" onclick="event.stopPropagation(); projectManager.editProject(${project.id})">
-                                Edit
-                            </button>
-                            <button class="project-btn delete" onclick="event.stopPropagation(); projectManager.deleteProject(${project.id})">
-                                Delete
-                            </button>
+                            <div class="project-dropdown">
+                                <button class="project-menu-btn" onclick="event.stopPropagation(); projectManager.toggleProjectMenu(${project.id})" aria-label="Project options">
+                                    <span class="menu-dots">⋯</span>
+                                </button>
+                                <div class="project-menu" id="project-menu-${project.id}">
+                                    <button class="menu-item" onclick="event.stopPropagation(); projectManager.openSubprojectModal(${project.id}); projectManager.closeAllMenus();">
+                                        <span>+ Subproject</span>
+                                    </button>
+                                    <button class="menu-item" onclick="event.stopPropagation(); projectManager.editProject(${project.id}); projectManager.closeAllMenus();">
+                                        <span>Edit</span>
+                                    </button>
+                                    <button class="menu-item delete" onclick="event.stopPropagation(); projectManager.deleteProject(${project.id}); projectManager.closeAllMenus();">
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     ${project.description ? `<div class="project-description">${this.escapeHtml(project.description)}</div>` : ""}
@@ -499,6 +507,30 @@ class ProjectManager {
       };
       setTimeout(checkProjectsLoaded, 100);
     }
+  }
+
+  toggleProjectMenu(projectId) {
+    const menu = document.getElementById(`project-menu-${projectId}`);
+    if (menu) {
+      // Close all other menus first
+      this.closeAllMenus();
+      menu.classList.toggle("active");
+    }
+  }
+
+  closeAllMenus() {
+    document.querySelectorAll(".project-menu.active").forEach((menu) => {
+      menu.classList.remove("active");
+    });
+  }
+
+  setupDocumentClickHandler() {
+    document.addEventListener("click", (e) => {
+      // Close menus when clicking outside
+      if (!e.target.closest(".project-dropdown")) {
+        this.closeAllMenus();
+      }
+    });
   }
 
   showError(message) {
