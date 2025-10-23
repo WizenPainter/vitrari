@@ -62,7 +62,12 @@ func main() {
 	http.HandleFunc("/api/designs/", func(w http.ResponseWriter, r *http.Request) {
 		// Route to specific design operations
 		if strings.HasPrefix(r.URL.Path, "/api/designs/") && r.URL.Path != "/api/designs/" {
-			handleDesignByID(w, r, store, logger)
+			// Check for move endpoint
+			if strings.Contains(r.URL.Path, "/move") {
+				handleDesignMove(w, r, store, logger)
+			} else {
+				handleDesignByID(w, r, store, logger)
+			}
 		} else {
 			handleDesigns(w, r, store, logger)
 		}
@@ -288,6 +293,76 @@ func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Stor
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func handleDesignMove(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// Extract ID from path
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.Error(w, "Invalid design ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var moveRequest struct {
+		ProjectID int `json:"project_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&moveRequest); err != nil {
+		logger.Error("Failed to decode move request", "error", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Get the design first to verify it exists
+	design, err := store.GetDesign(id)
+	if err != nil {
+		logger.Error("Failed to get design", "error", err, "id", id)
+		if models.IsNotFoundError(err) {
+			http.Error(w, "Design not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to get design", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Verify target project exists
+	_, err = store.GetProject(moveRequest.ProjectID)
+	if err != nil {
+		logger.Error("Failed to get target project", "error", err, "project_id", moveRequest.ProjectID)
+		if models.IsNotFoundError(err) {
+			http.Error(w, "Target project not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to verify target project", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Update the design's project_id
+	design.ProjectID = &moveRequest.ProjectID
+	if err := store.UpdateDesign(design); err != nil {
+		logger.Error("Failed to move design", "error", err, "id", id, "target_project", moveRequest.ProjectID)
+		http.Error(w, "Failed to move design", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Design moved successfully",
+		"design":  design,
+	})
 }
 
 func handleSheets(w http.ResponseWriter, r *http.Request) {

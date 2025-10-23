@@ -1112,12 +1112,14 @@ select {
     font-size: 0.875rem;
 }
 
-.breadcrumb a {
+.breadcrumb a,
+.breadcrumb-link {
     color: var(--primary);
     text-decoration: none;
 }
 
-.breadcrumb a:hover {
+.breadcrumb a:hover,
+.breadcrumb-link:hover {
     text-decoration: underline;
 }
 
@@ -1128,6 +1130,61 @@ select {
 .breadcrumb-current {
     color: var(--text);
     font-weight: 600;
+}
+
+/* Project Tree Picker Styles */
+.project-tree-picker {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+    background: var(--surface);
+}
+
+.project-tree-item {
+    margin: 0.25rem 0;
+}
+
+.project-item {
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.project-item.selectable:hover {
+    background: var(--surface-hover);
+}
+
+.project-item.selected {
+    background: var(--primary);
+    color: white;
+}
+
+.project-item.disabled {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.project-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.current-project-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.project-item.disabled .current-project-label {
+    color: var(--text-muted);
 }
 
 .project-detail-header {

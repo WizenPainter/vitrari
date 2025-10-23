@@ -1,88 +1,215 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Glass Optimizer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header class="header">
-            <h1>Glass Optimizer</h1>
-            <nav>
-                <a href="/">Dashboard</a>
-                <a href="/designer">Designer</a>
-                <a href="/optimizer">Optimizer</a>
-            </nav>
-        </header>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{.Title}} - Glass Optimizer</title>
+        <link rel="stylesheet" href="/static/css/style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <header class="header">
+                <h1>Glass Optimizer</h1>
+                <nav>
+                    <a href="/">Dashboard</a>
+                    <a href="/designer">Designer</a>
+                    <a href="/optimizer">Optimizer</a>
+                </nav>
+            </header>
 
-        <main class="main-content">
-            <!-- Breadcrumb Navigation -->
-            <div class="breadcrumb" id="breadcrumb">
-                <a href="/">Dashboard</a>
-                <span class="breadcrumb-separator">/</span>
-                <span id="breadcrumb-loading">Loading...</span>
+            <main class="main-content">
+                <!-- Breadcrumb Navigation -->
+                <div class="breadcrumb" id="breadcrumb">
+                    <a href="/">Dashboard</a>
+                    <span class="breadcrumb-separator">/</span>
+                    <span id="breadcrumb-loading">Loading...</span>
+                </div>
+
+                <!-- Project Header -->
+                <div class="project-detail-header">
+                    <div class="project-detail-title-section">
+                        <h2 id="project-name">Loading...</h2>
+                        <p
+                            id="project-description"
+                            class="project-detail-description"
+                        ></p>
+                    </div>
+                    <div class="project-detail-actions">
+                        <button class="btn btn-outline" id="btn-edit-project">
+                            Edit Project
+                        </button>
+                        <button class="btn btn-outline" id="btn-add-subproject">
+                            + Subproject
+                        </button>
+                        <button
+                            class="btn btn-outline"
+                            id="btn-add-design-to-project"
+                        >
+                            + Add Design
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Project Content Tabs -->
+                <div class="project-tabs">
+                    <button class="project-tab active" data-tab="subprojects">
+                        Subprojects
+                    </button>
+                    <button class="project-tab" data-tab="designs">
+                        Designs
+                    </button>
+                    <button class="project-tab" data-tab="optimizations">
+                        Optimizations
+                    </button>
+                </div>
+
+                <!-- Subprojects Section -->
+                <div
+                    class="project-content-section active"
+                    id="section-subprojects"
+                >
+                    <div class="section-header-inline">
+                        <h3>Subprojects</h3>
+                    </div>
+                    <div id="subprojects-list" class="content-grid">
+                        <div class="loading-message">
+                            Loading subprojects...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Designs Section -->
+                <div class="project-content-section" id="section-designs">
+                    <div class="section-header-inline">
+                        <h3>Designs in this project</h3>
+                    </div>
+                    <div id="designs-list" class="content-grid">
+                        <div class="loading-message">Loading designs...</div>
+                    </div>
+                </div>
+
+                <!-- Optimizations Section -->
+                <div class="project-content-section" id="section-optimizations">
+                    <div class="section-header-inline">
+                        <h3>Optimizations in this project</h3>
+                    </div>
+                    <div id="optimizations-list" class="content-grid">
+                        <div class="loading-message">
+                            Loading optimizations...
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="footer">
+                <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
+            </footer>
+        </div>
+
+        <!-- Create Subproject Modal -->
+        <div class="modal" id="subproject-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="subproject-modal-title">New Subproject</h3>
+                    <button class="modal-close" id="subproject-modal-close">
+                        &times;
+                    </button>
+                </div>
+                <form id="subproject-form">
+                    <input type="hidden" id="subproject-parent-id" value="" />
+
+                    <div class="form-group">
+                        <label for="subproject-name">Project Name *</label>
+                        <input
+                            type="text"
+                            id="subproject-name"
+                            required
+                            maxlength="255"
+                            placeholder="Enter subproject name"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="subproject-description">Description</label>
+                        <textarea
+                            id="subproject-description"
+                            rows="3"
+                            maxlength="1000"
+                            placeholder="Enter subproject description (optional)"
+                        ></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="btn btn-outline"
+                            id="btn-cancel-subproject"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            id="btn-save-subproject"
+                        >
+                            Create Subproject
+                        </button>
+                    </div>
+                </form>
             </div>
+        </div>
 
-            <!-- Project Header -->
-            <div class="project-detail-header">
-                <div class="project-detail-title-section">
-                    <h2 id="project-name">Loading...</h2>
-                    <p id="project-description" class="project-detail-description"></p>
+        <!-- Move Design Modal -->
+        <div class="modal" id="move-design-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="move-design-modal-title">Move Design</h3>
+                    <button class="modal-close" id="move-design-modal-close">
+                        &times;
+                    </button>
                 </div>
-                <div class="project-detail-actions">
-                    <button class="btn btn-outline" id="btn-edit-project">Edit Project</button>
-                    <button class="btn btn-outline" id="btn-add-subproject">+ Subproject</button>
-                    <button class="btn btn-outline" id="btn-add-design-to-project">+ Add Design</button>
+                <div class="modal-body">
+                    <p>
+                        Select the project where you want to move "<span
+                            id="design-name-to-move"
+                        ></span
+                        >":
+                    </p>
+
+                    <div class="form-group">
+                        <label>Destination Project</label>
+                        <div
+                            id="project-tree-container"
+                            class="project-tree-picker"
+                        >
+                            <div class="loading-message">
+                                Loading projects...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button
+                        type="button"
+                        class="btn btn-outline"
+                        id="btn-cancel-move-design"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        id="btn-confirm-move-design"
+                        disabled
+                    >
+                        Move Design
+                    </button>
                 </div>
             </div>
+        </div>
 
-            <!-- Project Content Tabs -->
-            <div class="project-tabs">
-                <button class="project-tab active" data-tab="subprojects">Subprojects</button>
-                <button class="project-tab" data-tab="designs">Designs</button>
-                <button class="project-tab" data-tab="optimizations">Optimizations</button>
-            </div>
-
-            <!-- Subprojects Section -->
-            <div class="project-content-section active" id="section-subprojects">
-                <div class="section-header-inline">
-                    <h3>Subprojects</h3>
-                </div>
-                <div id="subprojects-list" class="content-grid">
-                    <div class="loading-message">Loading subprojects...</div>
-                </div>
-            </div>
-
-            <!-- Designs Section -->
-            <div class="project-content-section" id="section-designs">
-                <div class="section-header-inline">
-                    <h3>Designs in this project</h3>
-                </div>
-                <div id="designs-list" class="content-grid">
-                    <div class="loading-message">Loading designs...</div>
-                </div>
-            </div>
-
-            <!-- Optimizations Section -->
-            <div class="project-content-section" id="section-optimizations">
-                <div class="section-header-inline">
-                    <h3>Optimizations in this project</h3>
-                </div>
-                <div id="optimizations-list" class="content-grid">
-                    <div class="loading-message">Loading optimizations...</div>
-                </div>
-            </div>
-        </main>
-
-        <footer class="footer">
-            <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
-        </footer>
-    </div>
-
-    <script src="/static/js/app.js"></script>
-    <script src="/static/js/toast.js"></script>
-    <script src="/static/js/project-detail.js"></script>
-</body>
+        <script src="/static/js/app.js"></script>
+        <script src="/static/js/toast.js"></script>
+        <script src="/static/js/project-detail.js"></script>
+    </body>
 </html>
