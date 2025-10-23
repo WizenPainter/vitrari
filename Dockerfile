@@ -1,12 +1,12 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.21-bullseye AS builder
 
-# Install build dependencies including glibc compatibility
-RUN apk add --no-cache \
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
     gcc \
-    musl-dev \
-    sqlite-dev \
-    build-base
+    libc6-dev \
+    libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -17,14 +17,17 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application with proper SQLite3 build tags
-RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -tags sqlite_omit_load_extension -o main .
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -o main .
 
 # Runtime stage
-FROM alpine:latest
+FROM debian:bullseye-slim
 
 # Install runtime dependencies
-RUN apk --no-cache add ca-certificates sqlite
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
