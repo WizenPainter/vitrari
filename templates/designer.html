@@ -1,142 +1,309 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Glass Optimizer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header class="header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1>Glass Optimizer</h1>
-                    <nav>
-                        <a href="/">Dashboard</a>
-                        <a href="/designer" class="active">Designer</a>
-                        <a href="/optimizer">Optimizer</a>
-                    </nav>
-                </div>
-                <div class="language-selector">
-                    <button class="lang-btn" data-lang="en">EN</button>
-                    <button class="lang-btn active" data-lang="es">ES</button>
-                </div>
-            </div>
-        </header>
-
-        <main class="designer-layout">
-            <aside class="sidebar">
-                <h3 data-i18n="tools">Tools</h3>
-                <div class="tool-list">
-                    <button class="tool-btn active" data-tool="select" data-i18n="select">Select</button>
-                    <button class="tool-btn" data-tool="taladro" data-i18n="taladro">Drill Hole</button>
-                    <button class="tool-btn" data-tool="circle" data-i18n="circleHole">Circle Hole</button>
-                    <button class="tool-btn" data-tool="rectangle" data-i18n="rectangleHole">Rectangle Hole</button>
-                    <button class="tool-btn" data-tool="avellanado" data-i18n="avellanado">Countersink</button>
-                    <button class="tool-btn" data-tool="clip" data-i18n="edgeClip">Edge Clip</button>
-                </div>
-
-                <h3 data-i18n="glassProperties">Glass Properties</h3>
-                <div class="properties">
-                    <label>
-                        <span data-i18n="width">Width</span> (mm):
-                        <input type="number" id="glass-width" value="1200">
-                    </label>
-                    <label>
-                        <span data-i18n="height">Height</span> (mm):
-                        <input type="number" id="glass-height" value="800">
-                    </label>
-                    <label>
-                        <span data-i18n="thickness">Thickness</span> (mm):
-                        <select id="glass-thickness-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;">
-                            <option value="4">4</option>
-                            <option value="6" selected>6</option>
-                            <option value="8">8</option>
-                            <option value="9.5">9.5</option>
-                            <option value="12">12</option>
-                            <option value="custom">Custom...</option>
-                        </select>
-                        <input type="number" id="glass-thickness" value="6" step="0.1" min="0" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem; display: none;">
-                    </label>
-                </div>
-
-                <div id="holes-section">
-                    <h3 data-i18n="holesList">Holes List</h3>
-                    <div id="holes-list" class="holes-list">
-                        <p style="color: #64748b; font-size: 0.875rem; font-style: italic;" data-i18n="noHoles">No holes yet. Click on canvas to add.</p>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{.Title}} - Glass Optimizer</title>
+        <link rel="stylesheet" href="/static/css/style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <header class="header">
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <h1>Glass Optimizer</h1>
+                        <nav>
+                            <a href="/">Dashboard</a>
+                            <a href="/designer" class="active">Designer</a>
+                            <a href="/optimizer">Optimizer</a>
+                        </nav>
+                    </div>
+                    <div class="language-selector">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn active" data-lang="es">
+                            ES
+                        </button>
                     </div>
                 </div>
-            </aside>
+            </header>
 
-            <div class="canvas-area">
-                <div class="canvas-toolbar">
-                    <button class="btn btn-primary" id="btn-save-to-project">Save to Project</button>
-                    <button class="btn" id="btn-save" data-i18n="saveDesign">Export to File</button>
-                    <button class="btn" id="btn-load" data-i18n="loadDesign">Load Design</button>
-                    <button class="btn" id="btn-print" data-i18n="printDesign">Print Design</button>
-                    <button class="btn" id="btn-clear" data-i18n="clearAll">Clear All</button>
-                </div>
-                <canvas id="design-canvas"></canvas>
-                <div class="canvas-info">
-                    <p><strong data-i18n="instructions">Instructions:</strong></p>
-                    <ul style="text-align: left; margin-top: 0.5rem;">
-                        <li data-i18n="instruction1">Select a tool from the left sidebar</li>
-                        <li data-i18n="instruction2">Click and drag on the canvas to create holes</li>
-                        <li data-i18n="instruction3">Use the Select tool to move existing holes</li>
-                        <li data-i18n="instruction4">Edit hole properties in the sidebar when selected</li>
-                        <li data-i18n="instruction5">Press Delete key to remove selected hole</li>
-                        <li data-i18n="instruction6">Save your design to a JSON file for later use</li>
-                    </ul>
-                </div>
-            </div>
-        </main>
-
-        <!-- Print Template (hidden on screen, shown when printing) -->
-        <div class="print-template" id="print-template">
-            <!-- Content will be dynamically generated by JavaScript -->
-        </div>
-
-        <!-- Save to Project Modal -->
-        <div class="modal" id="save-to-project-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Save Design to Project</h3>
-                    <button class="modal-close" id="save-project-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="design-name-input">Design Name *</label>
-                        <input type="text" id="design-name-input" placeholder="Enter design name" required>
+            <main class="designer-layout">
+                <aside class="sidebar">
+                    <h3 data-i18n="tools">Tools</h3>
+                    <div class="tool-list">
+                        <button
+                            class="tool-btn active"
+                            data-tool="select"
+                            data-i18n="select"
+                        >
+                            Select
+                        </button>
+                        <button
+                            class="tool-btn"
+                            data-tool="taladro"
+                            data-i18n="taladro"
+                        >
+                            Drill Hole
+                        </button>
+                        <button
+                            class="tool-btn"
+                            data-tool="circle"
+                            data-i18n="circleHole"
+                        >
+                            Circle Hole
+                        </button>
+                        <button
+                            class="tool-btn"
+                            data-tool="rectangle"
+                            data-i18n="rectangleHole"
+                        >
+                            Rectangle Hole
+                        </button>
+                        <button
+                            class="tool-btn"
+                            data-tool="avellanado"
+                            data-i18n="avellanado"
+                        >
+                            Countersink
+                        </button>
+                        <button
+                            class="tool-btn"
+                            data-tool="clip"
+                            data-i18n="edgeClip"
+                        >
+                            Edge Clip
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label for="design-description-input">Description</label>
-                        <textarea id="design-description-input" rows="2" placeholder="Optional description"></textarea>
+
+                    <h3 data-i18n="glassProperties">Glass Properties</h3>
+                    <div class="properties">
+                        <label>
+                            <span data-i18n="width">Width</span> (mm):
+                            <input
+                                type="number"
+                                id="glass-width"
+                                value="1200"
+                            />
+                        </label>
+                        <label>
+                            <span data-i18n="height">Height</span> (mm):
+                            <input
+                                type="number"
+                                id="glass-height"
+                                value="800"
+                            />
+                        </label>
+                        <label>
+                            <span data-i18n="thickness">Thickness</span> (mm):
+                            <select
+                                id="glass-thickness-select"
+                                style="
+                                    width: 100%;
+                                    padding: 0.5rem;
+                                    border: 1px solid #cbd5e1;
+                                    border-radius: 4px;
+                                    margin-top: 0.25rem;
+                                "
+                            >
+                                <option value="4">4</option>
+                                <option value="6" selected>6</option>
+                                <option value="8">8</option>
+                                <option value="9.5">9.5</option>
+                                <option value="12">12</option>
+                                <option value="custom">Custom...</option>
+                            </select>
+                            <input
+                                type="number"
+                                id="glass-thickness"
+                                value="6"
+                                step="0.1"
+                                min="0"
+                                style="
+                                    width: 100%;
+                                    padding: 0.5rem;
+                                    border: 1px solid #cbd5e1;
+                                    border-radius: 4px;
+                                    margin-top: 0.25rem;
+                                    display: none;
+                                "
+                            />
+                        </label>
                     </div>
-                    <div class="form-group">
-                        <label>Select Project (Optional - leave unselected for no project)</label>
-                        <div id="project-tree-selector" class="project-tree-selector">
-                            <div class="tree-loading">Loading projects...</div>
+
+                    <div id="holes-section">
+                        <h3 data-i18n="holesList">Holes List</h3>
+                        <div id="holes-list" class="holes-list">
+                            <p
+                                style="
+                                    color: #64748b;
+                                    font-size: 0.875rem;
+                                    font-style: italic;
+                                "
+                                data-i18n="noHoles"
+                            >
+                                No holes yet. Click on canvas to add.
+                            </p>
                         </div>
                     </div>
-                    <div id="selected-project-path" class="selected-project-path" style="display: none;">
-                        <strong>Selected:</strong> <span id="selected-path-text"></span>
+                </aside>
+
+                <div class="canvas-area">
+                    <div class="canvas-toolbar">
+                        <button
+                            class="btn btn-primary"
+                            id="btn-save-to-project"
+                        >
+                            Save
+                        </button>
+                        <button class="btn btn-outline" id="btn-save-as">
+                            Save As
+                        </button>
+                        <button
+                            class="btn"
+                            id="btn-save"
+                            data-i18n="saveDesign"
+                        >
+                            Export to File
+                        </button>
+                        <button
+                            class="btn"
+                            id="btn-load"
+                            data-i18n="loadDesign"
+                        >
+                            Load Design
+                        </button>
+                        <button
+                            class="btn"
+                            id="btn-print"
+                            data-i18n="printDesign"
+                        >
+                            Print Design
+                        </button>
+                        <button class="btn" id="btn-clear" data-i18n="clearAll">
+                            Clear All
+                        </button>
+                    </div>
+                    <canvas id="design-canvas"></canvas>
+                    <div class="canvas-info">
+                        <p>
+                            <strong data-i18n="instructions"
+                                >Instructions:</strong
+                            >
+                        </p>
+                        <ul style="text-align: left; margin-top: 0.5rem">
+                            <li data-i18n="instruction1">
+                                Select a tool from the left sidebar
+                            </li>
+                            <li data-i18n="instruction2">
+                                Click and drag on the canvas to create holes
+                            </li>
+                            <li data-i18n="instruction3">
+                                Use the Select tool to move existing holes
+                            </li>
+                            <li data-i18n="instruction4">
+                                Edit hole properties in the sidebar when
+                                selected
+                            </li>
+                            <li data-i18n="instruction5">
+                                Press Delete key to remove selected hole
+                            </li>
+                            <li data-i18n="instruction6">
+                                Save your design to a JSON file for later use
+                            </li>
+                        </ul>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-outline" id="btn-cancel-save">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="btn-confirm-save">Save Design</button>
+            </main>
+
+            <!-- Print Template (hidden on screen, shown when printing) -->
+            <div class="print-template" id="print-template">
+                <!-- Content will be dynamically generated by JavaScript -->
+            </div>
+
+            <!-- Save to Project Modal -->
+            <div class="modal" id="save-to-project-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Save Design to Project</h3>
+                        <button class="modal-close" id="save-project-close">
+                            &times;
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="design-name-input">Design Name *</label>
+                            <input
+                                type="text"
+                                id="design-name-input"
+                                placeholder="Enter design name"
+                                required
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="design-description-input"
+                                >Description</label
+                            >
+                            <textarea
+                                id="design-description-input"
+                                rows="2"
+                                placeholder="Optional description"
+                            ></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label
+                                >Select Project (Optional - leave unselected for
+                                no project)</label
+                            >
+                            <div
+                                id="project-tree-selector"
+                                class="project-tree-selector"
+                            >
+                                <div class="tree-loading">
+                                    Loading projects...
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            id="selected-project-path"
+                            class="selected-project-path"
+                            style="display: none"
+                        >
+                            <strong>Selected:</strong>
+                            <span id="selected-path-text"></span>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="btn btn-outline"
+                            id="btn-cancel-save"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            id="btn-confirm-save"
+                        >
+                            Save Design
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <footer class="footer">
+                <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
+            </footer>
         </div>
 
-        <footer class="footer">
-            <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
-        </footer>
-    </div>
-
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/app.js"></script>
-    <script src="/static/js/designer.js"></script>
-</body>
+        <script src="/static/js/i18n.js"></script>
+        <script src="/static/js/app.js"></script>
+        <script src="/static/js/designer.js"></script>
+    </body>
 </html>
