@@ -1,5 +1,5 @@
 /**
- * Glass Optimizer - Mobile Enhancements
+ * Vitrari - Mobile Enhancements
  * Complete mobile UI/UX optimization with proper touch handling and responsive behavior
  */
 

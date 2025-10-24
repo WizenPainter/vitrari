@@ -1,5 +1,5 @@
 /**
- * Glass Optimizer - Internationalization (i18n)
+ * Vitrari - Internationalization (i18n)
  * Handles multi-language support
  */
 
@@ -77,7 +77,7 @@ const translations = {
     errorLoadingDesign: "Error loading design file",
 
     // Dashboard
-    welcomeTitle: "Welcome to Glass Optimizer",
+    welcomeTitle: "Welcome to Vitrari",
     welcomeDescription:
       "Design custom glass pieces and optimize cutting patterns for maximum efficiency",
     glassDesigner: "Glass Designer",
@@ -226,7 +226,7 @@ const translations = {
     errorLoadingDesign: "Error al cargar el archivo de diseño",
 
     // Panel de Control
-    welcomeTitle: "Bienvenido a Glass Optimizer",
+    welcomeTitle: "Bienvenido a Vitrari",
     welcomeDescription:
       "Diseña piezas de vidrio personalizadas y optimiza patrones de corte para máxima eficiencia",
     glassDesigner: "Diseñador de Vidrio",
@@ -304,7 +304,7 @@ const translations = {
 };
 
 // Current language (default to Spanish)
-let currentLang = localStorage.getItem("glass-optimizer-lang") || "es";
+let currentLang = localStorage.getItem("vitrari-lang") || "es";
 
 // Initialize i18n
 function initI18n() {
@@ -325,7 +325,7 @@ function setLanguage(lang) {
   if (!translations[lang]) return;
 
   currentLang = lang;
-  localStorage.setItem("glass-optimizer-lang", lang);
+  localStorage.setItem("vitrari-lang", lang);
 
   // Update button states
   document.querySelectorAll(".lang-btn").forEach((btn) => {

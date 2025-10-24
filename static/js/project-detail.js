@@ -1,5 +1,5 @@
 /**
- * Glass Optimizer - Project Detail Page
+ * Vitrari - Project Detail Page
  * Displays project details, subprojects, designs, and optimizations
  */
 

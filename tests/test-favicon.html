@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favicon Test - Glass Optimizer</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/static/assets/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/apple-touch-icon.png" />
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.loading {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .icon-test {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .icon-preview {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+        }
+        .url-test {
+            font-family: monospace;
+            background: #f1f1f1;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        code {
+            background: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎯 Favicon Test Page</h1>
+        <p>This page tests the favicon setup for Glass Optimizer. Check if the favicon appears in your browser tab and test the various favicon formats.</p>
+
+        <div class="test-section">
+            <h3></h3>📋 Basic Favicon Test</h3>
+            <div id="basic-test-status" class="status loading">Testing favicon availability...</div>
+            <p><strong>Expected:</strong> You should see the favicon in this browser tab.</p>
+            <p><strong>Location:</strong> Look at the browser tab title - there should be an icon next to "Favicon Test"</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 Direct URL Tests</h3>
+            <p>Click these links to test if favicon files are accessible:</p>
+
+            <div class="icon-test">
+                <div class="icon-preview" id="ico-preview">🔍</div>
+                <div>
+                    <strong>favicon.ico</strong><br>
+                    <span class="url-test">/favicon.ico</span><br>
+                    <button class="test-button" onclick="testFaviconUrl('/favicon.ico', 'ico')">Test ICO</button>
+                    <span id="ico-status">Not tested</span>
+                </div>
+            </div>
+
+            <div class="icon-test">
+                <div class="icon-preview" id="svg-preview">🔍</div>
+                <div>
+                    <strong>favicon.svg</strong><br>
+                    <span class="url-test">/static/assets/favicon.svg</span><br>
+                    <button class="test-button" onclick="testFaviconUrl('/static/assets/favicon.svg', 'svg')">Test SVG</button>
+                    <span id="svg-status">Not tested</span>
+                </div>
+            </div>
+
+            <div class="icon-test">
+                <div class="icon-preview" id="apple-preview">🔍</div>
+                <div>
+                    <strong>Apple Touch Icon</strong><br>
+                    <span class="url-test">/static/assets/apple-touch-icon.png</span><br>
+                    <button class="test-button" onclick="testFaviconUrl('/static/assets/apple-touch-icon.png', 'apple')">Test Apple Icon</button>
+                    <span id="apple-status">Not tested</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Browser Compatibility Test</h3>
+            <div id="browser-info"></div>
+            <button class="test-button" onclick="runBrowserTests()">Run Browser Tests</button>
+            <div id="browser-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Manual Checklist</h3>
+            <ul style="list-style-type: none; padding: 0;">
+                <li>
+                    <label></label>
+                        <input type="checkbox" id="tab-check">
+                        ✅ Favicon appears in browser tab
+                    </label>
+                </li>
+                <li>
+                    <label>
+                        <input type="checkbox" id="bookmark-check">
+                        ✅ Favicon appears when bookmarking this page
+                    </label>
+                </li>
+                <li>
+                    <label>
+                        <input type="checkbox" id="history-check">
+                        ✅ Favicon appears in browser history
+                    </label>
+                </li>
+                <li>
+                    <label>
+                        <input type="checkbox" id="mobile-check">
+                        ✅ Apple Touch Icon works on iOS home screen (if applicable)
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Troubleshooting</h3>
+            <div id="troubleshooting-info">
+                <p><strong>If favicon is not showing:</strong></p>
+                <ol>
+                    <li>Ensure <code>favicon.ico</code> is placed in <code>static/favicon.ico</code></li>
+                    <li>Clear browser cache (Ctrl+F5 or Cmd+Shift+R)</li>
+                    <li>Try opening in incognito/private mode</li>
+                    <li>Check browser console for 404 errors</li>
+                    <li>Verify the ICO file is valid (not a renamed PNG)</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Results Summary</h3>
+            <div id="results-summary" class="status loading">
+                Run tests above to see summary
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            ico: null,
+            svg: null,
+            apple: null,
+            browserTests: null
+        };
+
+        // Test favicon URL accessibility
+        function testFaviconUrl(url, type) {
+            const statusElement = document.getElementById(`${type}-status`);
+            const previewElement = document.getElementById(`${type}-preview`);
+
+            statusElement.textContent = 'Testing...';
+            statusElement.style.color = '#856404';
+
+            // Create image element to test if URL loads
+            const img = new Image();
+
+            img.onload = function() {
+                statusElement.textContent = '✅ Available';
+                statusElement.style.color = '#155724';
+                testResults[type] = true;
+
+                // Show preview for images
+                if (type === 'svg' || type === 'apple') {
+                    previewElement.innerHTML = `<img src="${url}" width="24" height="24" alt="${type}">`;
+                } else if (type === 'ico') {
+                    previewElement.innerHTML = '🎯';
+                }
+
+                updateResultsSummary();
+            };
+
+            img.onerror = function() {
+                statusElement.textContent = '❌ Not found (404)';
+                statusElement.style.color = '#721c24';
+                testResults[type] = false;
+                previewElement.innerHTML = '❌';
+                updateResultsSummary();
+            };
+
+            // For ICO files, we need to test via fetch instead of img
+            if (type === 'ico') {
+                fetch(url, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            statusElement.textContent = '✅ Available';
+                            statusElement.style.color = '#155724';
+                            testResults[type] = true;
+                            previewElement.innerHTML = '🎯';
+                        } else {
+                            statusElement.textContent = '❌ Not found (404)';
+                            statusElement.style.color = '#721c24';
+                            testResults[type] = false;
+                            previewElement.innerHTML = '❌';
+                        }
+                        updateResultsSummary();
+                    })
+                    .catch(error => {
+                        statusElement.textContent = '❌ Error loading';
+                        statusElement.style.color = '#721c24';
+                        testResults[type] = false;
+                        previewElement.innerHTML = '❌';
+                        updateResultsSummary();
+                    });
+            } else {
+                img.src = url;
+            }
+        }
+
+        // Run browser compatibility tests
+        function runBrowserTests() {
+            const browserInfo = document.getElementById('browser-info');
+            const browserResults = document.getElementById('browser-results');
+
+            const userAgent = navigator.userAgent;
+            let browserName = 'Unknown';
+
+            if (userAgent.includes('Chrome')) browserName = 'Chrome';
+            else if (userAgent.includes('Firefox')) browserName = 'Firefox';
+            else if (userAgent.includes('Safari')) browserName = 'Safari';
+            else if (userAgent.includes('Edge')) browserName = 'Edge';
+
+            browserInfo.innerHTML = `
+                <p><strong>Browser:</strong> ${browserName}</p>
+                <p><strong>User Agent:</strong> <code>${userAgent}</code></p>
+                <p><strong>Supports SVG:</strong> ${document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#Image", "1.1") ? 'Yes' : 'No'}</p>
+            `;
+
+            browserResults.innerHTML = `
+                <div class="status success">
+                    <strong>Browser Test Complete</strong><br>
+                    Your browser: ${browserName}<br>
+                    SVG Support: ${document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#Image", "1.1") ? 'Yes' : 'No'}
+                </div>
+            `;
+
+            testResults.browserTests = true;
+            updateResultsSummary();
+        }
+
+        // Update results summary
+        function updateResultsSummary() {
+            const summaryElement = document.getElementById('results-summary');
+
+            let passedTests = 0;
+            let totalTests = 0;
+
+            Object.keys(testResults).forEach(key => {
+                if (testResults[key] !== null) {
+                    totalTests++;
+                    if (testResults[key]) passedTests++;
+                }
+            });
+
+            if (totalTests === 0) {
+                summaryElement.className = 'status loading';
+                summaryElement.textContent = 'Run tests above to see summary';
+            } else {
+                const allPassed = passedTests === totalTests;
+                summaryElement.className = allPassed ? 'status success' : 'status error';
+                summaryElement.innerHTML = `
+                    <strong>Tests Completed:</strong> ${totalTests}/4<br>
+                    <strong>Passed:</strong> ${passedTests}<br>
+                    <strong>Status:</strong> ${allPassed ? '✅ All tests passed!' : '⚠️ Some tests failed'}
+                `;
+            }
+        }
+
+        // Check if favicon is visible in current tab
+        function checkFaviconInTab() {
+            const basicTestStatus = document.getElementById('basic-test-status');
+
+            // We can't programmatically detect if favicon is showing in tab,
+            // but we can check if the link elements exist
+            const faviconLinks = document.querySelectorAll('link[rel*="icon"]');
+
+            if (faviconLinks.length > 0) {
+                basicTestStatus.className = 'status success';
+                basicTestStatus.innerHTML = `
+                    ✅ Favicon links found (${faviconLinks.length} links)<br>
+                    Check your browser tab for the actual icon display.
+                `;
+            } else {
+                basicTestStatus.className = 'status error';
+                basicTestStatus.textContent = '❌ No favicon links found in HTML head';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkFaviconInTab();
+
+            // Auto-test the main favicon after a short delay
+            setTimeout(() => {
+                testFaviconUrl('/favicon.ico', 'ico');
+            }, 1000);
+        });
+
+        // Test all favicons button
+        function testAllFavicons() {
+            testFaviconUrl('/favicon.ico', 'ico');
+            testFaviconUrl('/static/assets/favicon.svg', 'svg');
+            testFaviconUrl('/static/assets/apple-touch-icon.png', 'apple');
+        }
+
+        // Add test all button
+        window.addEventListener('load', function() {
+            const testSection = document.querySelector('.test-section:nth-child(3)');
+            const testAllButton = document.createElement('button');
+            testAllButton.className = 'test-button';
+            testAllButton.textContent = 'Test All Favicons';
+            testAllButton.onclick = testAllFavicons;
+            testAllButton.style.marginTop = '10px';
+            testAllButton.style.fontWeight = 'bold';
+            testSection.appendChild(testAllButton);
+        });
+    </script>
+</body>
+</html>

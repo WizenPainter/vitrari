@@ -1,5 +1,5 @@
 /**
- * Glass Optimizer - Projects Management
+ * Vitrari - Projects Management
  * Handles project creation, editing, and organization
  */
 

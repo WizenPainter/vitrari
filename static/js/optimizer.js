@@ -1,5 +1,5 @@
 /**
- * Glass Optimizer - Sheet Optimization Algorithms and Utilities
+ * Vitrari - Sheet Optimization Algorithms and Utilities
  *
  * This module provides advanced algorithms for optimizing glass piece placement
  * on glass sheets to minimize waste and maximize material utilization.
@@ -9,15 +9,14 @@
  * - Genetic algorithm for complex optimization
  * - Greedy algorithm for quick approximation
  * - Bin packing utilities
- * - Cut path optimization
  * - Performance analysis
  *
- * @author Glass Optimizer Team
+ * @author Vitrari Team
  * @version 1.0.0
  */
 
 /**
- * Glass Optimizer Class
+ * Vitrari Optimizer Class
  * Main optimizer controller that manages algorithms and optimization state
  */
 class GlassOptimizer {
