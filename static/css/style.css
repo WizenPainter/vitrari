@@ -403,6 +403,45 @@ body {
     display: block;
     /* IMPORTANT: No CSS width/height - causes coordinate mismatch */
     /* Canvas pixel dimensions set by JavaScript setupCanvas() */
+    max-width: 100%;
+    height: auto;
+}
+
+/* Mobile canvas responsiveness */
+@media (max-width: 768px) {
+    #design-canvas {
+        width: 100% !important;
+        max-width: calc(100vw - 40px) !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+
+    .canvas-area {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+
+    .designer-layout {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+
+    .container {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
 }
 
 .canvas-info {

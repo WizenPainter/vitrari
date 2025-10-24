@@ -832,14 +832,27 @@ class MobileEnhancements {
   setupDesignerMobile() {
     if (!this.isMobile) return;
 
+    console.log("Setting up designer mobile enhancements");
+
     // Wait for designer to be available
     const initDesigner = () => {
-      const canvas = document.querySelector("#designer-canvas");
-      const toolbar = document.querySelector(".designer-toolbar");
-      const sidebar = document.querySelector(".designer-sidebar");
+      const canvas = document.querySelector("#design-canvas");
+      const canvasArea = document.querySelector(".canvas-area");
+      const toolbar = document.querySelector(".canvas-toolbar");
+      const sidebar = document.querySelector(".sidebar");
+      const designerLayout = document.querySelector(".designer-layout");
+
+      console.log("Designer elements found:", {
+        canvas: !!canvas,
+        canvasArea: !!canvasArea,
+        toolbar: !!toolbar,
+        sidebar: !!sidebar,
+        designerLayout: !!designerLayout,
+      });
 
       if (canvas) {
         this.setupCanvasTouchHandling(canvas);
+        this.setupResponsiveCanvas(canvas);
       }
 
       if (toolbar) {
@@ -848,49 +861,244 @@ class MobileEnhancements {
 
       if (sidebar) {
         this.setupSidebarCollapse(sidebar);
+        this.setupMobileToolList(sidebar);
       }
+
+      if (designerLayout) {
+        this.setupDesignerLayout(designerLayout);
+      }
+
+      // Add mobile-specific zoom and pan controls
+      this.addMobileCanvasControls(canvasArea);
+
+      // Setup orientation change handler
+      this.setupDesignerOrientationHandler();
     };
 
     if (document.readyState === "complete") {
-      initDesigner();
+      setTimeout(initDesigner, 100);
     } else {
-      window.addEventListener("load", initDesigner);
+      window.addEventListener("load", () => setTimeout(initDesigner, 100));
     }
   }
 
   setupCanvasTouchHandling(canvas) {
+    console.log("Setting up canvas touch handling");
+
     let lastTouchEnd = 0;
 
-    // Prevent double-tap zoom
+    // Prevent double-tap zoom on canvas
     canvas.addEventListener("touchend", (e) => {
       const now = Date.now();
       if (now - lastTouchEnd <= 300) {
         e.preventDefault();
       }
       lastTouchEnd = now;
+    }, { passive: false });
+
+    // Improve touch responsiveness
+    canvas.style.touchAction = "pan-x pan-y";
+    canvas.style.webkitTouchCallout = "none";
+    canvas.style.webkitUserSelect = "none";
+    canvas.style.userSelect = "none";
+
+    // Add touch feedback for drawing tools
+    canvas.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 1) {
+        canvas.style.filter = "brightness(0.95)";
+      }
+    }, { passive: true });
+
+    canvas.addEventListener("touchend", (e) => {
+      canvas.style.filter = "";
+    }, { passive: true });
+  }
+
+  setupResponsiveCanvas(canvas) {
+    console.log("Setting up responsive canvas");
+
+    // Ensure canvas is responsive
+    const makeCanvasResponsive = () => {
+      const container = canvas.parentElement;
+      if (!container) return;
+
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      const maxWidth = Math.min(containerWidth - 20, window.innerWidth - 20);
+      const maxHeight = Math.min(containerHeight, window.innerHeight * 0.6);
+
+      canvas.style.maxWidth = maxWidth + "px";
+      canvas.style.maxHeight = maxHeight + "px";
+      canvas.style.width = "100%";
+      canvas.style.height = "auto";
+
+      // Trigger canvas resize if designer is available
+      if (window.designer && typeof window.designer.setupCanvas === "function") {
+        window.designer.setupCanvas();
+        window.designer.render();
+      }
+    };
+
+    // Initial setup
+    setTimeout(makeCanvasResponsive, 100);
+
+    // Handle orientation changes
+    window.addEventListener("orientationchange", () => {
+      setTimeout(makeCanvasResponsive, 200);
     });
 
-    // Handle pan and zoom gestures
-    let initialDistance = 0;
-    let initialScale = 1;
+    // Handle window resize
+    window.addEventListener("resize", () => {
+      clearTimeout(this.canvasResizeTimeout);
+      this.canvasResizeTimeout = setTimeout(makeCanvasResponsive, 150);
+    });
+  }
 
-    canvas.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 2) {
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        initialDistance = Math.sqrt(
-          Math.pow(touch2.clientX - touch1.clientX, 2) +
-            Math.pow(touch2.clientY - touch1.clientY, 2),
-        );
+  setupMobileToolList(sidebar) {
+    console.log("Setting up mobile tool list");
+
+    const toolList = sidebar.querySelector(".tool-list");
+    if (!toolList) return;
+
+    // Make tool list horizontally scrollable on mobile
+    toolList.style.display = "flex";
+    toolList.style.overflowX = "auto";
+    toolList.style.webkitOverflowScrolling = "touch";
+    toolList.style.scrollSnapType = "x mandatory";
+    toolList.style.padding = "1rem";
+    toolList.style.gap = "0.75rem";
+
+    // Style individual tool buttons for mobile
+    const toolButtons = toolList.querySelectorAll(".tool-btn");
+    toolButtons.forEach((btn) => {
+      btn.style.minWidth = "100px";
+      btn.style.minHeight = "60px";
+      btn.style.flexShrink = "0";
+      btn.style.scrollSnapAlign = "start";
+      btn.style.display = "flex";
+      btn.style.flexDirection = "column";
+      btn.style.alignItems = "center";
+      btn.style.justifyContent = "center";
+      btn.style.fontSize = "0.8rem";
+      btn.style.lineHeight = "1.2";
+      btn.style.textAlign = "center";
+      btn.style.borderRadius = "8px";
+      btn.style.border = "2px solid var(--border)";
+      btn.style.background = "white";
+      btn.style.transition = "all 0.2s ease";
+    });
+  }
+
+  setupDesignerLayout(layout) {
+    console.log("Setting up designer layout for mobile");
+
+    layout.style.display = "flex";
+    layout.style.flexDirection = "column";
+    layout.style.height = "100vh";
+    layout.style.overflow = "hidden";
+  }
+
+  addMobileCanvasControls(canvasArea) {
+    if (!canvasArea || document.querySelector(".mobile-canvas-controls")) return;
+
+    console.log("Adding mobile canvas controls");
+
+    const controlsContainer = document.createElement("div");
+    controlsContainer.className = "mobile-canvas-controls";
+    controlsContainer.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 10px;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 100;
+      pointer-events: none;
+    `;
+
+    // Zoom In Button
+    const zoomInBtn = this.createMobileControlButton("+", "Zoom In");
+    zoomInBtn.addEventListener("click", () => {
+      if (window.designer) {
+        window.designer.scale = Math.min(window.designer.scale * 1.2, 2);
+        window.designer.setupCanvas();
+        window.designer.render();
       }
     });
 
-    canvas.addEventListener("touchmove", (e) => {
-      e.preventDefault(); // Prevent scrolling
+    // Zoom Out Button
+    const zoomOutBtn = this.createMobileControlButton("-", "Zoom Out");
+    zoomOutBtn.addEventListener("click", () => {
+      if (window.designer) {
+        window.designer.scale = Math.max(window.designer.scale / 1.2, 0.1);
+        window.designer.setupCanvas();
+        window.designer.render();
+      }
+    });
 
-      if (e.touches.length === 2) {
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
+    // Reset Zoom Button
+    const resetBtn = this.createMobileControlButton("⌂", "Reset View");
+    resetBtn.addEventListener("click", () => {
+      if (window.designer) {
+        window.designer.setupCanvas();
+        window.designer.render();
+      }
+    });
+
+    controlsContainer.appendChild(zoomInBtn);
+    controlsContainer.appendChild(zoomOutBtn);
+    controlsContainer.appendChild(resetBtn);
+
+    document.body.appendChild(controlsContainer);
+  }
+
+  createMobileControlButton(text, title) {
+    const btn = document.createElement("button");
+    btn.textContent = text;
+    btn.title = title;
+    btn.style.cssText = `
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    `;
+
+    btn.addEventListener("touchstart", () => {
+      btn.style.transform = "scale(0.95)";
+      btn.style.background = "rgba(37, 99, 235, 0.1)";
+    });
+
+    btn.addEventListener("touchend", () => {
+      btn.style.transform = "scale(1)";
+      btn.style.background = "rgba(255, 255, 255, 0.9)";
+    });
+
+    return btn;
+  }
+
+  setupDesignerOrientationHandler() {
+    window.addEventListener("orientationchange", () => {
+      setTimeout(() => {
+        if (window.designer) {
+          console.log("Handling orientation change for designer");
+          window.designer.setupCanvas();
+          window.designer.render();
+        }
+      }, 300);
+    });
         const distance = Math.sqrt(
           Math.pow(touch2.clientX - touch1.clientX, 2) +
             Math.pow(touch2.clientY - touch1.clientY, 2),

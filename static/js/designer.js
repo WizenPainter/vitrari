@@ -42,18 +42,41 @@ class GlassDesigner {
   }
 
   setupCanvas() {
-    // Set canvas to a FIXED size - it never changes
-    const fixedCanvasWidth = 800; // Fixed canvas width
-    const fixedCanvasHeight = 600; // Fixed canvas height
-    const padding = 80; // Padding around the glass
+    // Get canvas container dimensions
+    const container = this.canvas.parentElement;
+    const containerRect = container.getBoundingClientRect();
 
-    // Set canvas to fixed size
-    this.canvas.width = fixedCanvasWidth;
-    this.canvas.height = fixedCanvasHeight;
+    // Check if mobile
+    const isMobile = window.innerWidth <= 768;
+    const padding = isMobile ? 40 : 80; // Less padding on mobile
+
+    let canvasWidth, canvasHeight;
+
+    if (isMobile) {
+      // Mobile: Use full container width minus some margin
+      const margin = 20;
+      canvasWidth = Math.min(
+        window.innerWidth - margin,
+        containerRect.width || window.innerWidth - margin,
+      );
+      canvasHeight = Math.min(window.innerHeight * 0.6, 400); // Max 60% of screen height or 400px
+    } else {
+      // Desktop: Use fixed size or container size
+      canvasWidth = Math.min(800, containerRect.width || 800);
+      canvasHeight = Math.min(600, containerRect.height || 600);
+    }
+
+    // Set canvas pixel dimensions
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+
+    // Set CSS size to match pixel dimensions for proper touch handling
+    this.canvas.style.width = canvasWidth + "px";
+    this.canvas.style.height = canvasHeight + "px";
 
     // Calculate scale to fit glass within available space while maintaining aspect ratio
-    const availableWidth = fixedCanvasWidth - padding * 2;
-    const availableHeight = fixedCanvasHeight - padding * 2;
+    const availableWidth = canvasWidth - padding * 2;
+    const availableHeight = canvasHeight - padding * 2;
 
     const scaleX = availableWidth / this.glass.width;
     const scaleY = availableHeight / this.glass.height;
@@ -65,16 +88,35 @@ class GlassDesigner {
     const glassCanvasWidth = this.glass.width * this.scale;
     const glassCanvasHeight = this.glass.height * this.scale;
 
-    // Center the glass in the fixed canvas
-    this.offsetX = (fixedCanvasWidth - glassCanvasWidth) / 2;
-    this.offsetY = (fixedCanvasHeight - glassCanvasHeight) / 2;
+    // Center the glass in the canvas
+    this.offsetX = (canvasWidth - glassCanvasWidth) / 2;
+    this.offsetY = (canvasHeight - glassCanvasHeight) / 2;
+
+    // Store canvas dimensions for mobile handling
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
   }
 
   setupEventListeners() {
+    // Mouse events
     this.canvas.addEventListener("mousedown", this.onMouseDown.bind(this));
     this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
     this.canvas.addEventListener("mouseleave", this.onMouseUp.bind(this));
+
+    // Touch events for mobile
+    this.canvas.addEventListener("touchstart", this.onTouchStart.bind(this), {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchmove", this.onTouchMove.bind(this), {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchend", this.onTouchEnd.bind(this), {
+      passive: false,
+    });
+
+    // Window resize handler for responsive canvas
+    window.addEventListener("resize", this.onWindowResize.bind(this));
 
     // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
@@ -402,6 +444,47 @@ class GlassDesigner {
 
     this.setupCanvas();
     this.render();
+  }
+
+  // Window resize handler for responsive canvas
+  onWindowResize() {
+    // Debounce resize events
+    clearTimeout(this.resizeTimeout);
+    this.resizeTimeout = setTimeout(() => {
+      this.setupCanvas();
+      this.render();
+    }, 250);
+  }
+
+  // Touch event handlers for mobile support
+  onTouchStart(e) {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent("mousedown", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+      this.canvas.dispatchEvent(mouseEvent);
+    }
+  }
+
+  onTouchMove(e) {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent("mousemove", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+      this.canvas.dispatchEvent(mouseEvent);
+    }
+  }
+
+  onTouchEnd(e) {
+    e.preventDefault();
+    const mouseEvent = new MouseEvent("mouseup", {});
+    this.canvas.dispatchEvent(mouseEvent);
   }
 
   updatePropertiesPanel() {
