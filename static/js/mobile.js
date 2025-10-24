@@ -96,12 +96,15 @@ class MobileEnhancements {
 
   showMobileInstructions() {
     // Only show on mobile and first time
-    if (!this.isMobile || localStorage.getItem('mobileDesignerInstructionShown')) {
+    if (
+      !this.isMobile ||
+      localStorage.getItem("mobileDesignerInstructionShown")
+    ) {
       return;
     }
 
-    const toast = document.createElement('div');
-    toast.className = 'mobile-instruction-toast';
+    const toast = document.createElement("div");
+    toast.className = "mobile-instruction-toast";
     toast.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
         <span style="font-size: 1.2rem;">📱</span>
@@ -123,23 +126,23 @@ class MobileEnhancements {
     `;
 
     Object.assign(toast.style, {
-      position: 'fixed',
-      top: '20px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: 'white',
-      padding: '1rem',
-      borderRadius: '12px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-      zIndex: '2000',
-      maxWidth: '300px',
-      width: 'calc(100vw - 40px)',
-      border: '2px solid var(--primary)',
-      animation: 'slideDown 0.4s ease-out'
+      position: "fixed",
+      top: "20px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "white",
+      padding: "1rem",
+      borderRadius: "12px",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+      zIndex: "2000",
+      maxWidth: "300px",
+      width: "calc(100vw - 40px)",
+      border: "2px solid var(--primary)",
+      animation: "slideDown 0.4s ease-out",
     });
 
     // Add animation
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       @keyframes slideDown {
         from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
@@ -153,13 +156,13 @@ class MobileEnhancements {
     // Auto-remove after 8 seconds
     setTimeout(() => {
       if (toast.parentElement) {
-        toast.style.animation = 'slideDown 0.4s ease-out reverse';
+        toast.style.animation = "slideDown 0.4s ease-out reverse";
         setTimeout(() => toast.remove(), 400);
       }
     }, 8000);
 
     // Remember that instruction was shown
-    localStorage.setItem('mobileDesignerInstructionShown', 'true');
+    localStorage.setItem("mobileDesignerInstructionShown", "true");
   }
 
   setupTouchOptimizations() {
@@ -959,13 +962,17 @@ class MobileEnhancements {
     let lastTouchEnd = 0;
 
     // Prevent double-tap zoom on canvas
-    canvas.addEventListener("touchend", (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    }, { passive: false });
+    canvas.addEventListener(
+      "touchend",
+      (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      },
+      { passive: false },
+    );
 
     // Improve touch responsiveness
     canvas.style.touchAction = "pan-x pan-y";
@@ -974,15 +981,23 @@ class MobileEnhancements {
     canvas.style.userSelect = "none";
 
     // Add touch feedback for drawing tools
-    canvas.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 1) {
-        canvas.style.filter = "brightness(0.95)";
-      }
-    }, { passive: true });
+    canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length === 1) {
+          canvas.style.filter = "brightness(0.95)";
+        }
+      },
+      { passive: true },
+    );
 
-    canvas.addEventListener("touchend", (e) => {
-      canvas.style.filter = "";
-    }, { passive: true });
+    canvas.addEventListener(
+      "touchend",
+      (e) => {
+        canvas.style.filter = "";
+      },
+      { passive: true },
+    );
   }
 
   setupResponsiveCanvas(canvas) {
@@ -1004,7 +1019,10 @@ class MobileEnhancements {
       canvas.style.height = "auto";
 
       // Trigger canvas resize if designer is available
-      if (window.designer && typeof window.designer.setupCanvas === "function") {
+      if (
+        window.designer &&
+        typeof window.designer.setupCanvas === "function"
+      ) {
         window.designer.setupCanvas();
         window.designer.render();
       }
@@ -1042,85 +1060,188 @@ class MobileEnhancements {
     // Create overlay for closing sidebar
     overlay = document.createElement("div");
     overlay.className = "mobile-sidebar-overlay";
+    overlay.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      background: rgba(0, 0, 0, 0.3) !important;
+      z-index: 1400 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      transition: all 0.3s ease !important;
+      pointer-events: none !important;
+      cursor: pointer !important;
+    `;
     document.body.appendChild(overlay);
+    console.log("Created overlay element:", overlay);
 
     const toggleSidebar = () => {
+      const wasExpanded = isExpanded;
       isExpanded = !isExpanded;
+      console.log(`Toggling sidebar: ${wasExpanded} -> ${isExpanded}`);
+      console.log("Sidebar element:", sidebar);
+      console.log("FAB element:", fab);
+      console.log("Overlay element:", overlay);
 
       if (isExpanded) {
+        console.log("Opening sidebar...");
         sidebar.classList.add("mobile-expanded");
         fab.classList.add("hidden");
-        overlay.classList.add("active");
+        overlay.style.opacity = "1";
+        overlay.style.visibility = "visible";
+        overlay.style.pointerEvents = "auto";
         fab.innerHTML = "✕";
         fab.setAttribute("aria-label", "Close Tools");
+        console.log("Sidebar opened successfully");
+        console.log("Overlay styles after opening:", {
+          opacity: overlay.style.opacity,
+          visibility: overlay.style.visibility,
+          pointerEvents: overlay.style.pointerEvents,
+        });
       } else {
+        console.log("Closing sidebar...");
         sidebar.classList.remove("mobile-expanded");
         fab.classList.remove("hidden");
-        overlay.classList.remove("active");
+        overlay.style.opacity = "0";
+        overlay.style.visibility = "hidden";
+        overlay.style.pointerEvents = "none";
         fab.innerHTML = "🔧";
         fab.setAttribute("aria-label", "Open Tools");
+        console.log("Sidebar closed successfully");
       }
-      console.log("Sidebar toggled:", isExpanded ? "expanded" : "collapsed");
     };
 
     // FAB click handler
-    fab.addEventListener("click", toggleSidebar);
-    fab.addEventListener("touchend", (e) => {
+    fab.addEventListener("click", (e) => {
+      console.log("FAB clicked");
       e.preventDefault();
+      e.stopPropagation();
+      toggleSidebar();
+    });
+    fab.addEventListener("touchend", (e) => {
+      console.log("FAB touched");
+      e.preventDefault();
+      e.stopPropagation();
       toggleSidebar();
     });
 
     // Overlay click to close
-    overlay.addEventListener("click", () => {
+    overlay.addEventListener("click", (e) => {
+      console.log("Overlay click event fired");
+      console.log("Event target:", e.target);
+      console.log("Overlay element:", overlay);
+      console.log("Are they the same?", e.target === overlay);
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Overlay clicked, isExpanded:", isExpanded);
       if (isExpanded) {
+        console.log("Calling toggleSidebar from overlay click");
         toggleSidebar();
       }
     });
+
+    overlay.addEventListener("touchend", (e) => {
+      console.log("Overlay touchend event fired");
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Overlay touched, isExpanded:", isExpanded);
+      if (isExpanded) {
+        console.log("Calling toggleSidebar from overlay touchend");
+        toggleSidebar();
+      }
+    });
+
+    // Additional debugging for overlay
+    overlay.addEventListener("mousedown", (e) => {
+      console.log("Overlay mousedown event fired");
+    });
+
+    // Test overlay positioning
+    setTimeout(() => {
+      const rect = overlay.getBoundingClientRect();
+      console.log("Overlay position:", rect);
+      console.log("Overlay computed style:", window.getComputedStyle(overlay));
+    }, 1000);
 
     // Make sidebar header clickable to close when expanded
     const sidebarHeader = sidebar.querySelector("h3");
     if (sidebarHeader) {
       sidebarHeader.style.cursor = "pointer";
-      sidebarHeader.addEventListener("click", () => {
+      sidebarHeader.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Header clicked, isExpanded:", isExpanded);
         if (isExpanded) {
           toggleSidebar();
         }
       });
       sidebarHeader.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Header touched, isExpanded:", isExpanded);
         if (isExpanded) {
-          e.preventDefault();
           toggleSidebar();
         }
       });
     }
 
     // Add swipe gesture support
+    // Swipe gestures on header only
     let startY = 0;
     let currentY = 0;
     let isDragging = false;
 
-    sidebar.addEventListener("touchstart", (e) => {
-      if (e.target === sidebarHeader || sidebarHeader.contains(e.target)) {
-        startY = e.touches[0].clientY;
-        isDragging = true;
-      }
-    }, { passive: false });
+    if (sidebarHeader) {
+      sidebarHeader.addEventListener(
+        "touchstart",
+        (e) => {
+          startY = e.touches[0].clientY;
+          isDragging = true;
+        },
+        { passive: true },
+      );
 
-    sidebar.addEventListener("touchmove", (e) => {
-      if (!isDragging) return;
+      sidebarHeader.addEventListener(
+        "touchmove",
+        (e) => {
+          if (!isDragging) return;
 
-      currentY = e.touches[0].clientY;
-      const deltaY = startY - currentY;
+          currentY = e.touches[0].clientY;
+          const deltaY = startY - currentY;
 
-      // Only allow swiping down to collapse when expanded
-      if (deltaY < -50 && isExpanded) {
-        toggleSidebar();
+          // Swipe down to close when expanded
+          if (deltaY < -50 && isExpanded) {
+            e.preventDefault();
+            toggleSidebar();
+            isDragging = false;
+          }
+        },
+        { passive: false },
+      );
+
+      sidebarHeader.addEventListener("touchend", () => {
         isDragging = false;
-      }
-    }, { passive: false });
+      });
+    }
 
-    sidebar.addEventListener("touchend", () => {
-      isDragging = false;
+    // Prevent sidebar content from closing the menu when scrolling
+    const sidebarContent = sidebar.querySelectorAll(
+      ".tool-list, .properties, .holes-list, .canvas-info",
+    );
+    sidebarContent.forEach((element) => {
+      element.addEventListener(
+        "touchstart",
+        (e) => {
+          e.stopPropagation();
+        },
+        { passive: true },
+      );
+
+      element.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
     });
 
     // Store references for other methods
@@ -1164,8 +1285,19 @@ class MobileEnhancements {
       btn.style.transition = "all 0.2s ease";
 
       // Auto-collapse sidebar when tool is selected
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        console.log("Tool button clicked:", btn.textContent);
+
+        // Remove active from all tools
+        sidebar
+          .querySelectorAll(".tool-btn")
+          .forEach((b) => b.classList.remove("active"));
+        // Add active to clicked tool
+        btn.classList.add("active");
+
+        // Auto-collapse if expanded
         if (this.mobileSidebarExpanded && this.mobileSidebarExpanded()) {
+          console.log("Auto-collapsing sidebar after tool selection");
           setTimeout(() => {
             if (this.toggleMobileSidebar) {
               this.toggleMobileSidebar();
@@ -1186,7 +1318,8 @@ class MobileEnhancements {
   }
 
   addMobileCanvasControls(canvasArea) {
-    if (!canvasArea || document.querySelector(".mobile-canvas-controls")) return;
+    if (!canvasArea || document.querySelector(".mobile-canvas-controls"))
+      return;
 
     console.log("Adding mobile canvas controls");
 
@@ -1285,20 +1418,6 @@ class MobileEnhancements {
           window.designer.render();
         }
       }, 300);
-    });
-        const distance = Math.sqrt(
-          Math.pow(touch2.clientX - touch1.clientX, 2) +
-            Math.pow(touch2.clientY - touch1.clientY, 2),
-        );
-
-        if (initialDistance > 0) {
-          const scale = distance / initialDistance;
-          // Trigger zoom event if designer supports it
-          if (window.designer && window.designer.handleZoom) {
-            window.designer.handleZoom(scale);
-          }
-        }
-      }
     });
   }
 
@@ -1610,7 +1729,10 @@ window.toggleMobileMenu = function () {
 
 window.toggleMobileSidebar = function () {
   // For designer mobile sidebar
-  if (window.mobileEnhancements && window.mobileEnhancements.toggleMobileSidebar) {
+  if (
+    window.mobileEnhancements &&
+    window.mobileEnhancements.toggleMobileSidebar
+  ) {
     window.mobileEnhancements.toggleMobileSidebar();
     return;
   }
@@ -1630,6 +1752,69 @@ window.toggleMobileSidebar = function () {
 window.initMobileEnhancements = function () {
   console.log("Manual mobile enhancement initialization triggered");
   window.mobileEnhancements = new MobileEnhancements();
+};
+
+// Global debug function for testing sidebar
+window.debugMobileSidebar = function () {
+  console.log("=== MOBILE SIDEBAR DEBUG ===");
+
+  const sidebar = document.querySelector(".sidebar");
+  const fab = document.querySelector(".mobile-tools-fab");
+  const overlay = document.querySelector(".mobile-sidebar-overlay");
+
+  console.log("Elements found:", {
+    sidebar: !!sidebar,
+    fab: !!fab,
+    overlay: !!overlay,
+  });
+
+  if (sidebar) {
+    console.log("Sidebar details:", {
+      classes: sidebar.className,
+      expanded: sidebar.classList.contains("mobile-expanded"),
+      computedTransform: window.getComputedStyle(sidebar).transform,
+      rect: sidebar.getBoundingClientRect(),
+    });
+  }
+
+  if (fab) {
+    console.log("FAB details:", {
+      classes: fab.className,
+      hidden: fab.classList.contains("hidden"),
+      rect: fab.getBoundingClientRect(),
+      innerHTML: fab.innerHTML,
+    });
+  }
+
+  if (overlay) {
+    console.log("Overlay details:", {
+      opacity: overlay.style.opacity,
+      visibility: overlay.style.visibility,
+      pointerEvents: overlay.style.pointerEvents,
+      rect: overlay.getBoundingClientRect(),
+      computedZIndex: window.getComputedStyle(overlay).zIndex,
+    });
+
+    // Test overlay click programmatically
+    console.log("Testing overlay click...");
+    overlay.click();
+  }
+
+  if (window.mobileEnhancements) {
+    console.log("Mobile enhancements:", {
+      sidebarExpanded: window.mobileEnhancements.mobileSidebarExpanded
+        ? window.mobileEnhancements.mobileSidebarExpanded()
+        : "N/A",
+      toggleFunction: !!window.mobileEnhancements.toggleMobileSidebar,
+    });
+  }
+
+  return {
+    sidebar: !!sidebar,
+    fab: !!fab,
+    overlay: !!overlay,
+    expanded: sidebar ? sidebar.classList.contains("mobile-expanded") : false,
+  };
 };
 
 // Manual DOM inspection function

@@ -547,9 +547,11 @@
         transition:
             transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
             box-shadow 0.3s ease !important;
-        overflow: hidden !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
+        -webkit-overflow-scrolling: touch !important;
     }
 
     /* Floating action button to open tools menu */
@@ -612,24 +614,7 @@
         transition: all 0.3s ease !important;
     }
 
-    /* Close overlay when menu is open */
-    .mobile-sidebar-overlay {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        background: rgba(0, 0, 0, 0.3) !important;
-        z-index: 1400 !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        transition: all 0.3s ease !important;
-    }
-
-    .mobile-sidebar-overlay.active {
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
+    /* Overlay styles handled by JavaScript */
 
     /* Tool list - horizontal scrollable on mobile */
     .tool-list {
@@ -639,6 +624,7 @@
         padding: 1rem !important;
         gap: 0.75rem !important;
         scroll-snap-type: x mandatory !important;
+        flex-shrink: 0 !important;
     }
 
     .tool-btn {
@@ -702,11 +688,13 @@
     #holes-section {
         padding: 1rem !important;
         background: var(--surface) !important;
+        flex-shrink: 0 !important;
     }
 
     .holes-list {
-        max-height: none !important;
-        overflow: visible !important;
+        max-height: 200px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
     }
 
     .hole-item {
@@ -788,8 +776,10 @@
         font-size: 0.85rem !important;
         line-height: 1.4 !important;
         border-top: 1px solid var(--border) !important;
-        max-height: 150px !important;
+        max-height: 120px !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex-shrink: 0 !important;
     }
 
     .canvas-info ul {

@@ -458,7 +458,9 @@ class GlassDesigner {
 
   // Touch event handlers for mobile support
   onTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       const mouseEvent = new MouseEvent("mousedown", {
@@ -470,7 +472,9 @@ class GlassDesigner {
   }
 
   onTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       const mouseEvent = new MouseEvent("mousemove", {
@@ -482,7 +486,9 @@ class GlassDesigner {
   }
 
   onTouchEnd(e) {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     const mouseEvent = new MouseEvent("mouseup", {});
     this.canvas.dispatchEvent(mouseEvent);
   }

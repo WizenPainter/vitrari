@@ -1,334 +1,617 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Mobile Designer Test - Glass Optimizer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/designer.css">
-    <link rel="stylesheet" href="/static/css/mobile.css">
-    <style>
-        /* Test-specific styles */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #f8fafc;
-            overflow-x: hidden;
-        }
-        .test-header {
-            background: #2563eb;
-            color: white;
-            padding: 0.5rem;
-            text-align: center;
-            font-size: 0.9rem;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .debug-info {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            z-index: 2000;
-            max-width: 150px;
-            font-family: monospace;
-        }
-        .debug-toggle {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 0.5rem;
-            border-radius: 4px;
-            z-index: 2000;
-            font-size: 0.8rem;
-        }
-    </style>
-</head>
-<body>
-    <!-- Test Header -->
-    <div class="test-header">
-        📱 Mobile Designer Test - Resize window or use mobile device to test
-    </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+        />
+        <title>Mobile Designer Test - Glass Optimizer</title>
+        <link rel="stylesheet" href="/static/css/style.css" />
+        <link rel="stylesheet" href="/static/css/designer.css" />
+        <link rel="stylesheet" href="/static/css/mobile.css" />
+        <style>
+            /* Test-specific styles */
+            body {
+                margin: 0;
+                padding: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                background: #f8fafc;
+                overflow-x: hidden;
+            }
+            .test-header {
+                background: #2563eb;
+                color: white;
+                padding: 0.5rem;
+                text-align: center;
+                font-size: 0.9rem;
+                position: sticky;
+                top: 0;
+                z-index: 1000;
+            }
+            .debug-info {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 0.5rem;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                z-index: 2000;
+                max-width: 150px;
+                font-family: monospace;
+            }
+            .debug-toggle {
+                position: fixed;
+                bottom: 10px;
+                left: 10px;
+                background: #dc2626;
+                color: white;
+                border: none;
+                padding: 0.5rem;
+                border-radius: 4px;
+                z-index: 2000;
+                font-size: 0.8rem;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Test Header -->
+        <div class="test-header">
+            📱 Mobile Designer Test - Resize window or use mobile device to test
+        </div>
 
-    <!-- Debug Info -->
-    <div class="debug-info" id="debug-info">
-        Loading...
-    </div>
-    <button class="debug-toggle" onclick="toggleDebug()">Debug</button>
+        <!-- Debug Info -->
+        <div class="debug-info" id="debug-info">Loading...</div>
+        <button class="debug-toggle" onclick="toggleDebug()">Debug</button>
 
-    <div class="container">
-        <!-- Header Structure -->
-        <header class="header" style="background: #2563eb; color: white; padding: 1rem; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1 style="margin: 0; font-size: 1.25rem;">Glass Designer</h1>
-                    <nav style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                        <a href="/" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Home</a>
-                        <a href="/designer" class="nav-link active" style="color: white; text-decoration: none; padding: 0.25rem; font-weight: bold;">Designer</a>
-                        <a href="/optimizer" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Optimizer</a>
-                        <a href="/projects" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Projects</a>
-                    </nav>
-                </div>
-                <div class="language-selector" style="display: flex; gap: 8px;">
-                    <button class="lang-btn" data-lang="en" style="padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;">EN</button>
-                    <button class="lang-btn active" data-lang="es" style="padding: 6px 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;">ES</button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Designer Layout -->
-        <main class="designer-layout">
-            <!-- Sidebar with Tools -->
-            <aside class="sidebar">
-                <div class="mobile-sidebar-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border); background: var(--surface);">
-                    <h3 style="margin: 0;">Tools</h3>
-                    <button class="mobile-close-btn" onclick="toggleMobileSidebar()" style="display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0.25rem; min-height: 44px; min-width: 44px;">✕</button>
-                </div>
-
-                <div class="tool-list">
-                    <button class="tool-btn active" data-tool="select">Select</button>
-                    <button class="tool-btn" data-tool="drill">Drill Hole</button>
-                    <button class="tool-btn" data-tool="circle">Circle Hole</button>
-                    <button class="tool-btn" data-tool="rectangle">Rectangle Hole</button>
-                    <button class="tool-btn" data-tool="countersink">Countersink</button>
-                    <button class="tool-btn" data-tool="clip">Edge Clip</button>
-                </div>
-
-                <h3></h3>Glass Properties</h3>
-                <div class="properties">
-                    <label></label>
-                        <span>Width (mm):</span>
-                        <input type="number" id="glass-width" value="1200">
-                    </label>
-                    <label>
-                        <span>Height (mm):</span>
-                        <input type="number" id="glass-height" value="800">
-                    </label>
-                    <label>
-                        <span>Thickness (mm):</span>
-                        <select id="glass-thickness-select" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 0.25rem;">
-                            <option value="4">4</option>
-                            <option value="6" selected>6</option>
-                            <option value="8">8</option>
-                            <option value="12">12</option>
-                        </select>
-                    </label>
-                </div>
-
-                <div id="holes-section">
-                    <h3>Holes List</h3>
-                    <div id="holes-list" class="holes-list">
-                        <p style="color: #64748b; font-size: 0.875rem; font-style: italic;">
-                            No holes yet. Tap on canvas to add.
-                        </p>
+        <div class="container">
+            <!-- Header Structure -->
+            <header
+                class="header"
+                style="
+                    background: #2563eb;
+                    color: white;
+                    padding: 1rem;
+                    position: relative;
+                "
+            >
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.25rem">
+                            Glass Designer
+                        </h1>
+                        <nav
+                            style="display: flex; gap: 1rem; margin-top: 0.5rem"
+                        >
+                            <a
+                                href="/"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.25rem;
+                                "
+                                >Home</a
+                            >
+                            <a
+                                href="/designer"
+                                class="nav-link active"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.25rem;
+                                    font-weight: bold;
+                                "
+                                >Designer</a
+                            >
+                            <a
+                                href="/optimizer"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.25rem;
+                                "
+                                >Optimizer</a
+                            >
+                            <a
+                                href="/projects"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.25rem;
+                                "
+                                >Projects</a
+                            >
+                        </nav>
+                    </div>
+                    <div
+                        class="language-selector"
+                        style="display: flex; gap: 8px"
+                    >
+                        <button
+                            class="lang-btn"
+                            data-lang="en"
+                            style="
+                                padding: 6px 12px;
+                                background: rgba(255, 255, 255, 0.1);
+                                border: 1px solid rgba(255, 255, 255, 0.3);
+                                color: white;
+                                border-radius: 4px;
+                                cursor: pointer;
+                            "
+                        >
+                            EN
+                        </button>
+                        <button
+                            class="lang-btn active"
+                            data-lang="es"
+                            style="
+                                padding: 6px 12px;
+                                background: rgba(255, 255, 255, 0.2);
+                                border: 1px solid rgba(255, 255, 255, 0.3);
+                                color: white;
+                                border-radius: 4px;
+                                cursor: pointer;
+                            "
+                        >
+                            ES
+                        </button>
                     </div>
                 </div>
-            </aside>
+            </header>
 
-            <!-- Canvas Area -->
-            <div class="canvas-area">
-                <div class="canvas-toolbar">
-                    <button class="btn btn-primary" id="btn-save-to-project">Save</button>
-                    <button class="btn btn-outline" id="btn-save-as">Save As</button>
-                    <button class="btn" id="btn-save">Export</button>
-                    <button class="btn" id="btn-load">Load</button>
-                    <button class="btn" id="btn-print">Print</button>
-                    <button class="btn" id="btn-clear">Clear All</button>
+            <!-- Designer Layout -->
+            <main class="designer-layout">
+                <!-- Sidebar with Tools -->
+                <aside class="sidebar">
+                    <div
+                        class="mobile-sidebar-header"
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 1rem;
+                            border-bottom: 1px solid var(--border);
+                            background: var(--surface);
+                        "
+                    >
+                        <h3 style="margin: 0">Tools</h3>
+                        <button
+                            class="mobile-close-btn"
+                            onclick="toggleMobileSidebar()"
+                            style="
+                                display: none;
+                                background: none;
+                                border: none;
+                                font-size: 1.5rem;
+                                cursor: pointer;
+                                padding: 0.25rem;
+                                min-height: 44px;
+                                min-width: 44px;
+                            "
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    <div class="tool-list">
+                        <button class="tool-btn active" data-tool="select">
+                            Select
+                        </button>
+                        <button class="tool-btn" data-tool="drill">
+                            Drill Hole
+                        </button>
+                        <button class="tool-btn" data-tool="circle">
+                            Circle Hole
+                        </button>
+                        <button class="tool-btn" data-tool="rectangle">
+                            Rectangle Hole
+                        </button>
+                        <button class="tool-btn" data-tool="countersink">
+                            Countersink
+                        </button>
+                        <button class="tool-btn" data-tool="clip">
+                            Edge Clip
+                        </button>
+                    </div>
+
+                    <h3>Glass Properties</h3>
+                    <div class="properties">
+                        <label>
+                            <span>Width (mm):</span>
+                            <input
+                                type="number"
+                                id="glass-width"
+                                value="1200"
+                            />
+                        </label>
+                        <label>
+                            <span>Height (mm):</span>
+                            <input
+                                type="number"
+                                id="glass-height"
+                                value="800"
+                            />
+                        </label>
+                        <label>
+                            <span>Thickness (mm):</span>
+                            <select
+                                id="glass-thickness-select"
+                                style="
+                                    width: 100%;
+                                    padding: 0.5rem;
+                                    border: 1px solid #cbd5e1;
+                                    border-radius: 4px;
+                                    margin-top: 0.25rem;
+                                "
+                            >
+                                <option value="4">4</option>
+                                <option value="6" selected>6</option>
+                                <option value="8">8</option>
+                                <option value="12">12</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div id="holes-section">
+                        <h3>Holes List</h3>
+                        <div id="holes-list" class="holes-list">
+                            <p
+                                style="
+                                    color: #64748b;
+                                    font-size: 0.875rem;
+                                    font-style: italic;
+                                "
+                            >
+                                No holes yet. Tap on canvas to add.
+                            </p>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Canvas Area -->
+                <div class="canvas-area">
+                    <div class="canvas-toolbar">
+                        <button
+                            class="btn btn-primary"
+                            id="btn-save-to-project"
+                        >
+                            Save
+                        </button>
+                        <button class="btn btn-outline" id="btn-save-as">
+                            Save As
+                        </button>
+                        <button class="btn" id="btn-save">Export</button>
+                        <button class="btn" id="btn-load">Load</button>
+                        <button class="btn" id="btn-print">Print</button>
+                        <button class="btn" id="btn-clear">Clear All</button>
+                    </div>
+
+                    <canvas
+                        id="design-canvas"
+                        style="touch-action: pan-x pan-y"
+                    ></canvas>
+
+                    <div class="canvas-info">
+                        <p><strong>Instructions:</strong></p>
+                        <ul style="text-align: left; margin-top: 0.5rem">
+                            <li>
+                                🔧 Tap the floating Tools button (bottom-right)
+                                to open menu
+                            </li>
+                            <li>
+                                🎯 Select a tool, menu auto-closes for more
+                                canvas space
+                            </li>
+                            <li>✏️ Tap and drag on canvas to create holes</li>
+                            <li>
+                                ❌ Close menu by tapping outside or the header
+                            </li>
+                            <li>👆 Swipe down on header to close menu</li>
+                            <li>
+                                🔍 Use zoom controls (left side) for precision
+                                work
+                            </li>
+                            <li>
+                                📐 Canvas automatically fits your screen size
+                            </li>
+                            <li>🔄 Rotate device for landscape mode</li>
+                        </ul>
+                    </div>
                 </div>
+            </main>
+        </div>
 
-                <canvas id="design-canvas" style="touch-action: pan-x pan-y;"></canvas>
+        <!-- Scripts -->
+        <script src="/static/js/mobile.js"></script>
+        <script src="/static/js/designer.js"></script>
 
-                <div class="canvas-info">
-                    <p><strong>Instructions:</strong></p>
-                    <ul style="text-align: left; margin-top: 0.5rem;">
-                        <li>🔧 Tap the floating Tools button (bottom-right) to open menu</li>
-                        <li>🎯 Select a tool, menu auto-closes for more canvas space</li>
-                        <li>✏️ Tap and drag on canvas to create holes</li>
-                        <li>❌ Close menu by tapping outside or the header</li>
-                        <li>👆 Swipe down on header to close menu</li>
-                        <li>🔍 Use zoom controls (left side) for precision work</li>
-                        <li>📐 Canvas automatically fits your screen size</li>
-                        <li>🔄 Rotate device for landscape mode</li>
-                    </ul>
-                </div>
-            </div>
-        </main>
-    </div>
+        <script>
+            let debugVisible = true;
 
-    <!-- Scripts -->
-    <script src="/static/js/mobile.js"></script>
-    <script src="/static/js/designer.js"></script>
+            function toggleDebug() {
+                const debug = document.getElementById("debug-info");
+                debugVisible = !debugVisible;
+                debug.style.display = debugVisible ? "block" : "none";
+            }
 
-    <script>
-        let debugVisible = true;
+            function updateDebugInfo() {
+                const debugInfo = document.getElementById("debug-info");
+                const canvas = document.getElementById("design-canvas");
+                const sidebar = document.querySelector(".sidebar");
+                const fab = document.querySelector(".mobile-tools-fab");
+                const overlay = document.querySelector(
+                    ".mobile-sidebar-overlay",
+                );
+                const isMobile = window.innerWidth <= 768;
 
-        function toggleDebug() {
-            const debug = document.getElementById('debug-info');
-            debugVisible = !debugVisible;
-            debug.style.display = debugVisible ? 'block' : 'none';
-        }
-
-        function updateDebugInfo() {
-            const debugInfo = document.getElementById('debug-info');
-            const canvas = document.getElementById('design-canvas');
-            const isMobile = window.innerWidth <= 768;
-
-            debugInfo.innerHTML = `
+                debugInfo.innerHTML = `
 Screen: ${window.innerWidth}x${window.innerHeight}
-Mobile: ${isMobile ? 'YES' : 'NO'}
-Canvas: ${canvas ? canvas.width + 'x' + canvas.height : 'Not found'}
-Designer: ${window.designer ? 'Loaded' : 'Not loaded'}
-Mobile Enhancements: ${window.mobileEnhancements ? 'Active' : 'Inactive'}
-Touch: ${'ontouchstart' in window ? 'YES' : 'NO'}
+Mobile: ${isMobile ? "YES" : "NO"}
+Canvas: ${canvas ? canvas.width + "x" + canvas.height : "Not found"}
+Designer: ${window.designer ? "Loaded" : "Not loaded"}
+Mobile Enhancements: ${window.mobileEnhancements ? "Active" : "Inactive"}
+Sidebar: ${sidebar ? (sidebar.classList.contains("mobile-expanded") ? "OPEN" : "CLOSED") : "Not found"}
+FAB: ${fab ? "Found" : "Not found"}
+Overlay: ${overlay ? "Found" : "Not found"}
+Touch: ${"ontouchstart" in window ? "YES" : "NO"}
             `.trim();
-        }
-
-        // Initialize mobile enhancements
-        function initMobile() {
-            if (window.initMobileEnhancements) {
-                window.initMobileEnhancements();
-                console.log('Mobile enhancements initialized');
             }
-            updateDebugInfo();
-        }
 
-        // Initialize designer
-        function initDesigner() {
-            if (window.GlassDesigner) {
-                window.designer = new GlassDesigner('design-canvas');
-                console.log('Designer initialized');
-            }
-            updateDebugInfo();
-        }
-
-        // Tool button functionality
-        function setupToolButtons() {
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remove active from all buttons
-                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                    // Add active to clicked button
-                    this.classList.add('active');
-
-                    // Update designer tool if available
-                    if (window.designer) {
-                        window.designer.currentTool = this.getAttribute('data-tool') || 'select';
-                    }
-
-                    // Auto-collapse sidebar after tool selection (mobile UX)
-                    if (window.innerWidth <= 768 && window.mobileEnhancements && window.mobileEnhancements.toggleMobileSidebar) {
-                        setTimeout(() => {
-                            if (window.mobileEnhancements.mobileSidebarExpanded && window.mobileEnhancements.mobileSidebarExpanded()) {
-                                window.mobileEnhancements.toggleMobileSidebar();
-                            }
-                        }, 300);
-                    }
-
-                    console.log('Tool selected:', this.getAttribute('data-tool'));
-                    updateDebugInfo();
-                });
-            });
-        }
-
-        // Canvas resize handler
-        function handleResize() {
-            updateDebugInfo();
-            if (window.designer) {
-                setTimeout(() => {
-                    window.designer.setupCanvas();
-                    window.designer.render();
-                }, 100);
-            }
-        }
-
-        // Initialize everything
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded');
-            setupToolButtons();
-            updateDebugInfo();
-
-            // Try to initialize mobile enhancements
-            setTimeout(() => {
-                initMobile();
-                initDesigner();
-            }, 500);
-        });
-
-        window.addEventListener('load', function() {
-            console.log('Window loaded');
-            setTimeout(() => {
-                initMobile();
-                initDesigner();
+            // Initialize mobile enhancements
+            function initMobile() {
+                if (window.initMobileEnhancements) {
+                    window.initMobileEnhancements();
+                    console.log("Mobile enhancements initialized");
+                }
                 updateDebugInfo();
-            }, 1000);
-        });
+            }
 
-        window.addEventListener('resize', handleResize);
-        window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
+            // Initialize designer
+            function initDesigner() {
+                if (window.GlassDesigner) {
+                    window.designer = new GlassDesigner("design-canvas");
+                    console.log("Designer initialized");
+                }
+                updateDebugInfo();
+            }
 
-        // Update debug info every 2 seconds
-        setInterval(updateDebugInfo, 2000);
+            // Tool button functionality
+            function setupToolButtons() {
+                document.querySelectorAll(".tool-btn").forEach((btn) => {
+                    btn.addEventListener("click", function () {
+                        // Remove active from all buttons
+                        document
+                            .querySelectorAll(".tool-btn")
+                            .forEach((b) => b.classList.remove("active"));
+                        // Add active to clicked button
+                        this.classList.add("active");
 
-        // Test functions for manual testing
-        window.testMobileDesigner = {
-            toggleTool: function(tool) {
-                const btn = document.querySelector(`[data-tool="${tool}"]`);
-                if (btn) btn.click();
-            },
-            getCanvasSize: function() {
-                const canvas = document.getElementById('design-canvas');
-                return canvas ? `${canvas.width}x${canvas.height}` : 'Not found';
-            },
-            isMobile: function() {
-                return window.innerWidth <= 768;
-            },
-            refreshCanvas: function() {
+                        // Update designer tool if available
+                        if (window.designer) {
+                            window.designer.currentTool =
+                                this.getAttribute("data-tool") || "select";
+                        }
+
+                        // Auto-collapse sidebar after tool selection (mobile UX)
+                        if (
+                            window.innerWidth <= 768 &&
+                            window.mobileEnhancements &&
+                            window.mobileEnhancements.toggleMobileSidebar
+                        ) {
+                            setTimeout(() => {
+                                if (
+                                    window.mobileEnhancements
+                                        .mobileSidebarExpanded &&
+                                    window.mobileEnhancements.mobileSidebarExpanded()
+                                ) {
+                                    window.mobileEnhancements.toggleMobileSidebar();
+                                }
+                            }, 300);
+                        }
+
+                        console.log(
+                            "Tool selected:",
+                            this.getAttribute("data-tool"),
+                        );
+                        updateDebugInfo();
+                    });
+                });
+            }
+
+            // Canvas resize handler
+            function handleResize() {
+                updateDebugInfo();
                 if (window.designer) {
-                    window.designer.setupCanvas();
-                    window.designer.render();
-                }
-            },
-            toggleToolbar: function() {
-                if (window.mobileEnhancements && window.mobileEnhancements.toggleMobileSidebar) {
-                    window.mobileEnhancements.toggleMobileSidebar();
-                } else if (window.toggleMobileSidebar) {
-                    window.toggleMobileSidebar();
-                }
-            },
-            expandToolbar: function() {
-                const sidebar = document.querySelector('.sidebar');
-                if (sidebar && !sidebar.classList.contains('mobile-expanded')) {
-                    sidebar.classList.add('mobile-expanded');
-                    const fab = document.querySelector('.mobile-tools-fab');
-                    if (fab) fab.classList.add('hidden');
-                }
-            },
-            collapseToolbar: function() {
-                const sidebar = document.querySelector('.sidebar');
-                if (sidebar && sidebar.classList.contains('mobile-expanded')) {
-                    sidebar.classList.remove('mobile-expanded');
-                    const fab = document.querySelector('.mobile-tools-fab');
-                    if (fab) fab.classList.remove('hidden');
+                    setTimeout(() => {
+                        window.designer.setupCanvas();
+                        window.designer.render();
+                    }, 100);
                 }
             }
-        };
 
-        console.log('Mobile designer test page loaded');
-        console.log('Use testMobileDesigner object for testing');
-        console.log('📱 On mobile: Tap 🔧 button (bottom-right) to open tools menu');
-        console.log('Available test functions:');
-        console.log('  testMobileDesigner.toggleToolbar() - Toggle tool panel');
-        console.log('  testMobileDesigner.toggleTool("drill") - Select specific tool');
-        console.log('  testMobileDesigner.isMobile() - Check if in mobile mode');
-    </script>
-</body>
+            // Initialize everything
+            document.addEventListener("DOMContentLoaded", function () {
+                console.log("DOM loaded");
+                setupToolButtons();
+                updateDebugInfo();
+
+                // Try to initialize mobile enhancements
+                setTimeout(() => {
+                    initMobile();
+                    initDesigner();
+                }, 500);
+            });
+
+            window.addEventListener("load", function () {
+                console.log("Window loaded");
+                setTimeout(() => {
+                    initMobile();
+                    initDesigner();
+                    updateDebugInfo();
+                }, 1000);
+            });
+
+            window.addEventListener("resize", handleResize);
+            window.addEventListener("orientationchange", () =>
+                setTimeout(handleResize, 300),
+            );
+
+            // Update debug info every 2 seconds
+            setInterval(updateDebugInfo, 2000);
+
+            // Test functions for manual testing
+            window.testMobileDesigner = {
+                toggleTool: function (tool) {
+                    const btn = document.querySelector(`[data-tool="${tool}"]`);
+                    if (btn) btn.click();
+                },
+                getCanvasSize: function () {
+                    const canvas = document.getElementById("design-canvas");
+                    return canvas
+                        ? `${canvas.width}x${canvas.height}`
+                        : "Not found";
+                },
+                isMobile: function () {
+                    return window.innerWidth <= 768;
+                },
+                refreshCanvas: function () {
+                    if (window.designer) {
+                        window.designer.setupCanvas();
+                        window.designer.render();
+                    }
+                },
+                toggleToolbar: function () {
+                    if (
+                        window.mobileEnhancements &&
+                        window.mobileEnhancements.toggleMobileSidebar
+                    ) {
+                        window.mobileEnhancements.toggleMobileSidebar();
+                    } else if (window.toggleMobileSidebar) {
+                        window.toggleMobileSidebar();
+                    }
+                },
+                expandToolbar: function () {
+                    const sidebar = document.querySelector(".sidebar");
+                    if (
+                        sidebar &&
+                        !sidebar.classList.contains("mobile-expanded")
+                    ) {
+                        sidebar.classList.add("mobile-expanded");
+                        const fab = document.querySelector(".mobile-tools-fab");
+                        if (fab) fab.classList.add("hidden");
+                    }
+                },
+                collapseToolbar: function () {
+                    const sidebar = document.querySelector(".sidebar");
+                    if (
+                        sidebar &&
+                        sidebar.classList.contains("mobile-expanded")
+                    ) {
+                        sidebar.classList.remove("mobile-expanded");
+                        const fab = document.querySelector(".mobile-tools-fab");
+                        if (fab) fab.classList.remove("hidden");
+                    }
+                },
+                debugSidebar: function () {
+                    const sidebar = document.querySelector(".sidebar");
+                    const fab = document.querySelector(".mobile-tools-fab");
+                    const overlay = document.querySelector(
+                        ".mobile-sidebar-overlay",
+                    );
+                    console.log("Sidebar debug info:", {
+                        sidebar: !!sidebar,
+                        sidebarExpanded: sidebar
+                            ? sidebar.classList.contains("mobile-expanded")
+                            : false,
+                        fab: !!fab,
+                        fabHidden: fab
+                            ? fab.classList.contains("hidden")
+                            : false,
+                        overlay: !!overlay,
+                        overlayVisible: overlay
+                            ? overlay.style.visibility === "visible"
+                            : false,
+                        mobileEnhancements: !!window.mobileEnhancements,
+                    });
+                    return {
+                        sidebar: !!sidebar,
+                        fab: !!fab,
+                        overlay: !!overlay,
+                        expanded: sidebar
+                            ? sidebar.classList.contains("mobile-expanded")
+                            : false,
+                    };
+                },
+                testOverlayClick: function () {
+                    const overlay = document.querySelector(
+                        ".mobile-sidebar-overlay",
+                    );
+                    if (overlay) {
+                        console.log("Simulating overlay click");
+                        overlay.click();
+                    } else {
+                        console.log("Overlay not found");
+                    }
+                },
+                testFabClick: function () {
+                    const fab = document.querySelector(".mobile-tools-fab");
+                    if (fab) {
+                        console.log("Simulating FAB click");
+                        fab.click();
+                    } else {
+                        console.log("FAB not found");
+                    }
+                },
+                testHeaderClick: function () {
+                    const header = document.querySelector(".sidebar h3");
+                    if (header) {
+                        console.log("Simulating header click");
+                        header.click();
+                    } else {
+                        console.log("Header not found");
+                    }
+                },
+            };
+
+            console.log("Mobile designer test page loaded");
+            console.log("Use testMobileDesigner object for testing");
+            console.log(
+                "📱 On mobile: Tap 🔧 button (bottom-right) to open tools menu",
+            );
+            console.log("Available test functions:");
+            console.log(
+                "  testMobileDesigner.toggleToolbar() - Toggle tool panel",
+            );
+            console.log(
+                "  testMobileDesigner.debugSidebar() - Debug sidebar state",
+            );
+            console.log(
+                "  testMobileDesigner.testOverlayClick() - Test overlay click",
+            );
+            console.log("  testMobileDesigner.testFabClick() - Test FAB click");
+            console.log(
+                "  testMobileDesigner.testHeaderClick() - Test header click",
+            );
+            console.log(
+                '  testMobileDesigner.toggleTool("drill") - Select specific tool',
+            );
+            console.log(
+                "  testMobileDesigner.isMobile() - Check if in mobile mode",
+            );
+        </script>
+    </body>
 </html>
