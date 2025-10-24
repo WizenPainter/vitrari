@@ -108,7 +108,7 @@ class MobileEnhancements {
         <strong>Mobile Designer</strong>
       </div>
       <div style="font-size: 0.9rem; line-height: 1.3; margin-bottom: 0.75rem;">
-        Tools are at the bottom! Tap <strong>"Tools"</strong> header to expand the tool menu upwards.
+        Tap the <strong>🔧 Tools</strong> button (bottom-right) to open the tool menu. Tap outside or the header to close it.
       </div>
       <button onclick="this.parentElement.remove()" style="
         background: var(--primary);
@@ -1028,29 +1028,69 @@ class MobileEnhancements {
   setupMobileSidebar(sidebar) {
     console.log("Setting up mobile slide-up sidebar");
 
-    // Add slide-up functionality
-    const sidebarHeader = sidebar.querySelector("h3");
-    const sidebarHandle = sidebar.querySelector("::before") || sidebarHeader;
-
     let isExpanded = false;
+    let fab = null;
+    let overlay = null;
+
+    // Create floating action button
+    fab = document.createElement("button");
+    fab.className = "mobile-tools-fab";
+    fab.innerHTML = "🔧";
+    fab.setAttribute("aria-label", "Open Tools");
+    document.body.appendChild(fab);
+
+    // Create overlay for closing sidebar
+    overlay = document.createElement("div");
+    overlay.className = "mobile-sidebar-overlay";
+    document.body.appendChild(overlay);
 
     const toggleSidebar = () => {
       isExpanded = !isExpanded;
+
       if (isExpanded) {
         sidebar.classList.add("mobile-expanded");
+        fab.classList.add("hidden");
+        overlay.classList.add("active");
+        fab.innerHTML = "✕";
+        fab.setAttribute("aria-label", "Close Tools");
       } else {
         sidebar.classList.remove("mobile-expanded");
+        fab.classList.remove("hidden");
+        overlay.classList.remove("active");
+        fab.innerHTML = "🔧";
+        fab.setAttribute("aria-label", "Open Tools");
       }
       console.log("Sidebar toggled:", isExpanded ? "expanded" : "collapsed");
     };
 
-    // Make header clickable to expand/collapse
+    // FAB click handler
+    fab.addEventListener("click", toggleSidebar);
+    fab.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      toggleSidebar();
+    });
+
+    // Overlay click to close
+    overlay.addEventListener("click", () => {
+      if (isExpanded) {
+        toggleSidebar();
+      }
+    });
+
+    // Make sidebar header clickable to close when expanded
+    const sidebarHeader = sidebar.querySelector("h3");
     if (sidebarHeader) {
       sidebarHeader.style.cursor = "pointer";
-      sidebarHeader.addEventListener("click", toggleSidebar);
+      sidebarHeader.addEventListener("click", () => {
+        if (isExpanded) {
+          toggleSidebar();
+        }
+      });
       sidebarHeader.addEventListener("touchend", (e) => {
-        e.preventDefault();
-        toggleSidebar();
+        if (isExpanded) {
+          e.preventDefault();
+          toggleSidebar();
+        }
       });
     }
 
@@ -1060,8 +1100,10 @@ class MobileEnhancements {
     let isDragging = false;
 
     sidebar.addEventListener("touchstart", (e) => {
-      startY = e.touches[0].clientY;
-      isDragging = true;
+      if (e.target === sidebarHeader || sidebarHeader.contains(e.target)) {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+      }
     }, { passive: false });
 
     sidebar.addEventListener("touchmove", (e) => {
@@ -1070,11 +1112,8 @@ class MobileEnhancements {
       currentY = e.touches[0].clientY;
       const deltaY = startY - currentY;
 
-      // Only allow swiping up to expand, down to collapse
-      if (deltaY > 50 && !isExpanded) {
-        toggleSidebar();
-        isDragging = false;
-      } else if (deltaY < -50 && isExpanded) {
+      // Only allow swiping down to collapse when expanded
+      if (deltaY < -50 && isExpanded) {
         toggleSidebar();
         isDragging = false;
       }
@@ -1084,16 +1123,11 @@ class MobileEnhancements {
       isDragging = false;
     });
 
-    // Close sidebar when clicking outside
-    document.addEventListener("click", (e) => {
-      if (isExpanded && !sidebar.contains(e.target)) {
-        toggleSidebar();
-      }
-    });
-
-    // Store reference for other methods
+    // Store references for other methods
     this.mobileSidebarExpanded = () => isExpanded;
     this.toggleMobileSidebar = toggleSidebar;
+    this.mobileSidebarFab = fab;
+    this.mobileSidebarOverlay = overlay;
   }
 
   setupMobileToolList(sidebar) {
@@ -1136,7 +1170,7 @@ class MobileEnhancements {
             if (this.toggleMobileSidebar) {
               this.toggleMobileSidebar();
             }
-          }, 500); // Small delay to show selection feedback
+          }, 300); // Small delay to show selection feedback
         }
       });
     });
