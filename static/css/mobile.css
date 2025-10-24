@@ -816,7 +816,23 @@
     }
 
     /* Responsive text scaling */
-    .sidebar h3 {
+    .sidebar h3:first-of-type {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.75rem !important;
+        padding: 1.75rem 3rem 0.75rem 1rem !important;
+        position: sticky !important;
+        top: 0 !important;
+        background: var(--surface) !important;
+        border-bottom: 1px solid var(--border) !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        display: block !important;
+        user-select: none !important;
+        position: relative !important;
+    }
+
+    /* Other h3 headers (non-clickable) */
+    .sidebar h3:not(:first-of-type) {
         font-size: 1.1rem !important;
         margin-bottom: 0.75rem !important;
         padding: 1.75rem 1rem 0.75rem !important;
@@ -825,10 +841,8 @@
         background: var(--surface) !important;
         border-bottom: 1px solid var(--border) !important;
         font-weight: 600 !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
+        cursor: default !important;
+        display: block !important;
         user-select: none !important;
     }
 
@@ -837,10 +851,13 @@
         font-size: 1.1rem !important;
         color: var(--primary) !important;
         transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-        margin-left: auto !important;
         font-weight: bold !important;
-        opacity: 0 !important;
-        transform: scale(0.8) !important;
+        opacity: 1 !important;
+        transform: scale(1) !important;
+        position: absolute !important;
+        right: 0.5rem !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
     }
 
     .sidebar.mobile-expanded h3:first-of-type::after {
