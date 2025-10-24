@@ -194,21 +194,26 @@
                         <button
                             class="btn btn-primary"
                             id="btn-save-to-project"
+                            data-i18n="save"
                         >
                             Save
                         </button>
-                        <button class="btn btn-outline" id="btn-save-as">
+                        <button
+                            class="btn btn-outline"
+                            id="btn-save-as"
+                            data-i18n="saveAs"
+                        >
                             Save As
                         </button>
                         <button
-                            class="btn"
+                            class="btn production-only desktop-only"
                             id="btn-save"
                             data-i18n="saveDesign"
                         >
                             Export to File
                         </button>
                         <button
-                            class="btn"
+                            class="btn production-only desktop-only"
                             id="btn-load"
                             data-i18n="loadDesign"
                         >
@@ -368,6 +373,38 @@
         <script src="/static/js/app.js"></script>
         <script src="/static/js/designer.js"></script>
         <script>
+            // Check production environment and hide/show elements accordingly
+            function initializeEnvironment() {
+                const isProduction =
+                    window.location.hostname !== "localhost" &&
+                    window.location.hostname !== "127.0.0.1" &&
+                    !window.location.hostname.includes("local") &&
+                    !window.location.port;
+
+                const productionOnlyElements =
+                    document.querySelectorAll(".production-only");
+                productionOnlyElements.forEach((element) => {
+                    if (!isProduction) {
+                        element.style.display = "none";
+                    }
+                });
+            }
+
+            // Handle mobile-specific UI adjustments
+            function handleMobileView() {
+                const desktopOnlyElements =
+                    document.querySelectorAll(".desktop-only");
+                if (window.innerWidth <= 768) {
+                    desktopOnlyElements.forEach((element) => {
+                        element.style.display = "none";
+                    });
+                } else {
+                    desktopOnlyElements.forEach((element) => {
+                        element.style.display = "";
+                    });
+                }
+            }
+
             function toggleMobileSidebar() {
                 const sidebar = document.querySelector(".sidebar");
                 const toggle = document.getElementById("mobile-sidebar-toggle");
@@ -402,6 +439,7 @@
 
             // Initialize mobile sidebar state
             function initializeMobile() {
+                handleMobileView();
                 const sidebar = document.querySelector(".sidebar");
                 const toggle = document.getElementById("mobile-sidebar-toggle");
                 const closeBtn = document.querySelector(".mobile-close-btn");
@@ -439,9 +477,13 @@
             }
 
             window.addEventListener("resize", initializeMobile);
-            window.addEventListener("load", initializeMobile);
+            window.addEventListener("load", () => {
+                initializeEnvironment();
+                initializeMobile();
+            });
 
             // Initialize immediately
+            initializeEnvironment();
             initializeMobile();
         </script>
     </body>

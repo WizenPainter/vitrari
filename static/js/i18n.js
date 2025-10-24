@@ -41,6 +41,8 @@ const translations = {
     depth: "Depth",
 
     // Buttons
+    save: "Save",
+    saveAs: "Save As",
     saveDesign: "Save Design",
     loadDesign: "Load Design",
     printDesign: "Print Design",
@@ -185,6 +187,8 @@ const translations = {
     depth: "Profundidad",
 
     // Botones
+    save: "Guardar",
+    saveAs: "Guardar como",
     saveDesign: "Guardar Diseño",
     loadDesign: "Cargar Diseño",
     printDesign: "Imprimir Diseño",
