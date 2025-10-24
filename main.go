@@ -53,7 +53,9 @@ func main() {
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/designer", handleDesigner)
 	http.HandleFunc("/optimizer", handleOptimizer)
+	http.HandleFunc("/projects", handleProjects)
 	http.HandleFunc("/projects/", handleProjectDetail)
+	http.HandleFunc("/debug-mobile", handleDebugMobile)
 
 	// API routes
 	http.HandleFunc("/api/health", handleHealth)
@@ -154,6 +156,22 @@ func handleOptimizer(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Template error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func handleProjects(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Projects",
+		"Page":  "projects",
+	}
+
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+		log.Printf("Template error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func handleDebugMobile(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "debug-mobile.html")
 }
 
 func handleProjectDetail(w http.ResponseWriter, r *http.Request) {

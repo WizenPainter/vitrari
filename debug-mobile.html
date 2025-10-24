@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>Mobile Debug - Glass Optimizer</title>
+        <link rel="stylesheet" href="/static/css/main.css" />
+        <style>
+            .debug-section {
+                margin: 1rem 0;
+                padding: 1rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                background: white;
+            }
+            .debug-title {
+                font-size: 1.125rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+                color: var(--primary-color, #2563eb);
+            }
+            .debug-info {
+                font-family: monospace;
+                font-size: 0.875rem;
+                background: #f9fafb;
+                padding: 0.5rem;
+                border-radius: 4px;
+                border: 1px solid #e5e7eb;
+            }
+            .status-indicator {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                margin-right: 8px;
+            }
+            .status-success {
+                background-color: #16a34a;
+            }
+            .status-warning {
+                background-color: #f59e0b;
+            }
+            .status-error {
+                background-color: #dc2626;
+            }
+            .test-button {
+                display: block;
+                width: 100%;
+                margin: 0.5rem 0;
+                padding: 12px;
+                font-size: 16px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background: #f9fafb;
+                cursor: pointer;
+                min-height: 44px;
+            }
+            .test-button:active {
+                background: #e5e7eb;
+                transform: scale(0.98);
+            }
+            #log-area {
+                height: 200px;
+                overflow-y: auto;
+                background: #1f2937;
+                color: #f9fafb;
+                padding: 0.5rem;
+                font-family: monospace;
+                font-size: 0.75rem;
+                border-radius: 4px;
+                white-space: pre-wrap;
+            }
+            .force-mobile {
+                width: 375px !important;
+                max-width: 375px !important;
+            }
+            .language-selector {
+                display: flex;
+                gap: 8px;
+                margin-left: 1rem;
+            }
+            .lang-btn {
+                padding: 6px 12px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                color: white;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .lang-btn.active {
+                background: rgba(255, 255, 255, 0.2);
+            }
+        </style>
+        <link rel="stylesheet" href="/static/css/mobile.css" />
+    </head>
+    <body>
+        <!-- Test Header Structure (Same as layout.html) -->
+        <header
+            class="app-header"
+            style="
+                background: #2563eb;
+                color: white;
+                padding: 0.75rem 1rem;
+                position: relative;
+            "
+        >
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-lg">
+                    <h1 class="nav-brand" style="margin: 0; font-size: 1.25rem">
+                        <a href="/" style="color: white; text-decoration: none">
+                            Glass Optimizer Debug
+                        </a>
+                    </h1>
+                </div>
+                <nav class="flex items-center main-nav">
+                    <ul
+                        class="nav-links"
+                        style="
+                            display: flex;
+                            list-style: none;
+                            margin: 0;
+                            padding: 0;
+                            gap: 1rem;
+                        "
+                    >
+                        <li>
+                            <a
+                                href="/"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.5rem;
+                                "
+                                >Home</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                href="/designer"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.5rem;
+                                "
+                                >Designer</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                href="/optimizer"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.5rem;
+                                "
+                                >Optimizer</a
+                            >
+                        </li>
+                        <li>
+                            <a
+                                href="/projects"
+                                class="nav-link"
+                                style="
+                                    color: white;
+                                    text-decoration: none;
+                                    padding: 0.5rem;
+                                "
+                                >Projects</a
+                            >
+                        </li>
+                    </ul>
+                </nav>
+                <div class="language-selector">
+                    <button class="lang-btn" data-lang="en">EN</button>
+                    <button class="lang-btn active" data-lang="es">ES</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="app-container" style="padding: 1rem">
+            <h1>🔍 Mobile Debug Test Page</h1>
+            <p>
+                This page helps debug mobile menu issues with the new sidebar
+                implementation.
+            </p>
+
+            <!-- Device Info -->
+            <div class="debug-section">
+                <div class="debug-title">
+                    <span class="status-indicator status-success"></span>
+                    Device Information
+                </div>
+                <div class="debug-info" id="device-info">
+                    Loading device info...
+                </div>
+            </div>
+
+            <!-- DOM Elements Check -->
+            <div class="debug-section">
+                <div class="debug-title">
+                    <span class="status-indicator" id="dom-status"></span>
+                    DOM Elements Check
+                </div>
+                <div class="debug-info" id="dom-info">
+                    Checking DOM elements...
+                </div>
+            </div>
+
+            <!-- Mobile Enhancements Status -->
+            <div class="debug-section">
+                <div class="debug-title">
+                    <span class="status-indicator" id="mobile-status"></span>
+                    Mobile Enhancements Status
+                </div>
+                <div class="debug-info" id="mobile-info">
+                    Checking mobile enhancements...
+                </div>
+            </div>
+
+            <!-- Manual Controls -->
+            <div class="debug-section">
+                <div class="debug-title">
+                    <span class="status-indicator status-warning"></span>
+                    Manual Controls
+                </div>
+                <button class="test-button" onclick="manualInit()">
+                    Force Initialize Mobile
+                </button>
+                <button class="test-button" onclick="toggleMobileMode()">
+                    Toggle Mobile Mode
+                </button>
+                <button class="test-button" onclick="showHamburger()">
+                    Force Show Hamburger
+                </button>
+                <button class="test-button" onclick="testMobileSidebar()">
+                    Test Mobile Sidebar
+                </button>
+                <button class="test-button" onclick="clearLogs()">
+                    Clear Console Logs
+                </button>
+            </div>
+
+            <!-- Console Logs -->
+            <div class="debug-section">
+                <div class="debug-title">
+                    <span class="status-indicator status-success"></span>
+                    Console Logs
+                </div>
+                <div id="log-area"></div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="/static/js/i18n.js"></script>
+        <script src="/static/js/mobile.js"></script>
+        <script src="/static/js/app.js"></script>
+
+        <script>
+            let originalLog = console.log;
+            let originalWarn = console.warn;
+            let originalError = console.error;
+            let logs = [];
+
+            // Intercept console logs
+            function interceptConsole() {
+                console.log = function (...args) {
+                    logs.push({
+                        type: "log",
+                        message: args.join(" "),
+                        time: new Date().toLocaleTimeString(),
+                    });
+                    updateLogArea();
+                    originalLog.apply(console, args);
+                };
+
+                console.warn = function (...args) {
+                    logs.push({
+                        type: "warn",
+                        message: args.join(" "),
+                        time: new Date().toLocaleTimeString(),
+                    });
+                    updateLogArea();
+                    originalWarn.apply(console, args);
+                };
+
+                console.error = function (...args) {
+                    logs.push({
+                        type: "error",
+                        message: args.join(" "),
+                        time: new Date().toLocaleTimeString(),
+                    });
+                    updateLogArea();
+                    originalError.apply(console, args);
+                };
+            }
+
+            function updateLogArea() {
+                const logArea = document.getElementById("log-area");
+                logArea.innerHTML = logs
+                    .map((log) => {
+                        const color =
+                            log.type === "error"
+                                ? "#ef4444"
+                                : log.type === "warn"
+                                  ? "#f59e0b"
+                                  : "#10b981";
+                        return `<div style="color: ${color};">[${log.time}] ${log.type.toUpperCase()}: ${log.message}</div>`;
+                    })
+                    .join("\n");
+                logArea.scrollTop = logArea.scrollHeight;
+            }
+
+            function updateDeviceInfo() {
+                const deviceInfo = document.getElementById("device-info");
+                const isMobile = window.innerWidth <= 768;
+                const isTouch = "ontouchstart" in window;
+
+                deviceInfo.innerHTML = `
+Screen Width: ${window.innerWidth}px
+Screen Height: ${window.innerHeight}px
+Device Pixel Ratio: ${window.devicePixelRatio}
+Touch Support: ${isTouch ? "✓ Yes" : "✗ No"}
+Mobile Detection: ${isMobile ? "✓ Mobile" : "✗ Desktop"}
+User Agent: ${navigator.userAgent}
+Document Ready State: ${document.readyState}
+            `.trim();
+            }
+
+            function updateDOMInfo() {
+                const domInfo = document.getElementById("dom-info");
+                const domStatus = document.getElementById("dom-status");
+
+                const header = document.querySelector(".app-header");
+                const nav = document.querySelector(".app-header nav");
+                const toggle = document.querySelector(".mobile-menu-toggle");
+                const mobileSidebar = document.querySelector(".mobile-sidebar");
+                const langSelector =
+                    document.querySelector(".language-selector");
+
+                const headerFound = !!header;
+                const navFound = !!nav;
+                const toggleFound = !!toggle;
+                const sidebarFound = !!mobileSidebar;
+                const langFound = !!langSelector;
+
+                const allFound = headerFound && navFound;
+
+                domStatus.className = allFound
+                    ? "status-indicator status-success"
+                    : "status-indicator status-error";
+
+                domInfo.innerHTML = `
+Header Element: ${headerFound ? "✓ Found" : "✗ Not Found"} ${header ? `(${header.className})` : ""}
+Nav Element: ${navFound ? "✓ Found" : "✗ Not Found"} ${nav ? `(${nav.className})` : ""}
+Toggle Element: ${toggleFound ? "✓ Found" : "✗ Not Found"} ${toggle ? `(${toggle.className})` : ""}
+Mobile Sidebar: ${sidebarFound ? "✓ Found" : "✗ Not Found"} ${mobileSidebar ? `(${mobileSidebar.className})` : ""}
+Language Selector: ${langFound ? "✓ Found" : "✗ Not Found"} ${langSelector ? `(${langSelector.className})` : ""}
+Nav Links Count: ${nav ? nav.querySelectorAll(".nav-link").length : 0}
+            `.trim();
+            }
+
+            function updateMobileInfo() {
+                const mobileInfo = document.getElementById("mobile-info");
+                const mobileStatus = document.getElementById("mobile-status");
+
+                const hasMobileEnhancements = !!window.mobileEnhancements;
+                const hasToggleFunction = !!window.toggleMobileMenu;
+                const hasInitFunction = !!window.initMobileEnhancements;
+
+                mobileStatus.className = hasMobileEnhancements
+                    ? "status-indicator status-success"
+                    : "status-indicator status-error";
+
+                mobileInfo.innerHTML = `
+Mobile Enhancements: ${hasMobileEnhancements ? "✓ Loaded" : "✗ Not Loaded"}
+Toggle Function: ${hasToggleFunction ? "✓ Available" : "✗ Not Available"}
+Init Function: ${hasInitFunction ? "✓ Available" : "✗ Not Available"}
+Sidebar Open: ${window.mobileEnhancements?.sidebarOpen || false}
+Menu Initialized: ${window.mobileEnhancements?.menuInitialized || false}
+            `.trim();
+            }
+
+            function manualInit() {
+                console.log("Manual initialization triggered");
+                if (window.initMobileEnhancements) {
+                    window.initMobileEnhancements();
+                } else {
+                    console.error(
+                        "initMobileEnhancements function not available",
+                    );
+                }
+                setTimeout(updateAll, 500);
+            }
+
+            function toggleMobileMode() {
+                const body = document.body;
+                if (body.classList.contains("force-mobile")) {
+                    body.classList.remove("force-mobile");
+                    body.style.maxWidth = "";
+                    console.log("Disabled force mobile mode");
+                } else {
+                    body.classList.add("force-mobile");
+                    body.style.maxWidth = "375px";
+                    console.log("Enabled force mobile mode");
+                }
+
+                // Trigger resize event
+                window.dispatchEvent(new Event("resize"));
+                setTimeout(updateAll, 500);
+            }
+
+            function showHamburger() {
+                const toggle = document.querySelector(".mobile-menu-toggle");
+                if (toggle) {
+                    toggle.style.display = "flex";
+                    toggle.style.visibility = "visible";
+                    console.log("Force showed hamburger menu");
+                } else {
+                    console.error("Hamburger menu toggle not found");
+                    // Try to create one manually
+                    const header = document.querySelector(".app-header");
+                    if (header) {
+                        const newToggle = document.createElement("button");
+                        newToggle.className = "mobile-menu-toggle";
+                        newToggle.innerHTML = "☰";
+                        newToggle.style.cssText = `
+                        display: flex !important;
+                        position: absolute;
+                        top: 50%;
+                        right: 1rem;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        color: white;
+                        font-size: 1.5rem;
+                        padding: 0.5rem;
+                        cursor: pointer;
+                        min-height: 44px;
+                        min-width: 44px;
+                        z-index: 1001;
+                    `;
+                        header.appendChild(newToggle);
+                        console.log("Created hamburger menu manually");
+                    } else {
+                        console.error("Header not found to add hamburger menu");
+                    }
+                }
+                setTimeout(updateAll, 100);
+            }
+
+            function testMobileSidebar() {
+                console.log("Testing mobile sidebar functionality");
+                if (window.mobileEnhancements) {
+                    if (window.mobileEnhancements.sidebarOpen) {
+                        console.log("Closing mobile sidebar");
+                        window.mobileEnhancements.closeMobileMenu();
+                    } else {
+                        console.log("Opening mobile sidebar");
+                        window.mobileEnhancements.openMobileMenu();
+                    }
+                } else {
+                    console.error("Mobile enhancements not available");
+                }
+                setTimeout(updateAll, 500);
+            }
+
+            function clearLogs() {
+                logs = [];
+                updateLogArea();
+            }
+
+            function updateAll() {
+                updateDeviceInfo();
+                updateDOMInfo();
+                updateMobileInfo();
+            }
+
+            // Initialize console interception
+            interceptConsole();
+
+            // Initial update
+            document.addEventListener("DOMContentLoaded", function () {
+                console.log("Debug page DOMContentLoaded fired");
+                updateAll();
+
+                // Update every 2 seconds
+                setInterval(updateAll, 2000);
+            });
+
+            // Update on resize
+            window.addEventListener("resize", function () {
+                console.log(
+                    "Resize event fired:",
+                    window.innerWidth + "x" + window.innerHeight,
+                );
+                setTimeout(updateAll, 100);
+            });
+
+            // Initial update if DOM is already ready
+            if (
+                document.readyState === "complete" ||
+                document.readyState === "interactive"
+            ) {
+                console.log("DOM already ready, updating immediately");
+                updateAll();
+                // Force mobile initialization
+                setTimeout(() => {
+                    if (window.initMobileEnhancements) {
+                        console.log("Force initializing mobile enhancements");
+                        window.initMobileEnhancements();
+                    }
+                }, 500);
+            }
+
+            // Also try after all scripts are loaded
+            window.addEventListener("load", function () {
+                setTimeout(() => {
+                    if (window.initMobileEnhancements) {
+                        console.log(
+                            "Post-load initializing mobile enhancements",
+                        );
+                        window.initMobileEnhancements();
+                    }
+                    updateAll();
+                }, 1000);
+            });
+        </script>
+    </body>
+</html>

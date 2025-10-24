@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Navigation -->
-                <nav class="flex items-center">
+                <nav class="flex items-center main-nav">
                     <ul class="nav-links">
                         <li>
                             <a href="/" class="nav-link {{if eq .Page "home"}}active{{end}}">
@@ -132,12 +132,7 @@
                     </div>
                 </nav>
 
-                <!-- Mobile Menu Toggle -->
-                <button class="btn-ghost btn-sm md:hidden" onclick="toggleMobileMenu()">
-                    <svg width="20" height="20" fill="currentColor">
-                        <path d="M3 6h18M3 12h18M3 18h18"/>
-                    </svg>
-                </button>
+                <!-- Mobile Menu Toggle will be added by mobile.js -->
             </div>
         </header>
 
@@ -403,11 +398,14 @@
             window.glassApp.emit('units:changed', units);
         }
 
-        // Mobile menu toggle
+        // Mobile menu toggle - handled by mobile.js
         function toggleMobileMenu() {
-            const sidebar = document.querySelector('.sidebar');
-            if (sidebar) {
-                sidebar.classList.toggle('open');
+            if (window.mobileEnhancements) {
+                if (window.mobileEnhancements.sidebarOpen) {
+                    window.mobileEnhancements.closeMobileMenu();
+                } else {
+                    window.mobileEnhancements.openMobileMenu();
+                }
             }
         }
 

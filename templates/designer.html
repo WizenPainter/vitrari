@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{{.Title}} - Glass Optimizer</title>
         <link rel="stylesheet" href="/static/css/style.css" />
+        <link rel="stylesheet" href="/static/css/mobile.css" />
     </head>
     <body>
         <div class="container">
@@ -42,7 +43,35 @@
 
             <main class="designer-layout">
                 <aside class="sidebar">
-                    <h3 data-i18n="tools">Tools</h3>
+                    <div
+                        class="mobile-sidebar-header"
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 1rem;
+                            border-bottom: 1px solid var(--border);
+                            background: var(--surface);
+                        "
+                    >
+                        <h3 data-i18n="tools" style="margin: 0">Tools</h3>
+                        <button
+                            class="mobile-close-btn"
+                            onclick="toggleMobileSidebar()"
+                            style="
+                                display: none;
+                                background: none;
+                                border: none;
+                                font-size: 1.5rem;
+                                cursor: pointer;
+                                padding: 0.25rem;
+                                min-height: 44px;
+                                min-width: 44px;
+                            "
+                        >
+                            ✕
+                        </button>
+                    </div>
                     <div class="tool-list">
                         <button
                             class="tool-btn active"
@@ -309,8 +338,111 @@
             </footer>
         </div>
 
+        <!-- Mobile sidebar toggle button -->
+        <button
+            id="mobile-sidebar-toggle"
+            class="mobile-sidebar-toggle"
+            onclick="toggleMobileSidebar()"
+            style="
+                display: none;
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 56px;
+                height: 56px;
+                font-size: 1.25rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                cursor: pointer;
+            "
+        >
+            🔧
+        </button>
+
         <script src="/static/js/i18n.js"></script>
+        <script src="/static/js/mobile.js"></script>
         <script src="/static/js/app.js"></script>
         <script src="/static/js/designer.js"></script>
+        <script>
+            function toggleMobileSidebar() {
+                const sidebar = document.querySelector(".sidebar");
+                const toggle = document.getElementById("mobile-sidebar-toggle");
+                const closeBtn = document.querySelector(".mobile-close-btn");
+
+                if (window.innerWidth <= 768) {
+                    const isVisible = sidebar.classList.contains("mobile-open");
+
+                    if (isVisible) {
+                        sidebar.classList.remove("mobile-open");
+                        sidebar.style.transform = "translateY(100%)";
+                        toggle.style.display = "block";
+                        closeBtn.style.display = "none";
+                    } else {
+                        sidebar.classList.add("mobile-open");
+                        sidebar.style.transform = "translateY(0)";
+                        sidebar.style.position = "fixed";
+                        sidebar.style.bottom = "0";
+                        sidebar.style.left = "0";
+                        sidebar.style.right = "0";
+                        sidebar.style.zIndex = "999";
+                        sidebar.style.maxHeight = "70vh";
+                        sidebar.style.transition = "transform 0.3s ease";
+                        sidebar.style.background = "var(--surface)";
+                        sidebar.style.borderTop = "2px solid var(--border)";
+                        sidebar.style.boxShadow = "0 -4px 20px rgba(0,0,0,0.3)";
+                        toggle.style.display = "none";
+                        closeBtn.style.display = "block";
+                    }
+                }
+            }
+
+            // Initialize mobile sidebar state
+            function initializeMobile() {
+                const sidebar = document.querySelector(".sidebar");
+                const toggle = document.getElementById("mobile-sidebar-toggle");
+                const closeBtn = document.querySelector(".mobile-close-btn");
+
+                if (window.innerWidth <= 768) {
+                    toggle.style.display = "block";
+                    sidebar.style.transform = "translateY(100%)";
+                    sidebar.style.transition = "transform 0.3s ease";
+                    closeBtn.style.display = "none";
+
+                    // Enable touch handling
+                    toggle.style.webkitTapHighlightColor = "transparent";
+                    toggle.style.userSelect = "none";
+                    toggle.style.touchAction = "manipulation";
+
+                    closeBtn.style.webkitTapHighlightColor = "transparent";
+                    closeBtn.style.userSelect = "none";
+                    closeBtn.style.touchAction = "manipulation";
+                } else {
+                    toggle.style.display = "none";
+                    closeBtn.style.display = "none";
+                    sidebar.style.transform = "";
+                    sidebar.style.position = "";
+                    sidebar.style.bottom = "";
+                    sidebar.style.left = "";
+                    sidebar.style.right = "";
+                    sidebar.style.zIndex = "";
+                    sidebar.style.maxHeight = "";
+                    sidebar.style.transition = "";
+                    sidebar.style.background = "";
+                    sidebar.style.borderTop = "";
+                    sidebar.style.boxShadow = "";
+                    sidebar.classList.remove("mobile-open");
+                }
+            }
+
+            window.addEventListener("resize", initializeMobile);
+            window.addEventListener("load", initializeMobile);
+
+            // Initialize immediately
+            initializeMobile();
+        </script>
     </body>
 </html>

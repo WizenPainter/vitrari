@@ -1,7 +1,36 @@
 /**
  * Glass Optimizer - Projects Management
- * Handles project creation, editing, deletion, and hierarchical display
+ * Handles project creation, editing, and organization
  */
+
+// Utility function to wait for DOM element to be available
+function waitForElement(id, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const element = document.getElementById(id);
+    if (element) {
+      resolve(element);
+      return;
+    }
+
+    const observer = new MutationObserver((mutations, obs) => {
+      const element = document.getElementById(id);
+      if (element) {
+        obs.disconnect();
+        resolve(element);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    setTimeout(() => {
+      observer.disconnect();
+      reject(new Error(`Element #${id} not found within ${timeout}ms`));
+    }, timeout);
+  });
+}
 
 class ProjectManager {
   constructor() {
@@ -14,10 +43,23 @@ class ProjectManager {
     this.init();
   }
 
-  init() {
+  async init() {
     this.setupEventListeners();
-    this.loadProjects();
-    this.loadDesigns();
+
+    // Wait for DOM elements to be ready before loading data
+    try {
+      await waitForElement("projects-tree");
+      this.loadProjects();
+      this.loadDesigns();
+    } catch (error) {
+      console.error("DOM element not ready:", error);
+      // Fallback to setTimeout approach
+      setTimeout(() => {
+        this.loadProjects();
+        this.loadDesigns();
+      }, 100);
+    }
+
     this.handleUrlParameters();
     this.setupDocumentClickHandler();
     this.setupLanguageChangeListener();
@@ -104,7 +146,7 @@ class ProjectManager {
       const response = await fetch("/api/projects?tree=true");
       const data = await response.json();
       this.projects = data.projects || [];
-      this.renderProjectsTree();
+      await this.renderProjectsTree();
     } catch (error) {
       console.error("Failed to load projects:", error);
       toast.error(
@@ -125,8 +167,29 @@ class ProjectManager {
     }
   }
 
-  renderProjectsTree() {
-    const container = document.getElementById("projects-tree");
+  async renderProjectsTree() {
+    let container = document.getElementById("projects-tree");
+
+    // Add null check for container element with retry mechanism
+    if (!container) {
+      console.warn("projects-tree element not found in DOM, waiting...");
+      try {
+        container = await waitForElement("projects-tree", 3000);
+        console.log("Successfully found projects-tree element after waiting");
+      } catch (error) {
+        console.error(
+          "Failed to find projects-tree element after 3 seconds:",
+          error,
+        );
+        console.error(
+          "Available elements with 'project' in ID:",
+          Array.from(document.querySelectorAll("[id*='project']")).map(
+            (el) => el.id,
+          ),
+        );
+        return;
+      }
+    }
 
     if (!this.projects || this.projects.length === 0) {
       container.innerHTML = `
@@ -618,6 +681,34 @@ class ProjectManager {
 
 // Initialize project manager when DOM is ready
 let projectManager;
-document.addEventListener("DOMContentLoaded", () => {
-  projectManager = new ProjectManager();
-});
+
+function initProjectManager() {
+  try {
+    projectManager = new ProjectManager();
+    console.log("ProjectManager initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize ProjectManager:", error);
+    // Retry after a short delay
+    setTimeout(() => {
+      console.log("Retrying ProjectManager initialization...");
+      initProjectManager();
+    }, 500);
+  }
+}
+
+// Try DOM ready first, fallback to window load
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initProjectManager);
+  // Fallback in case DOMContentLoaded doesn't fire properly
+  window.addEventListener("load", () => {
+    if (!projectManager) {
+      console.warn(
+        "ProjectManager not initialized via DOMContentLoaded, using window.load fallback",
+      );
+      initProjectManager();
+    }
+  });
+} else {
+  // DOM is already ready
+  initProjectManager();
+}

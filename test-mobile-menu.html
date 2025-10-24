@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Menu Test - Glass Optimizer</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/mobile.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f8fafc;
+        }
+        .test-info {
+            padding: 1rem;
+            background: white;
+            margin: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem;
+        }
+        .test-btn {
+            padding: 8px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-btn:hover {
+            background: #1d4ed8;
+        }
+        .status {
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status.success { background: #dcfce7; color: #166534; }
+        .status.error { background: #fef2f2; color: #dc2626; }
+        .status.info { background: #eff6ff; color: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <!-- Simple Header Structure -->
+    <header class="header" style="background: #2563eb; color: white; padding: 1rem; position: relative;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="margin: 0; font-size: 1.25rem;">Glass Optimizer Test</h1>
+                <nav style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <a href="/" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Home</a>
+                    <a href="/designer" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Designer</a>
+                    <a href="/optimizer" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Optimizer</a>
+                    <a href="/projects" class="nav-link" style="color: white; text-decoration: none; padding: 0.25rem;">Projects</a>
+                </nav>
+            </div>
+            <div class="language-selector" style="display: flex; gap: 8px;">
+                <button class="lang-btn" data-lang="en" style="padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;">EN</button>
+                <button class="lang-btn active" data-lang="es" style="padding: 6px 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer;">ES</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Test Content -->
+    <div class="test-info">
+        <h2>Mobile Menu Test Page</h2>
+        <p>This page tests the mobile sidebar menu functionality.</p>
+        <div id="status-container">
+            <div class="status info">Loading mobile enhancements...</div>
+        </div>
+    </div>
+
+    <!-- Test Controls -->
+    <div class="test-buttons">
+        <button class="test-btn" onclick="testInit()">Initialize Mobile</button>
+        <button class="test-btn" onclick="testToggle()">Toggle Menu</button>
+        <button class="test-btn" onclick="testOpen()">Open Menu</button>
+        <button class="test-btn" onclick="testClose()">Close Menu</button>
+        <button class="test-btn" onclick="testResize()">Simulate Mobile Resize</button>
+        <button class="test-btn" onclick="clearStatus()">Clear Status</button>
+    </div>
+
+    <!-- Content -->
+    <div style="padding: 2rem; margin: 1rem; background: white; border-radius: 8px;">
+        <h3>Instructions</h3>
+        <ul>
+            <li>Resize your browser window to 768px or less to see mobile mode</li>
+            <li>The hamburger menu (☰) should appear in the top-right corner</li>
+            <li>Click the hamburger to open the sidebar menu</li>
+            <li>The sidebar should show all navigation buttons in a column format</li>
+            <li>The close button (✕) should be in the top-right corner of the sidebar</li>
+            <li>Language selector buttons (EN/ES) should be at the bottom</li>
+        </ul>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/mobile.js"></script>
+
+    <script>
+        let statusContainer = document.getElementById('status-container');
+
+        function addStatus(message, type = 'info') {
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            statusContainer.appendChild(status);
+            statusContainer.scrollTop = statusContainer.scrollHeight;
+        }
+
+        function clearStatus() {
+            statusContainer.innerHTML = '<div class="status info">Status cleared</div>';
+        }
+
+        function testInit() {
+            addStatus('Manually initializing mobile enhancements...', 'info');
+            if (window.initMobileEnhancements) {
+                window.initMobileEnhancements();
+                addStatus('Mobile enhancements initialized', 'success');
+            } else {
+                addStatus('initMobileEnhancements function not found', 'error');
+            }
+        }
+
+        function testToggle() {
+            addStatus('Toggling mobile menu...', 'info');
+            if (window.toggleMobileMenu) {
+                window.toggleMobileMenu();
+                addStatus('Menu toggled', 'success');
+            } else {
+                addStatus('toggleMobileMenu function not found', 'error');
+            }
+        }
+
+        function testOpen() {
+            addStatus('Opening mobile menu...', 'info');
+            if (window.mobileEnhancements && window.mobileEnhancements.openMobileMenu) {
+                window.mobileEnhancements.openMobileMenu();
+                addStatus('Menu opened', 'success');
+            } else {
+                addStatus('openMobileMenu function not available', 'error');
+            }
+        }
+
+        function testClose() {
+            addStatus('Closing mobile menu...', 'info');
+            if (window.mobileEnhancements && window.mobileEnhancements.closeMobileMenu) {
+                window.mobileEnhancements.closeMobileMenu();
+                addStatus('Menu closed', 'success');
+            } else {
+                addStatus('closeMobileMenu function not available', 'error');
+            }
+        }
+
+        function testResize() {
+            addStatus('Simulating mobile resize...', 'info');
+            // Force mobile mode
+            document.body.style.maxWidth = '375px';
+            window.dispatchEvent(new Event('resize'));
+            setTimeout(() => {
+                addStatus('Resize event dispatched', 'success');
+            }, 100);
+        }
+
+        // Check mobile enhancements status
+        function checkStatus() {
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            const sidebar = document.querySelector('.mobile-sidebar');
+            const isMobile = window.innerWidth <= 768;
+
+            addStatus(`Screen width: ${window.innerWidth}px`, 'info');
+            addStatus(`Mobile detected: ${isMobile}`, isMobile ? 'success' : 'info');
+            addStatus(`Hamburger toggle: ${toggle ? 'Found' : 'Not found'}`, toggle ? 'success' : 'error');
+            addStatus(`Mobile sidebar: ${sidebar ? 'Found' : 'Not found'}`, sidebar ? 'success' : 'error');
+            addStatus(`Mobile enhancements: ${window.mobileEnhancements ? 'Loaded' : 'Not loaded'}`, window.mobileEnhancements ? 'success' : 'error');
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            addStatus('DOM Content Loaded', 'success');
+            setTimeout(checkStatus, 500);
+        });
+
+        window.addEventListener('load', function() {
+            addStatus('Window loaded', 'success');
+            setTimeout(() => {
+                if (window.initMobileEnhancements) {
+                    window.initMobileEnhancements();
+                    addStatus('Auto-initialized mobile enhancements', 'success');
+                }
+                setTimeout(checkStatus, 500);
+            }, 100);
+        });
+
+        // Listen for resize events
+        window.addEventListener('resize', function() {
+            addStatus(`Window resized to ${window.innerWidth}x${window.innerHeight}`, 'info');
+        });
+    </script>
+</body>
+</html>
