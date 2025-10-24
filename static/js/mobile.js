@@ -90,8 +90,76 @@ class MobileEnhancements {
       setTimeout(() => {
         this.isMobile = window.innerWidth <= 768;
         this.refresh();
-      }, 100);
+      }, 300);
     });
+  }
+
+  showMobileInstructions() {
+    // Only show on mobile and first time
+    if (!this.isMobile || localStorage.getItem('mobileDesignerInstructionShown')) {
+      return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'mobile-instruction-toast';
+    toast.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span style="font-size: 1.2rem;">📱</span>
+        <strong>Mobile Designer</strong>
+      </div>
+      <div style="font-size: 0.9rem; line-height: 1.3; margin-bottom: 0.75rem;">
+        Tools are at the bottom! Tap <strong>"Tools"</strong> header to expand the tool menu upwards.
+      </div>
+      <button onclick="this.parentElement.remove()" style="
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        width: 100%;
+      ">Got it!</button>
+    `;
+
+    Object.assign(toast.style, {
+      position: 'fixed',
+      top: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: 'white',
+      padding: '1rem',
+      borderRadius: '12px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+      zIndex: '2000',
+      maxWidth: '300px',
+      width: 'calc(100vw - 40px)',
+      border: '2px solid var(--primary)',
+      animation: 'slideDown 0.4s ease-out'
+    });
+
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideDown {
+        from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+        to { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(toast);
+
+    // Auto-remove after 8 seconds
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.style.animation = 'slideDown 0.4s ease-out reverse';
+        setTimeout(() => toast.remove(), 400);
+      }
+    }, 8000);
+
+    // Remember that instruction was shown
+    localStorage.setItem('mobileDesignerInstructionShown', 'true');
   }
 
   setupTouchOptimizations() {
@@ -860,7 +928,7 @@ class MobileEnhancements {
       }
 
       if (sidebar) {
-        this.setupSidebarCollapse(sidebar);
+        this.setupMobileSidebar(sidebar);
         this.setupMobileToolList(sidebar);
       }
 
@@ -873,6 +941,9 @@ class MobileEnhancements {
 
       // Setup orientation change handler
       this.setupDesignerOrientationHandler();
+
+      // Show mobile instruction toast
+      this.showMobileInstructions();
     };
 
     if (document.readyState === "complete") {
@@ -954,6 +1025,77 @@ class MobileEnhancements {
     });
   }
 
+  setupMobileSidebar(sidebar) {
+    console.log("Setting up mobile slide-up sidebar");
+
+    // Add slide-up functionality
+    const sidebarHeader = sidebar.querySelector("h3");
+    const sidebarHandle = sidebar.querySelector("::before") || sidebarHeader;
+
+    let isExpanded = false;
+
+    const toggleSidebar = () => {
+      isExpanded = !isExpanded;
+      if (isExpanded) {
+        sidebar.classList.add("mobile-expanded");
+      } else {
+        sidebar.classList.remove("mobile-expanded");
+      }
+      console.log("Sidebar toggled:", isExpanded ? "expanded" : "collapsed");
+    };
+
+    // Make header clickable to expand/collapse
+    if (sidebarHeader) {
+      sidebarHeader.style.cursor = "pointer";
+      sidebarHeader.addEventListener("click", toggleSidebar);
+      sidebarHeader.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        toggleSidebar();
+      });
+    }
+
+    // Add swipe gesture support
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    sidebar.addEventListener("touchstart", (e) => {
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    }, { passive: false });
+
+    sidebar.addEventListener("touchmove", (e) => {
+      if (!isDragging) return;
+
+      currentY = e.touches[0].clientY;
+      const deltaY = startY - currentY;
+
+      // Only allow swiping up to expand, down to collapse
+      if (deltaY > 50 && !isExpanded) {
+        toggleSidebar();
+        isDragging = false;
+      } else if (deltaY < -50 && isExpanded) {
+        toggleSidebar();
+        isDragging = false;
+      }
+    }, { passive: false });
+
+    sidebar.addEventListener("touchend", () => {
+      isDragging = false;
+    });
+
+    // Close sidebar when clicking outside
+    document.addEventListener("click", (e) => {
+      if (isExpanded && !sidebar.contains(e.target)) {
+        toggleSidebar();
+      }
+    });
+
+    // Store reference for other methods
+    this.mobileSidebarExpanded = () => isExpanded;
+    this.toggleMobileSidebar = toggleSidebar;
+  }
+
   setupMobileToolList(sidebar) {
     console.log("Setting up mobile tool list");
 
@@ -986,6 +1128,17 @@ class MobileEnhancements {
       btn.style.border = "2px solid var(--border)";
       btn.style.background = "white";
       btn.style.transition = "all 0.2s ease";
+
+      // Auto-collapse sidebar when tool is selected
+      btn.addEventListener("click", () => {
+        if (this.mobileSidebarExpanded && this.mobileSidebarExpanded()) {
+          setTimeout(() => {
+            if (this.toggleMobileSidebar) {
+              this.toggleMobileSidebar();
+            }
+          }, 500); // Small delay to show selection feedback
+        }
+      });
     });
   }
 
@@ -1422,10 +1575,20 @@ window.toggleMobileMenu = function () {
 };
 
 window.toggleMobileSidebar = function () {
+  // For designer mobile sidebar
+  if (window.mobileEnhancements && window.mobileEnhancements.toggleMobileSidebar) {
+    window.mobileEnhancements.toggleMobileSidebar();
+    return;
+  }
+
+  // Fallback for other sidebars
   const sidebar = document.querySelector(".sidebar, .designer-sidebar");
   if (sidebar) {
-    const isOpen = sidebar.style.right === "0px" || !sidebar.style.right;
-    sidebar.style.right = isOpen ? "-300px" : "0px";
+    if (sidebar.classList.contains("mobile-expanded")) {
+      sidebar.classList.remove("mobile-expanded");
+    } else {
+      sidebar.classList.add("mobile-expanded");
+    }
   }
 };
 

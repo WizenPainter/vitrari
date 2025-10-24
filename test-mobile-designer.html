@@ -148,14 +148,15 @@
                 <canvas id="design-canvas" style="touch-action: pan-x pan-y;"></canvas>
 
                 <div class="canvas-info">
-                    <p></p><strong>Instructions:</strong></p>
+                    <p><strong>Instructions:</strong></p>
                     <ul style="text-align: left; margin-top: 0.5rem;">
-                        <li>Select a tool from the sidebar</li>
-                        <li></li>Tap and drag on the canvas to create holes</li>
-                        <li>Use the Select tool to move existing holes</li>
-                        <li>Edit hole properties when selected</li>
-                        <li>Use mobile zoom controls for precision</li>
-                        <li>Canvas adapts to your screen size</li>
+                        <li>📱 Tools slide up from bottom - tap "Tools" header to expand</li>
+                        <li>🎯 Select a tool, sidebar auto-collapses for more canvas space</li>
+                        <li>✏️ Tap and drag on canvas to create holes</li>
+                        <li>👆</li> Swipe up on tool panel to expand, down to collapse</li>
+                        <li>🔍 Use zoom controls (left side) for precision work</li>
+                        <li>📐 Canvas automatically fits your screen size</li>
+                        <li>🔄 Rotate device for landscape mode</li>
                     </ul>
                 </div>
             </div>
@@ -222,6 +223,16 @@ Touch: ${'ontouchstart' in window ? 'YES' : 'NO'}
                         window.designer.currentTool = this.getAttribute('data-tool') || 'select';
                     }
 
+                    // Auto-collapse sidebar after tool selection (mobile UX)
+                    if (window.innerWidth <= 768 && window.toggleMobileSidebar) {
+                        setTimeout(() => {
+                            const sidebar = document.querySelector('.sidebar');
+                            if (sidebar && sidebar.classList.contains('mobile-expanded')) {
+                                window.toggleMobileSidebar();
+                            }
+                        }, 300);
+                    }
+
                     console.log('Tool selected:', this.getAttribute('data-tool'));
                     updateDebugInfo();
                 });
@@ -285,11 +296,33 @@ Touch: ${'ontouchstart' in window ? 'YES' : 'NO'}
                     window.designer.setupCanvas();
                     window.designer.render();
                 }
+            },
+            toggleToolbar: function() {
+                if (window.toggleMobileSidebar) {
+                    window.toggleMobileSidebar();
+                }
+            },
+            expandToolbar: function() {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar && !sidebar.classList.contains('mobile-expanded')) {
+                    sidebar.classList.add('mobile-expanded');
+                }
+            },
+            collapseToolbar: function() {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar && sidebar.classList.contains('mobile-expanded')) {
+                    sidebar.classList.remove('mobile-expanded');
+                }
             }
         };
 
         console.log('Mobile designer test page loaded');
         console.log('Use testMobileDesigner object for testing');
+        console.log('📱 On mobile: Tools slide up from bottom - tap header to expand/collapse');
+        console.log('Available test functions:');
+        console.log('  testMobileDesigner.toggleToolbar() - Toggle tool panel');
+        console.log('  testMobileDesigner.toggleTool("drill") - Select specific tool');
+        console.log('  testMobileDesigner.isMobile() - Check if in mobile mode');
     </script>
 </body>
 </html>
