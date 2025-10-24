@@ -1,155 +1,291 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Glass Optimizer</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header class="header">
-            <h1>Glass Optimizer</h1>
-            <nav>
-                <a href="/" class="active">Dashboard</a>
-                <a href="/designer">Designer</a>
-                <a href="/optimizer">Optimizer</a>
-            </nav>
-        </header>
-
-        <main class="main-content">
-            <div class="welcome-section">
-                <h2>Welcome to Glass Optimizer</h2>
-                <p>Design custom glass pieces and optimize cutting patterns for maximum efficiency</p>
-            </div>
-
-            <div class="quick-actions">
-                <a href="/designer" class="action-card">
-                    <h3>Glass Designer</h3>
-                    <p>Create custom glass designs with precise measurements</p>
-                    <button class="btn btn-primary">Start Designing</button>
-                </a>
-
-                <a href="/optimizer" class="action-card">
-                    <h3>Sheet Optimizer</h3>
-                    <p>Optimize cutting patterns to minimize waste</p>
-                    <button class="btn btn-outline">Optimize Layout</button>
-                </a>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h4>Total Designs</h4>
-                    <div class="stat-value" id="total-designs">0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Optimizations Run</h4>
-                    <div class="stat-value" id="total-optimizations">0</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Active Projects</h4>
-                    <div class="stat-value" id="total-projects">0</div>
-                </div>
-            </div>
-
-            <!-- Projects Section -->
-            <div class="projects-section">
-                <div class="section-header">
-                    <h2>Projects</h2>
-                    <button class="btn btn-primary" id="btn-new-project">
-                        <span class="btn-icon">+</span> New Project
-                    </button>
-                </div>
-
-                <!-- Projects Tree View -->
-                <div class="projects-tree" id="projects-tree">
-                    <div class="tree-loading">Loading projects...</div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Create/Edit Project Modal -->
-        <div class="modal" id="project-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="modal-title">New Project</h3>
-                    <button class="modal-close" id="modal-close">&times;</button>
-                </div>
-                <form id="project-form">
-                    <input type="hidden" id="project-id" value="">
-                    <input type="hidden" id="project-parent-id" value="">
-
-                    <div class="form-group">
-                        <label for="project-name">Project Name *</label>
-                        <input type="text" id="project-name" required maxlength="255" placeholder="Enter project name">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{.Title}} - Glass Optimizer</title>
+        <link rel="stylesheet" href="/static/css/style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <header class="header">
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <h1>Glass Optimizer</h1>
+                        <nav>
+                            <a href="/" class="active" data-i18n="dashboard"
+                                >Dashboard</a
+                            >
+                            <a href="/designer" data-i18n="designer"
+                                >Designer</a
+                            >
+                            <a href="/optimizer" data-i18n="optimizer"
+                                >Optimizer</a
+                            >
+                        </nav>
                     </div>
-
-                    <div class="form-group">
-                        <label for="project-description">Description</label>
-                        <textarea id="project-description" rows="3" maxlength="1000" placeholder="Enter project description (optional)"></textarea>
+                    <div class="language-selector">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn active" data-lang="es">
+                            ES
+                        </button>
                     </div>
+                </div>
+            </header>
 
-                    <div class="form-group">
-                        <label>Designs <span style="color: #64748b; font-weight: normal;">(Optional)</span></label>
-                        <div id="designs-list-container">
-                            <div class="designs-placeholder">No designs added. Projects can be empty (like folders). Click "Add Design" if you want to include designs.</div>
-                        </div>
-                        <button type="button" class="btn btn-outline btn-sm" id="btn-add-design">
-                            <span class="btn-icon">+</span> Add Design
+            <main class="main-content">
+                <div class="welcome-section">
+                    <h2 data-i18n="welcomeTitle">Welcome to Glass Optimizer</h2>
+                    <p data-i18n="welcomeDescription">
+                        Design custom glass pieces and optimize cutting patterns
+                        for maximum efficiency
+                    </p>
+                </div>
+
+                <div class="quick-actions">
+                    <a href="/designer" class="action-card">
+                        <h3 data-i18n="glassDesigner">Glass Designer</h3>
+                        <p data-i18n="designerDescription">
+                            Create custom glass designs with precise
+                            measurements
+                        </p>
+                        <button
+                            class="btn btn-primary"
+                            data-i18n="startDesigning"
+                        >
+                            Start Designing
+                        </button>
+                    </a>
+
+                    <a href="/optimizer" class="action-card">
+                        <h3 data-i18n="sheetOptimizer">Sheet Optimizer</h3>
+                        <p data-i18n="optimizerDescription">
+                            Optimize cutting patterns to minimize waste
+                        </p>
+                        <button
+                            class="btn btn-outline"
+                            data-i18n="optimizeLayout"
+                        >
+                            Optimize Layout
+                        </button>
+                    </a>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h4 data-i18n="totalDesigns">Total Designs</h4>
+                        <div class="stat-value" id="total-designs">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4 data-i18n="optimizationsRun">Optimizations Run</h4>
+                        <div class="stat-value" id="total-optimizations">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <h4 data-i18n="activeProjects">Active Projects</h4>
+                        <div class="stat-value" id="total-projects">0</div>
+                    </div>
+                </div>
+
+                <!-- Projects Section -->
+                <div class="projects-section">
+                    <div class="section-header">
+                        <h2 data-i18n="projects">Projects</h2>
+                        <button class="btn btn-primary" id="btn-new-project">
+                            <span class="btn-icon">+</span>
+                            <span data-i18n="newProject">New Project</span>
                         </button>
                     </div>
 
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline" id="btn-cancel">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="btn-save-project">Save Project</button>
+                    <!-- Projects Tree View -->
+                    <div class="projects-tree" id="projects-tree">
+                        <div class="tree-loading" data-i18n="loadingProjects">
+                            Loading projects...
+                        </div>
                     </div>
-                </form>
+                </div>
+            </main>
+
+            <!-- Create/Edit Project Modal -->
+            <div class="modal" id="project-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modal-title" data-i18n="newProject">
+                            New Project
+                        </h3>
+                        <button class="modal-close" id="modal-close">
+                            &times;
+                        </button>
+                    </div>
+                    <form id="project-form">
+                        <input type="hidden" id="project-id" value="" />
+                        <input type="hidden" id="project-parent-id" value="" />
+
+                        <div class="form-group">
+                            <label for="project-name">
+                                <span data-i18n="projectName"
+                                    >Project Name</span
+                                >
+                                *
+                            </label>
+                            <input
+                                type="text"
+                                id="project-name"
+                                required
+                                maxlength="255"
+                                data-i18n-placeholder="projectNamePlaceholder"
+                                placeholder="Enter project name"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                for="project-description"
+                                data-i18n="description"
+                            >
+                                Description
+                            </label>
+                            <textarea
+                                id="project-description"
+                                rows="3"
+                                maxlength="1000"
+                                data-i18n-placeholder="projectDescriptionPlaceholder"
+                                placeholder="Enter project description (optional)"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <span data-i18n="designs">Designs</span>
+                                <span
+                                    style="color: #64748b; font-weight: normal"
+                                    data-i18n="optional"
+                                    >(Optional)</span
+                                >
+                            </label>
+                            <div id="designs-list-container">
+                                <div
+                                    class="designs-placeholder"
+                                    data-i18n="noDesignsAdded"
+                                >
+                                    No designs added. Projects can be empty
+                                    (like folders). Click "Add Design" if you
+                                    want to include designs.
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-outline btn-sm"
+                                id="btn-add-design"
+                            >
+                                <span class="btn-icon">+</span>
+                                <span data-i18n="addDesign">Add Design</span>
+                            </button>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button
+                                type="button"
+                                class="btn btn-outline"
+                                id="btn-cancel"
+                                data-i18n="cancel"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                id="btn-save-project"
+                                data-i18n="saveProject"
+                            >
+                                Save Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
+
+            <!-- Design Picker Modal -->
+            <div class="modal" id="design-picker-modal">
+                <div class="modal-content modal-sm">
+                    <div class="modal-header">
+                        <h3 data-i18n="selectDesign">Select Design</h3>
+                        <button class="modal-close" id="design-picker-close">
+                            &times;
+                        </button>
+                    </div>
+                    <div id="design-picker-list" class="picker-list">
+                        <div class="picker-loading" data-i18n="loadingDesigns">
+                            Loading designs...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="footer">
+                <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
+            </footer>
         </div>
 
-        <!-- Design Picker Modal -->
-        <div class="modal" id="design-picker-modal">
-            <div class="modal-content modal-sm">
-                <div class="modal-header">
-                    <h3>Select Design</h3>
-                    <button class="modal-close" id="design-picker-close">&times;</button>
-                </div>
-                <div id="design-picker-list" class="picker-list">
-                    <div class="picker-loading">Loading designs...</div>
-                </div>
-            </div>
-        </div>
+        <script src="/static/js/i18n.js"></script>
+        <script src="/static/js/app.js"></script>
+        <script src="/static/js/toast.js"></script>
+        <script src="/static/js/projects.js"></script>
+        <script>
+            // Load dashboard stats
+            fetch("/api/designs")
+                .then((r) => r.json())
+                .then((data) => {
+                    document.getElementById("total-designs").textContent =
+                        data.total || 0;
+                })
+                .catch(console.error);
 
-        <footer class="footer">
-            <p>&copy; 2024 Glass Optimizer - v1.0.0</p>
-        </footer>
-    </div>
+            fetch("/api/optimizations")
+                .then((r) => r.json())
+                .then((data) => {
+                    document.getElementById("total-optimizations").textContent =
+                        data.total || 0;
+                })
+                .catch(console.error);
 
-    <script src="/static/js/app.js"></script>
-    <script src="/static/js/toast.js"></script>
-    <script src="/static/js/projects.js"></script>
-    <script>
-        // Load dashboard stats
-        fetch('/api/designs')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('total-designs').textContent = data.total || 0;
-            })
-            .catch(console.error);
+            fetch("/api/projects")
+                .then((r) => r.json())
+                .then((data) => {
+                    document.getElementById("total-projects").textContent =
+                        data.total || 0;
+                })
+                .catch(console.error);
 
-        fetch('/api/optimizations')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('total-optimizations').textContent = data.total || 0;
-            })
-            .catch(console.error);
+            // Update placeholders when language changes
+            function updatePlaceholders() {
+                document
+                    .querySelectorAll("[data-i18n-placeholder]")
+                    .forEach((el) => {
+                        const key = el.dataset.i18nPlaceholder;
+                        if (key && window.i18n) {
+                            el.placeholder = window.i18n.t(key);
+                        }
+                    });
+            }
 
-        fetch('/api/projects')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('total-projects').textContent = data.total || 0;
-            })
-            .catch(console.error);
-    </script>
-</body>
+            // Listen for language changes
+            document.addEventListener("DOMContentLoaded", () => {
+                // Initial update
+                setTimeout(updatePlaceholders, 100);
+
+                // Listen for language button clicks
+                document.querySelectorAll(".lang-btn").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        setTimeout(updatePlaceholders, 100);
+                    });
+                });
+            });
+        </script>
+    </body>
 </html>

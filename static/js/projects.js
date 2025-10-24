@@ -20,6 +20,7 @@ class ProjectManager {
     this.loadDesigns();
     this.handleUrlParameters();
     this.setupDocumentClickHandler();
+    this.setupLanguageChangeListener();
   }
 
   setupEventListeners() {
@@ -73,6 +74,31 @@ class ProjectManager {
       });
   }
 
+  setupLanguageChangeListener() {
+    // Listen for language button clicks to re-render content
+    document.addEventListener("DOMContentLoaded", () => {
+      const langButtons = document.querySelectorAll(".lang-btn");
+      langButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // Re-render projects tree after language change
+          setTimeout(() => {
+            this.renderProjectsTree();
+            // Update modal content if open
+            if (
+              document
+                .getElementById("project-modal")
+                ?.classList.contains("active")
+            ) {
+              if (window.i18n) {
+                window.i18n.updatePageLanguage();
+              }
+            }
+          }, 100);
+        });
+      });
+    });
+  }
+
   async loadProjects() {
     try {
       const response = await fetch("/api/projects?tree=true");
@@ -81,7 +107,11 @@ class ProjectManager {
       this.renderProjectsTree();
     } catch (error) {
       console.error("Failed to load projects:", error);
-      this.showError("Failed to load projects");
+      toast.error(
+        window.i18n
+          ? window.i18n.t("failedToLoadProjects")
+          : "Failed to load projects",
+      );
     }
   }
 
@@ -101,15 +131,24 @@ class ProjectManager {
     if (!this.projects || this.projects.length === 0) {
       container.innerHTML = `
                 <div class="no-projects">
-                    <p>No projects yet. Click "New Project" to create your first project.</p>
+                    <p data-i18n="noProjectsYet">No projects yet. Click "New Project" to create your first project.</p>
                 </div>
             `;
+      // Update translations for the newly added content
+      if (window.i18n) {
+        window.i18n.updatePageLanguage();
+      }
       return;
     }
 
     container.innerHTML = this.projects
       .map((project) => this.renderProjectNode(project))
       .join("");
+
+    // Update translations for the newly rendered content
+    if (window.i18n) {
+      window.i18n.updatePageLanguage();
+    }
   }
 
   renderProjectNode(project, depth = 0) {
@@ -133,10 +172,10 @@ class ProjectManager {
                                         <span>+ Subproject</span>
                                     </button>
                                     <button class="menu-item" onclick="event.stopPropagation(); projectManager.editProject(${project.id}); projectManager.closeAllMenus();">
-                                        <span>Edit</span>
+                                        <span data-i18n="edit">Edit</span>
                                     </button>
                                     <button class="menu-item delete" onclick="event.stopPropagation(); projectManager.deleteProject(${project.id}); projectManager.closeAllMenus();">
-                                        <span>Delete</span>
+                                        <span data-i18n="delete">Delete</span>
                                     </button>
                                 </div>
                             </div>
@@ -145,13 +184,13 @@ class ProjectManager {
                     ${project.description ? `<div class="project-description">${this.escapeHtml(project.description)}</div>` : ""}
                     <div class="project-meta">
                         <div class="project-meta-item">
-                            <strong>Designs:</strong> ${project.design_count || 0}
+                            <strong data-i18n="designs">Designs:</strong> ${project.design_count || 0}
                         </div>
                         <div class="project-meta-item">
-                            <strong>Optimizations:</strong> ${project.optimization_count || 0}
+                            <strong data-i18n="optimizations">Optimizations:</strong> ${project.optimization_count || 0}
                         </div>
                         <div class="project-meta-item">
-                            <strong>Created:</strong> ${this.formatDate(project.created_at)}
+                            <strong data-i18n="created">Created:</strong> ${this.formatDate(project.created_at)}
                         </div>
                     </div>
                 </div>
@@ -179,8 +218,12 @@ class ProjectManager {
     this.parentIdForNew = parentId;
 
     document.getElementById("modal-title").textContent = parentId
-      ? "New Subproject"
-      : "New Project";
+      ? window.i18n
+        ? window.i18n.t("newSubproject")
+        : "New Subproject"
+      : window.i18n
+        ? window.i18n.t("newProject")
+        : "New Project";
     document.getElementById("project-id").value = "";
     document.getElementById("project-parent-id").value = parentId || "";
     document.getElementById("project-name").value = "";
@@ -201,7 +244,9 @@ class ProjectManager {
       this.currentProject = data.project;
       this.currentDesigns = data.project.designs_list || [];
 
-      document.getElementById("modal-title").textContent = "Edit Project";
+      document.getElementById("modal-title").textContent = window.i18n
+        ? window.i18n.t("editProject")
+        : "Edit Project";
       document.getElementById("project-id").value = projectId;
       document.getElementById("project-parent-id").value =
         data.project.parent_id || "";
@@ -213,14 +258,20 @@ class ProjectManager {
       this.showModal("project-modal");
     } catch (error) {
       console.error("Failed to load project:", error);
-      this.showError("Failed to load project");
+      toast.error(
+        window.i18n
+          ? window.i18n.t("failedToLoadProject")
+          : "Failed to load project",
+      );
     }
   }
 
   async deleteProject(projectId) {
     if (
       !confirm(
-        "Are you sure you want to delete this project? This action cannot be undone.",
+        window.i18n
+          ? window.i18n.t("confirmDeleteProject")
+          : "Are you sure you want to delete this project? This action cannot be undone.",
       )
     ) {
       return;
@@ -235,11 +286,19 @@ class ProjectManager {
         throw new Error("Failed to delete project");
       }
 
-      toast.success("Project deleted successfully");
+      toast.success(
+        window.i18n
+          ? window.i18n.t("projectDeletedSuccess")
+          : "Project deleted successfully",
+      );
       this.loadProjects();
     } catch (error) {
       console.error("Failed to delete project:", error);
-      toast.error("Failed to delete project");
+      toast.error(
+        window.i18n
+          ? window.i18n.t("failedToDeleteProject")
+          : "Failed to delete project",
+      );
     }
   }
 
@@ -252,7 +311,11 @@ class ProjectManager {
       .value.trim();
 
     if (!name) {
-      this.showError("Project name is required");
+      toast.error(
+        window.i18n
+          ? window.i18n.t("projectNameRequired")
+          : "Project name is required",
+      );
       return;
     }
 
@@ -287,14 +350,23 @@ class ProjectManager {
 
       toast.success(
         projectId
-          ? "Project updated successfully"
-          : "Project created successfully",
+          ? window.i18n
+            ? window.i18n.t("projectUpdatedSuccess")
+            : "Project updated successfully"
+          : window.i18n
+            ? window.i18n.t("projectCreatedSuccess")
+            : "Project created successfully",
       );
       this.closeProjectModal();
       this.loadProjects();
     } catch (error) {
       console.error("Failed to save project:", error);
-      toast.error(error.message || "Failed to save project");
+      toast.error(
+        error.message ||
+          (window.i18n
+            ? window.i18n.t("failedToSaveProject")
+            : "Failed to save project"),
+      );
     }
   }
 
@@ -303,10 +375,14 @@ class ProjectManager {
 
     if (this.designs.length === 0) {
       pickerList.innerHTML = `
-                <div class="picker-loading">
+                <div class="picker-loading" data-i18n="noDesignsAvailable">
                     No designs available. Create a design first using the Designer tool.
                 </div>
             `;
+      // Update translations for the newly added content
+      if (window.i18n) {
+        window.i18n.updatePageLanguage();
+      }
     } else {
       pickerList.innerHTML = this.designs
         .map(
@@ -334,7 +410,9 @@ class ProjectManager {
 
     const design = this.designs.find((d) => d.id === designId);
     if (!design) {
-      toast.error("Design not found");
+      toast.error(
+        window.i18n ? window.i18n.t("designNotFound") : "Design not found",
+      );
       return;
     }
 
@@ -405,7 +483,7 @@ class ProjectManager {
                             class="btn-remove"
                             onclick="projectManager.removeDesign(${index})"
                         >
-                            Remove
+                            <span data-i18n="remove">Remove</span>
                         </button>
                     </div>
                 </div>

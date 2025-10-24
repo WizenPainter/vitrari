@@ -9,20 +9,42 @@
     <body>
         <div class="container">
             <header class="header">
-                <h1>Glass Optimizer</h1>
-                <nav>
-                    <a href="/">Dashboard</a>
-                    <a href="/designer">Designer</a>
-                    <a href="/optimizer">Optimizer</a>
-                </nav>
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <h1>Glass Optimizer</h1>
+                        <nav>
+                            <a href="/" data-i18n="dashboard">Dashboard</a>
+                            <a href="/designer" data-i18n="designer"
+                                >Designer</a
+                            >
+                            <a href="/optimizer" data-i18n="optimizer"
+                                >Optimizer</a
+                            >
+                        </nav>
+                    </div>
+                    <div class="language-selector">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn active" data-lang="es">
+                            ES
+                        </button>
+                    </div>
+                </div>
             </header>
 
             <main class="main-content">
                 <!-- Breadcrumb Navigation -->
                 <div class="breadcrumb" id="breadcrumb">
-                    <a href="/">Dashboard</a>
+                    <a href="/" data-i18n="dashboard">Dashboard</a>
                     <span class="breadcrumb-separator">/</span>
-                    <span id="breadcrumb-loading">Loading...</span>
+                    <span id="breadcrumb-loading" data-i18n="loading"
+                        >Loading...</span
+                    >
                 </div>
 
                 <!-- Project Header -->
@@ -35,15 +57,24 @@
                         ></p>
                     </div>
                     <div class="project-detail-actions">
-                        <button class="btn btn-outline" id="btn-edit-project">
+                        <button
+                            class="btn btn-outline"
+                            id="btn-edit-project"
+                            data-i18n="editProject"
+                        >
                             Edit Project
                         </button>
-                        <button class="btn btn-outline" id="btn-add-subproject">
+                        <button
+                            class="btn btn-outline"
+                            id="btn-add-subproject"
+                            data-i18n="addSubproject"
+                        >
                             + Subproject
                         </button>
                         <button
                             class="btn btn-outline"
                             id="btn-add-design-to-project"
+                            data-i18n="addDesign"
                         >
                             + Add Design
                         </button>
@@ -208,8 +239,9 @@
             </div>
         </div>
 
+        <script src="/static/js/i18n.js"></script>
         <script src="/static/js/app.js"></script>
         <script src="/static/js/toast.js"></script>
-        <script src="/static/js/project-detail.js"></script>
+        <script src="/static/js/projects.js"></script>
     </body>
 </html>
