@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"log/slog"
@@ -434,24 +435,189 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// Parse the optimization request
+	var req struct {
+		Name    string `json:"name"`
+		SheetID int    `json:"sheet_id"`
+		Designs []struct {
+			DesignID int     `json:"design_id"`
+			Quantity int     `json:"quantity"`
+			Priority int     `json:"priority"`
+			Width    float64 `json:"width"`
+			Height   float64 `json:"height"`
+			Name     string  `json:"name"`
+		} `json:"designs"`
+		Algorithm string `json:"algorithm"`
+		Options   struct {
+			AllowRotation bool    `json:"allow_rotation"`
+			AllowFlipping bool    `json:"allow_flipping"`
+			MinimumGap    float64 `json:"minimum_gap"`
+			EdgeMargin    float64 `json:"edge_margin"`
+		} `json:"options"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding optimization request: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if req.SheetID == 0 {
+		http.Error(w, "Sheet ID is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Designs) == 0 {
+		http.Error(w, "At least one piece is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get the selected sheet
+	sheets := []map[string]interface{}{
+		{
+			"id":            1,
+			"name":          "Standard 2m x 3m",
+			"width":         2000,
+			"height":        3000,
+			"thickness":     6,
+			"price_per_sqm": 45.50,
+			"in_stock":      15,
+		},
+		{
+			"id":            2,
+			"name":          "Large 2.5m x 3.5m",
+			"width":         2500,
+			"height":        3500,
+			"thickness":     6,
+			"price_per_sqm": 48.00,
+			"in_stock":      8,
+		},
+	}
+
+	var selectedSheet map[string]interface{}
+	for _, sheet := range sheets {
+		if int(sheet["id"].(int)) == req.SheetID {
+			selectedSheet = sheet
+			break
+		}
+	}
+
+	if selectedSheet == nil {
+		http.Error(w, "Sheet not found", http.StatusNotFound)
+		return
+	}
+
+	// Calculate basic statistics
+	sheetWidth := selectedSheet["width"].(int)
+	sheetHeight := selectedSheet["height"].(int)
+	sheetArea := float64(sheetWidth * sheetHeight)
+
+	totalPieceArea := 0.0
+	placedPieces := []map[string]interface{}{}
+
+	// Simple placement algorithm (bottom-left)
+	currentX := float64(req.Options.EdgeMargin)
+	currentY := float64(req.Options.EdgeMargin)
+	rowHeight := 0.0
+	placedCount := 0
+
+	for _, design := range req.Designs {
+		for i := 0; i < design.Quantity; i++ {
+			pieceWidth := design.Width
+			pieceHeight := design.Height
+			totalPieceArea += pieceWidth * pieceHeight
+
+			// Check if piece fits in current position
+			if currentX+pieceWidth+req.Options.EdgeMargin <= float64(sheetWidth) &&
+				currentY+pieceHeight+req.Options.EdgeMargin <= float64(sheetHeight) {
+
+				// Place the piece
+				placedPieces = append(placedPieces, map[string]interface{}{
+					"id":          fmt.Sprintf("piece_%d_%d", design.DesignID, i),
+					"design_id":   design.DesignID,
+					"design_name": design.Name,
+					"x":           currentX,
+					"y":           currentY,
+					"width":       pieceWidth,
+					"height":      pieceHeight,
+					"rotation":    0,
+					"flipped":     false,
+				})
+
+				placedCount++
+
+				// Update position for next piece
+				currentX += pieceWidth + req.Options.MinimumGap
+				if pieceHeight > rowHeight {
+					rowHeight = pieceHeight
+				}
+			} else {
+				// Move to next row
+				currentX = req.Options.EdgeMargin
+				currentY += rowHeight + req.Options.MinimumGap
+				rowHeight = 0
+
+				// Try to place in new row
+				if currentX+pieceWidth+req.Options.EdgeMargin <= float64(sheetWidth) &&
+					currentY+pieceHeight+req.Options.EdgeMargin <= float64(sheetHeight) {
+
+					placedPieces = append(placedPieces, map[string]interface{}{
+						"id":          fmt.Sprintf("piece_%d_%d", design.DesignID, i),
+						"design_id":   design.DesignID,
+						"design_name": design.Name,
+						"x":           currentX,
+						"y":           currentY,
+						"width":       pieceWidth,
+						"height":      pieceHeight,
+						"rotation":    0,
+						"flipped":     false,
+					})
+
+					placedCount++
+					currentX += pieceWidth + req.Options.MinimumGap
+					rowHeight = pieceHeight
+				}
+				// If piece doesn't fit in new row, skip it (would be unplaced)
+			}
+		}
+	}
+
+	// Calculate utilization
+	placedArea := 0.0
+	for _, piece := range placedPieces {
+		width := piece["width"].(float64)
+		height := piece["height"].(float64)
+		placedArea += width * height
+	}
+
+	utilizationRate := (placedArea / sheetArea) * 100
+	wasteRate := 100 - utilizationRate
+
+	// Calculate total cost
+	sheetAreaSqm := sheetArea / 1000000.0 // Convert mm² to m²
+	pricePerSqm := selectedSheet["price_per_sqm"].(float64)
+	totalCost := sheetAreaSqm * pricePerSqm
+
 	result := map[string]interface{}{
 		"optimization": map[string]interface{}{
 			"id":   1,
-			"name": "Optimization Result",
+			"name": req.Name,
 			"layout": map[string]interface{}{
-				"sheet_width":  3000,
-				"sheet_height": 2000,
-				"pieces":       []interface{}{},
+				"sheet_width":  sheetWidth,
+				"sheet_height": sheetHeight,
+				"pieces":       placedPieces,
 				"statistics": map[string]interface{}{
-					"utilization_rate": 75.5,
-					"waste_rate":       24.5,
-					"placed_pieces":    0,
+					"utilization_rate": utilizationRate,
+					"waste_rate":       wasteRate,
+					"placed_pieces":    placedCount,
+					"total_pieces":     len(req.Designs),
 					"cutting_length":   0,
 					"cutting_time":     0,
 				},
 			},
-			"execution_time": 0.5,
-			"total_cost":     273.0,
+			"execution_time": 0.1,
+			"total_cost":     totalCost,
 		},
 	}
 

@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Glass Optimizer Demo - Vitrari</title>
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link
+            rel="icon"
+            type="image/svg+xml"
+            href="/static/assets/favicon.svg"
+        />
+
+        <link rel="stylesheet" href="/static/css/style.css" />
+        <link rel="stylesheet" href="/static/css/optimizer.css" />
+        <link rel="stylesheet" href="/static/css/mobile.css" />
+
+        <style>
+            /* Demo-specific styles */
+            .demo-notice {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 1rem;
+                text-align: center;
+                font-weight: 500;
+                margin-bottom: 1rem;
+            }
+
+            .demo-features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+                margin: 1rem 0;
+                padding: 1rem;
+                background: var(--bg-light);
+                border-radius: var(--border-radius-md);
+            }
+
+            .feature {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.875rem;
+            }
+
+            .feature-icon {
+                width: 20px;
+                height: 20px;
+                background: var(--success);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 0.75rem;
+            }
+
+            /* Mock visualization styles */
+            .mock-visualization {
+                width: 100%;
+                height: 400px;
+                background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+                           linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+                           linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+                           linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+                background-size: 20px 20px;
+                background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+                border: 2px solid var(--border);
+                border-radius: var(--border-radius-md);
+                position: relative;
+                overflow: hidden;
+            }
+
+            .mock-sheet {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                width: calc(100% - 40px);
+                height: calc(100% - 40px);
+                background: rgba(173, 216, 230, 0.3);
+                border: 3px solid #4682b4;
+                border-radius: var(--border-radius-sm);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #4682b4;
+                font-weight: bold;
+                font-size: 1.2rem;
+            }
+
+            .mock-piece {
+                position: absolute;
+                background: rgba(46, 125, 50, 0.7);
+                border: 2px solid #2e7d32;
+                border-radius: var(--border-radius-sm);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+                font-size: 0.8rem;
+                transition: all 0.3s ease;
+            }
+
+            .mock-piece:hover {
+                background: rgba(46, 125, 50, 0.9);
+                transform: scale(1.05);
+                z-index: 10;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="demo-notice">
+                🚀 Glass Optimizer Demo - New Piece Input Interface
+            </div>
+
+            <header class="header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>Vitrari</h1>
+                        <nav>
+                            <a href="/">Dashboard</a>
+                            <a href="/designer">Designer</a>
+                            <a href="/optimizer" class="active">Optimizer</a>
+                        </nav>
+                    </div>
+                    <div class="language-selector">
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn active" data-lang="es">ES</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="demo-features">
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Manual piece input with dimensions</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Quantity support for each piece</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Real-time area calculations</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Optional design selection</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Mobile-responsive interface</span>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">✓</div>
+                    <span>Bilingual support (EN/ES)</span>
+                </div>
+            </div>
+
+            <main class="optimizer-layout">
+                <aside class="sidebar">
+                    <h3>Add Pieces</h3>
+                    <div class="piece-input-form">
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label for="piece-width">Width (mm)</label>
+                                <input
+                                    type="number"
+                                    id="piece-width"
+                                    placeholder="1000"
+                                    min="1"
+                                    max="10000"
+                                    step="0.1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label for="piece-height">Height (mm)</label>
+                                <input
+                                    type="number"
+                                    id="piece-height"
+                                    placeholder="200"
+                                    min="1"
+                                    max="10000"
+                                    step="0.1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label for="piece-quantity">Quantity</label>
+                                <input
+                                    type="number"
+                                    id="piece-quantity"
+                                    placeholder="10"
+                                    min="1"
+                                    max="1000"
+                                    value="1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label for="piece-name">Name (optional)</label>
+                                <input
+                                    type="text"
+                                    id="piece-name"
+                                    placeholder="Piece 1"
+                                    maxlength="50"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary full-width"
+                            onclick="addPiece()"
+                        >
+                            Add Piece
+                        </button>
+                    </div>
+
+                    <div class="pieces-section">
+                        <h4>Pieces to Optimize</h4>
+                        <div id="pieces-list" class="pieces-list">
+                            <p class="empty-message">No pieces added yet</p>
+                        </div>
+                        <div id="pieces-summary" class="pieces-summary" style="display: none;">
+                            <div class="summary-item">
+                                <span>Total Pieces:</span>
+                                <span id="total-pieces-count">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Total Area:</span>
+                                <span id="total-area">0 m²</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="designs-section">
+                        <h4>Or Select from Designs</h4>
+                        <div class="toggle-designs">
+                            <button
+                                type="button"
+                                class="btn btn-outline"
+                                onclick="toggleDesignSelection()"
+                                id="toggle-designs-btn"
+                            >
+                                Show Available Designs
+                            </button>
+                        </div>
+                        <div id="design-list" class="design-list" style="display: none;">
+                            <label class="design-item">
+                                <input type="checkbox" value="1" onchange="toggleDesign(1, 'Window Frame', 1200, 800)">
+                                Window Frame (1200×800×6mm)
+                            </label>
+                            <label class="design-item">
+                                <input type="checkbox" value="2" onchange="toggleDesign(2, 'Door Panel', 900, 2100)">
+                                Door Panel (900×2100×8mm)
+                            </label>
+                            <label class="design-item">
+                                <input type="checkbox" value="3" onchange="toggleDesign(3, 'Shelf', 600, 300)">
+                                Shelf (600×300×10mm)
+                            </label>
+                        </div>
+                    </div>
+
+                    <h3>Glass Sheet</h3>
+                    <div id="sheet-list" class="sheet-list">
+                        <label class="sheet-item">
+                            <input type="radio" name="sheet" value="1" checked>
+                            Standard 2m x 3m (2000x3000mm)
+                        </label>
+                        <label class="sheet-item">
+                            <input type="radio" name="sheet" value="2">
+                            Large 2.5m x 3.5m (2500x3500mm)
+                        </label>
+                    </div>
+
+                    <h3>Algorithm</h3>
+                    <select class="full-width" id="algorithm-select">
+                        <option value="bottom-left">Bottom-Left Fill</option>
+                        <option value="genetic">Genetic Algorithm</option>
+                        <option value="greedy">Greedy Algorithm</option>
+                    </select>
+                </aside>
+
+                <div class="optimizer-main">
+                    <div class="optimizer-toolbar">
+                        <button
+                            class="btn btn-primary"
+                            onclick="runOptimization()"
+                            id="optimize-btn"
+                            disabled
+                        >
+                            Run Optimization
+                        </button>
+                        <button
+                            class="btn btn-outline"
+                            onclick="clearAllPieces()"
+                            id="clear-btn"
+                            style="display: none"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+
+                    <div id="results-area" class="results-area" style="display: none;">
+                        <h3>Results</h3>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <h4>Utilization</h4>
+                                <div class="stat-value" id="utilization">0%</div>
+                            </div>
+                            <div class="stat-card">
+                                <h4>Waste</h4>
+                                <div class="stat-value" id="waste">0%</div>
+                            </div>
+                            <div class="stat-card">
+                                <h4>Pieces Placed</h4>
+                                <div class="stat-value" id="pieces">0</div>
+                            </div>
+                        </div>
+                        <div id="visualization" class="visualization">
+                            <div class="mock-visualization">
+                                <div class="mock-sheet">
+                                    <div id="placed-pieces-container"></div>
+                                    Glass Sheet Visualization
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="placeholder-message" id="placeholder-message">
+                        <p>Add pieces above and click "Run Optimization" to begin</p>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="footer">
+                <p>&copy; 2025 Vitrari - Glass Optimizer Demo v1.0.0</p>
+            </footer>
+        </div>
+
+        <script>
+            let pieces = [];
+            let designsVisible = false;
+
+            function addPiece() {
+                const width = parseFloat(document.getElementById("piece-width").value);
+                const height = parseFloat(document.getElementById("piece-height").value);
+                const quantity = parseInt(document.getElementById("piece-quantity").value) || 1;
+                const name = document.getElementById("piece-name").value || `Piece ${pieces.length + 1}`;
+
+                if (!width || !height || width <= 0 || height <= 0) {
+                    alert("Please enter valid width and height values");
+                    return;
+                }
+
+                const piece = {
+                    id: Date.now() + Math.random(),
+                    width: width,
+                    height: height,
+                    quantity: quantity,
+                    name: name,
+                };
+
+                pieces.push(piece);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+
+                // Clear form
+                document.getElementById("piece-width").value = "";
+                document.getElementById("piece-height").value = "";
+                document.getElementById("piece-quantity").value = "1";
+                document.getElementById("piece-name").value = "";
+            }
+
+            function removePiece(pieceId) {
+                pieces = pieces.filter((p) => p.id !== pieceId);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+            }
+
+            function updatePiecesList() {
+                const list = document.getElementById("pieces-list");
+
+                if (pieces.length === 0) {
+                    list.innerHTML = '<p class="empty-message">No pieces added yet</p>';
+                } else {
+                    list.innerHTML = pieces
+                        .map(
+                            (piece) => `
+                        <div class="piece-item">
+                            <div class="piece-info">
+                                <div class="piece-name">${piece.name}</div>
+                                <div class="piece-details">
+                                    ${piece.width} × ${piece.height} mm
+                                    <span class="piece-quantity">× ${piece.quantity}</span>
+                                </div>
+                                <div class="piece-area">
+                                    ${((piece.width * piece.height * piece.quantity) / 1000000).toFixed(3)} m²
+                                </div>
+                            </div>
+                            <button class="btn-remove" onclick="removePiece(${piece.id})" title="Remove piece">×</button>
+                        </div>
+                    `
+                        )
+                        .join("");
+                }
+            }
+
+            function updateSummary() {
+                const summary = document.getElementById("pieces-summary");
+                const totalCount = pieces.reduce((sum, piece) => sum + piece.quantity, 0);
+                const totalArea = pieces.reduce(
+                    (sum, piece) => sum + piece.width * piece.height * piece.quantity,
+                    0
+                ) / 1000000;
+
+                if (pieces.length > 0) {
+                    summary.style.display = "block";
+                    document.getElementById("total-pieces-count").textContent = totalCount;
+                    document.getElementById("total-area").textContent = totalArea.toFixed(3) + " m²";
+                    document.getElementById("clear-btn").style.display = "inline-block";
+                } else {
+                    summary.style.display = "none";
+                    document.getElementById("clear-btn").style.display = "none";
+                }
+            }
+
+            function updateOptimizeButton() {
+                const btn = document.getElementById("optimize-btn");
+                btn.disabled = pieces.length === 0;
+            }
+
+            function clearAllPieces() {
+                if (confirm("Are you sure you want to remove all pieces?")) {
+                    pieces = [];
+                    updatePiecesList();
+                    updateSummary();
+                    updateOptimizeButton();
+                }
+            }
+
+            function toggleDesignSelection() {
+                const designList = document.getElementById("design-list");
+                const toggleBtn = document.getElementById("toggle-designs-btn");
+
+                if (!designsVisible) {
+                    designList.style.display = "block";
+                    toggleBtn.textContent = "Hide Designs";
+                    designsVisible = true;
+                } else {
+                    designList.style.display = "none";
+                    toggleBtn.textContent = "Show Available Designs";
+                    designsVisible = false;
+                }
+            }
+
+            function toggleDesign(designId, designName, width, height) {
+                const checkbox = event.target;
+
+                if (checkbox.checked) {
+                    const piece = {
+                        id: "design_" + designId,
+                        width: width,
+                        height: height,
+                        quantity: 1,
+                        name: designName,
+                        designId: designId,
+                    };
+                    pieces.push(piece);
+                } else {
+                    pieces = pieces.filter((p) => p.id !== "design_" + designId);
+                }
+
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+            }
+
+            function runOptimization() {
+                if (pieces.length === 0) {
+                    alert("Please add some pieces first");
+                    return;
+                }
+
+                const selectedSheet = document.querySelector('input[name="sheet"]:checked');
+                if (!selectedSheet) {
+                    alert("Please select a glass sheet");
+                    return;
+                }
+
+                document.getElementById("placeholder-message").style.display = "none";
+                document.getElementById("results-area").style.display = "block";
+
+                // Mock optimization results
+                const mockResults = {
+                    utilization: 78.5,
+                    waste: 21.5,
+                    placedPieces: Math.min(pieces.reduce((sum, p) => sum + p.quantity, 0), 12)
+                };
+
+                // Update statistics with animation
+                setTimeout(() => {
+                    document.getElementById("utilization").textContent = mockResults.utilization.toFixed(1) + "%";
+                    document.getElementById("waste").textContent = mockResults.waste.toFixed(1) + "%";
+                    document.getElementById("pieces").textContent = mockResults.placedPieces;
+
+                    // Add mock pieces to visualization
+                    addMockPiecesToVisualization();
+                }, 500);
+            }
+
+            function addMockPiecesToVisualization() {
+                const container = document.getElementById("placed-pieces-container");
+                container.innerHTML = "";
+
+                // Add some mock placed pieces
+                const mockPlacements = [
+                    { x: 20, y: 20, width: 120, height: 40, name: "P1" },
+                    { x: 150, y: 20, width: 80, height: 60, name: "P2" },
+                    { x: 20, y: 70, width: 100, height: 30, name: "P3" },
+                    { x: 240, y: 20, width: 60, height: 50, name: "P4" },
+                    { x: 130, y: 70, width: 90, height: 40, name: "P5" }
+                ];
+
+                mockPlacements.forEach((placement, index) => {
+                    setTimeout(() => {
+                        const pieceEl = document.createElement("div");
+                        pieceEl.className = "mock-piece";
+                        pieceEl.style.left = placement.x + "px";
+                        pieceEl.style.top = placement.y + "px";
+                        pieceEl.style.width = placement.width + "px";
+                        pieceEl.style.height = placement.height + "px";
+                        pieceEl.textContent = placement.name;
+                        pieceEl.title = `${placement.name}: ${placement.width}×${placement.height}`;
+                        container.appendChild(pieceEl);
+                    }, index * 200);
+                });
+            }
+
+            // Allow Enter key to add pieces
+            document.addEventListener("keypress", function (e) {
+                if (e.key === "Enter") {
+                    const activeElement = document.activeElement;
+                    if (
+                        activeElement &&
+                        (activeElement.id === "piece-width" ||
+                            activeElement.id === "piece-height" ||
+                            activeElement.id === "piece-quantity" ||
+                            activeElement.id === "piece-name")
+                    ) {
+                        addPiece();
+                    }
+                }
+            });
+
+            // Initialize with some demo pieces for showcase
+            setTimeout(() => {
+                const demoPieces = [
+                    { width: 1000, height: 200, quantity: 5, name: "Window Frame" },
+                    { width: 500, height: 300, quantity: 3, name: "Side Panel" }
+                ];
+
+                demoPieces.forEach((piece) => {
+                    document.getElementById("piece-width").value = piece.width;
+                    document.getElementById("piece-height").value = piece.height;
+                    document.getElementById("piece-quantity").value = piece.quantity;
+                    document.getElementById("piece-name").value = piece.name;
+                    addPiece();
+                });
+            }, 1000);
+
+            console.log("Glass Optimizer Demo loaded!");
+            console.log("Try adding pieces manually or run the optimization with the demo pieces!");
+        </script>
+    </body>
+</html>

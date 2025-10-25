@@ -108,6 +108,15 @@ const translations = {
     loadingDesigns: "Loading designs...",
 
     // Optimizer
+    addPieces: "Add Pieces",
+    name: "Name",
+    addPiece: "Add Piece",
+    piecesToOptimize: "Pieces to Optimize",
+    noPiecesAdded: "No pieces added yet",
+    totalPieces: "Total Pieces",
+    totalArea: "Total Area",
+    orSelectDesigns: "Or Select from Designs",
+    showDesigns: "Show Available Designs",
     selectDesigns: "Select Designs",
     glassSheet: "Glass Sheet",
     loadingSheets: "Loading sheets...",
@@ -122,7 +131,8 @@ const translations = {
     piecesPlaced: "Pieces Placed",
     visualizationPlaceholder: "Visualization will appear here",
     optimizerInstructions:
-      'Select designs and click "Run Optimization" to begin',
+      'Add pieces above and click "Run Optimization" to begin',
+    clearAll: "Clear All",
 
     // Project Management
     noProjectsYet:
@@ -233,7 +243,7 @@ const translations = {
     designerDescription:
       "Crea diseños de vidrio personalizados con medidas precisas",
     startDesigning: "Comenzar Diseño",
-    sheetOptimizer: "Optimizador de Planchas",
+    sheetOptimizer: "Optimizador de Laminas",
     optimizerDescription:
       "Optimiza patrones de corte para minimizar desperdicio",
     optimizeLayout: "Optimizar Disposición",
@@ -259,13 +269,22 @@ const translations = {
     loadingDesigns: "Cargando diseños...",
 
     // Optimizador
+    addPieces: "Agregar Piezas",
+    name: "Nombre",
+    addPiece: "Agregar Pieza",
+    piecesToOptimize: "Piezas a Optimizar",
+    noPiecesAdded: "Ninguna pieza agregada aún",
+    totalPieces: "Total de Piezas",
+    totalArea: "Área Total",
+    orSelectDesigns: "O Seleccionar de Diseños",
+    showDesigns: "Mostrar Diseños Disponibles",
     selectDesigns: "Seleccionar Diseños",
-    glassSheet: "Plancha de Vidrio",
-    loadingSheets: "Cargando planchas...",
+    glassSheet: "Lamina de Vidrio",
+    loadingSheets: "Cargando laminas...",
     algorithm: "Algoritmo",
-    bottomLeftFill: "Llenado Inferior-Izquierda",
+    bottomLeftFill: "Llenado Inferior-Izquierdo",
     geneticAlgorithm: "Algoritmo Genético",
-    greedyAlgorithm: "Algoritmo Voraz",
+    greedyAlgorithm: "Algoritmo Codicioso",
     runOptimization: "Ejecutar Optimización",
     results: "Resultados",
     utilization: "Utilización",
@@ -273,7 +292,8 @@ const translations = {
     piecesPlaced: "Piezas Colocadas",
     visualizationPlaceholder: "La visualización aparecerá aquí",
     optimizerInstructions:
-      'Selecciona diseños y haz clic en "Ejecutar Optimización" para comenzar',
+      'Agrega piezas arriba y haz clic en "Ejecutar Optimización" para comenzar',
+    clearAll: "Limpiar Todo",
 
     // Gestión de Proyectos
     noProjectsYet:

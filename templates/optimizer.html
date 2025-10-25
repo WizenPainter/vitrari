@@ -19,6 +19,7 @@
         />
 
         <link rel="stylesheet" href="/static/css/style.css" />
+        <link rel="stylesheet" href="/static/css/optimizer.css" />
         <link rel="stylesheet" href="/static/css/mobile.css" />
     </head>
     <body>
@@ -57,9 +58,122 @@
 
             <main class="optimizer-layout">
                 <aside class="sidebar">
-                    <h3 data-i18n="selectDesigns">Select Designs</h3>
-                    <div id="design-list" class="design-list">
-                        <p data-i18n="loadingDesigns">Loading designs...</p>
+                    <h3 class="section-header" data-i18n="addPieces">
+                        <span class="section-icon">➕</span>
+                        Add Pieces
+                    </h3>
+                    <div class="piece-input-form">
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label for="piece-width" data-i18n="width"
+                                    >Width (mm)</label
+                                >
+                                <input
+                                    type="number"
+                                    id="piece-width"
+                                    placeholder="1000"
+                                    min="1"
+                                    max="10000"
+                                    step="0.1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label for="piece-height" data-i18n="height"
+                                    >Height (mm)</label
+                                >
+                                <input
+                                    type="number"
+                                    id="piece-height"
+                                    placeholder="200"
+                                    min="1"
+                                    max="10000"
+                                    step="0.1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label for="piece-quantity" data-i18n="quantity"
+                                    >Quantity</label
+                                >
+                                <input
+                                    type="number"
+                                    id="piece-quantity"
+                                    placeholder="10"
+                                    min="1"
+                                    max="1000"
+                                    value="1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label for="piece-name" data-i18n="name"
+                                    >Name (optional)</label
+                                >
+                                <input
+                                    type="text"
+                                    id="piece-name"
+                                    placeholder="Piece 1"
+                                    maxlength="50"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-secondary full-width"
+                            onclick="addPiece()"
+                            data-i18n="addPiece"
+                        >
+                            Add Piece
+                        </button>
+                    </div>
+
+                    <div class="pieces-section">
+                        <h4 data-i18n="piecesToOptimize">Pieces to Optimize</h4>
+                        <div id="pieces-list" class="pieces-list">
+                            <p class="empty-message" data-i18n="noPiecesAdded">
+                                No pieces added yet
+                            </p>
+                        </div>
+                        <div
+                            class="pieces-summary"
+                            id="pieces-summary"
+                            style="display: none"
+                        >
+                            <div class="summary-item">
+                                <span data-i18n="totalPieces"
+                                    >Total Pieces:</span
+                                >
+                                <span id="total-pieces-count">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span data-i18n="totalArea">Total Area:</span>
+                                <span id="total-area">0 m²</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="designs-section">
+                        <h4 data-i18n="orSelectDesigns">
+                            Or Select from Designs
+                        </h4>
+                        <div class="toggle-designs">
+                            <button
+                                type="button"
+                                class="btn btn-outline"
+                                onclick="toggleDesignSelection()"
+                                id="toggle-designs-btn"
+                                data-i18n="showDesigns"
+                            >
+                                Show Available Designs
+                            </button>
+                        </div>
+                        <div
+                            id="design-list"
+                            class="design-list"
+                            style="display: none"
+                        >
+                            <p data-i18n="loadingDesigns">Loading designs...</p>
+                        </div>
                     </div>
 
                     <h3 data-i18n="glassSheet">Glass Sheet</h3>
@@ -87,8 +201,19 @@
                             class="btn btn-primary"
                             onclick="runOptimization()"
                             data-i18n="runOptimization"
+                            id="optimize-btn"
+                            disabled
                         >
                             Run Optimization
+                        </button>
+                        <button
+                            class="btn btn-outline"
+                            onclick="clearAllPieces()"
+                            data-i18n="clearAll"
+                            id="clear-btn"
+                            style="display: none"
+                        >
+                            Clear All
                         </button>
                     </div>
 
@@ -121,9 +246,10 @@
                         </div>
                     </div>
 
-                    <div class="placeholder-message">
+                    <div class="placeholder-message" id="placeholder-message">
                         <p data-i18n="optimizerInstructions">
-                            Select designs and click "Run Optimization" to begin
+                            Add pieces above and click "Run Optimization" to
+                            begin
                         </p>
                     </div>
                 </div>
@@ -138,21 +264,8 @@
         <script src="/static/js/mobile.js"></script>
         <script src="/static/js/app.js"></script>
         <script>
-            // Load designs
-            fetch("/api/designs")
-                .then((r) => r.json())
-                .then((data) => {
-                    const list = document.getElementById("design-list");
-                    list.innerHTML = data.designs
-                        .map(
-                            (d) =>
-                                `<label class="design-item">
-                        <input type="checkbox" value="${d.id}">
-                        ${d.name} (${d.width}x${d.height}x${d.thickness}mm)
-                    </label>`,
-                        )
-                        .join("");
-                });
+            let pieces = [];
+            let designsVisible = false;
 
             // Load sheets
             fetch("/api/sheets")
@@ -170,12 +283,231 @@
                         .join("");
                 });
 
+            function addPiece() {
+                const width = parseFloat(
+                    document.getElementById("piece-width").value,
+                );
+                const height = parseFloat(
+                    document.getElementById("piece-height").value,
+                );
+                const quantity =
+                    parseInt(document.getElementById("piece-quantity").value) ||
+                    1;
+                const name =
+                    document.getElementById("piece-name").value ||
+                    `Piece ${pieces.length + 1}`;
+
+                if (!width || !height || width <= 0 || height <= 0) {
+                    alert("Please enter valid width and height values");
+                    return;
+                }
+
+                const piece = {
+                    id: Date.now() + Math.random(),
+                    width: width,
+                    height: height,
+                    quantity: quantity,
+                    name: name,
+                };
+
+                pieces.push(piece);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+
+                // Clear form
+                document.getElementById("piece-width").value = "";
+                document.getElementById("piece-height").value = "";
+                document.getElementById("piece-quantity").value = "1";
+                document.getElementById("piece-name").value = "";
+            }
+
+            function removePiece(pieceId) {
+                pieces = pieces.filter((p) => p.id !== pieceId);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+            }
+
+            function updatePiecesList() {
+                const list = document.getElementById("pieces-list");
+                const emptyMessage = list.querySelector(".empty-message");
+
+                if (pieces.length === 0) {
+                    if (!emptyMessage) {
+                        list.innerHTML =
+                            '<p class="empty-message" data-i18n="noPiecesAdded">No pieces added yet</p>';
+                    }
+                } else {
+                    list.innerHTML = pieces
+                        .map(
+                            (piece) => `
+                        <div class="piece-item">
+                            <div class="piece-info">
+                                <div class="piece-name">${piece.name}</div>
+                                <div class="piece-details">
+                                    ${piece.width} × ${piece.height} mm
+                                    <span class="piece-quantity">× ${piece.quantity}</span>
+                                </div>
+                                <div class="piece-area">
+                                    ${((piece.width * piece.height * piece.quantity) / 1000000).toFixed(3)} m²
+                                </div>
+                            </div>
+                            <button class="btn-remove" onclick="removePiece(${piece.id})" title="Remove piece">×</button>
+                        </div>
+                    `,
+                        )
+                        .join("");
+                }
+            }
+
+            function updateSummary() {
+                const summary = document.getElementById("pieces-summary");
+                const totalCount = pieces.reduce(
+                    (sum, piece) => sum + piece.quantity,
+                    0,
+                );
+                const totalArea =
+                    pieces.reduce(
+                        (sum, piece) =>
+                            sum + piece.width * piece.height * piece.quantity,
+                        0,
+                    ) / 1000000;
+
+                if (pieces.length > 0) {
+                    summary.style.display = "block";
+                    document.getElementById("total-pieces-count").textContent =
+                        totalCount;
+                    document.getElementById("total-area").textContent =
+                        totalArea.toFixed(3) + " m²";
+                    document.getElementById("clear-btn").style.display =
+                        "inline-block";
+                } else {
+                    summary.style.display = "none";
+                    document.getElementById("clear-btn").style.display = "none";
+                }
+            }
+
+            function updateOptimizeButton() {
+                const btn = document.getElementById("optimize-btn");
+                btn.disabled = pieces.length === 0;
+            }
+
+            function clearAllPieces() {
+                if (confirm("Are you sure you want to remove all pieces?")) {
+                    pieces = [];
+                    updatePiecesList();
+                    updateSummary();
+                    updateOptimizeButton();
+                }
+            }
+
+            function toggleDesignSelection() {
+                const designList = document.getElementById("design-list");
+                const toggleBtn = document.getElementById("toggle-designs-btn");
+
+                if (!designsVisible) {
+                    // Load designs if not already loaded
+                    if (designList.innerHTML.includes("Loading designs")) {
+                        fetch("/api/designs")
+                            .then((r) => r.json())
+                            .then((data) => {
+                                designList.innerHTML = data.designs
+                                    .map(
+                                        (d) =>
+                                            `<label class="design-item">
+                                    <input type="checkbox" value="${d.id}" onchange="toggleDesign(${d.id}, '${d.name}', ${d.width}, ${d.height})">
+                                    ${d.name} (${d.width}×${d.height}×${d.thickness}mm)
+                                </label>`,
+                                    )
+                                    .join("");
+                            });
+                    }
+                    designList.style.display = "block";
+                    toggleBtn.textContent = "Hide Designs";
+                    designsVisible = true;
+                } else {
+                    designList.style.display = "none";
+                    toggleBtn.textContent = "Show Available Designs";
+                    designsVisible = false;
+                }
+            }
+
+            function toggleDesign(designId, designName, width, height) {
+                const checkbox = event.target;
+
+                if (checkbox.checked) {
+                    // Add design as a piece
+                    const piece = {
+                        id: "design_" + designId,
+                        width: width,
+                        height: height,
+                        quantity: 1,
+                        name: designName,
+                        designId: designId,
+                    };
+                    pieces.push(piece);
+                } else {
+                    // Remove design piece
+                    pieces = pieces.filter(
+                        (p) => p.id !== "design_" + designId,
+                    );
+                }
+
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+            }
+
             function runOptimization() {
-                document.querySelector(".placeholder-message").style.display =
+                if (pieces.length === 0) {
+                    alert("Please add some pieces first");
+                    return;
+                }
+
+                const selectedSheet = document.querySelector(
+                    'input[name="sheet"]:checked',
+                );
+                if (!selectedSheet) {
+                    alert("Please select a glass sheet");
+                    return;
+                }
+
+                document.getElementById("placeholder-message").style.display =
                     "none";
                 document.getElementById("results-area").style.display = "block";
 
-                fetch("/api/optimize", { method: "POST" })
+                // Convert pieces to the expected format
+                const designs = pieces.map((piece) => ({
+                    design_id: piece.designId || 0, // 0 for custom pieces
+                    quantity: piece.quantity,
+                    priority: 1,
+                    width: piece.width,
+                    height: piece.height,
+                    name: piece.name,
+                }));
+
+                const optimizationData = {
+                    name: `Optimization ${new Date().toISOString().split("T")[0]}`,
+                    sheet_id: parseInt(selectedSheet.value),
+                    designs: designs,
+                    algorithm:
+                        document.getElementById("algorithm-select").value,
+                    options: {
+                        allow_rotation: true,
+                        allow_flipping: false,
+                        minimum_gap: 2.0,
+                        edge_margin: 5.0,
+                    },
+                };
+
+                fetch("/api/optimize", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(optimizationData),
+                })
                     .then((r) => r.json())
                     .then((data) => {
                         const stats = data.optimization.layout.statistics;
@@ -185,8 +517,28 @@
                             stats.waste_rate.toFixed(1) + "%";
                         document.getElementById("pieces").textContent =
                             stats.placed_pieces;
+                    })
+                    .catch((error) => {
+                        console.error("Optimization error:", error);
+                        alert("Error running optimization. Please try again.");
                     });
             }
+
+            // Allow Enter key to add pieces
+            document.addEventListener("keypress", function (e) {
+                if (e.key === "Enter") {
+                    const activeElement = document.activeElement;
+                    if (
+                        activeElement &&
+                        (activeElement.id === "piece-width" ||
+                            activeElement.id === "piece-height" ||
+                            activeElement.id === "piece-quantity" ||
+                            activeElement.id === "piece-name")
+                    ) {
+                        addPiece();
+                    }
+                }
+            });
 
             // Update algorithm select options when language changes
             function updateAlgorithmOptions() {

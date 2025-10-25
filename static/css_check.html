@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Diagnostic - Glass Optimizer</title>
+
+    <!-- Load all CSS files -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/optimizer.css">
+    <link rel="stylesheet" href="/static/css/mobile.css">
+
+    <style>
+        .diagnostic-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .diagnostic-title {
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+
+        .css-test {
+            margin: 1rem 0;
+            padding: 0.5rem;
+            background: #f5f5f5;
+            border-left: 4px solid #007acc;
+        }
+
+        .status {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .status.loaded {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .variable-test {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin: 2px;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Glass Optimizer CSS Diagnostic</h1>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">1. CSS File Loading Status</h2>
+            <div id="css-status"></div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">2. CSS Variables Test</h2>
+            <p>Testing main CSS variables from main.css:</p>
+            <div class="css-test">
+                <div class="variable-test" style="background: var(--primary-color, red);" title="--primary-color"></div>
+                <div class="variable-test" style="background: var(--secondary-color, red);" title="--secondary-color"></div>
+                <div class="variable-test" style="background: var(--success-color, red);" title="--success-color"></div>
+                <div class="variable-test" style="background: var(--warning-color, red);" title="--warning-color"></div>
+                <div class="variable-test" style="background: var(--error-color, red);" title="--error-color"></div>
+                <div class="variable-test" style="background: var(--surface-color, red); border: 2px solid var(--border-color, red);" title="--surface-color"></div>
+                <span>← Hover over squares to see variable names</span>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">3. Button Component Test</h2>
+            <div class="css-test">
+                <button class="btn btn-primary">Primary Button</button>
+                <button class="btn btn-secondary">Secondary Button</button>
+                <button class="btn btn-outline">Outline Button</button>
+                <button class="btn" disabled>Disabled Button</button>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">4. Form Components Test</h2>
+            <div class="css-test">
+                <div class="input-group">
+                    <label class="form-label">Test Input</label>
+                    <input type="text" class="form-input" placeholder="Type here...">
+                </div>
+                <div class="input-group">
+                    <label class="form-label">Test Select</label>
+                    <select class="form-select">
+                        <option>Option 1</option>
+                        <option>Option 2</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">5. Layout Components Test</h2>
+            <div class="css-test">
+                <div style="display: flex; min-height: 200px; border: 1px solid #ccc;">
+                    <div class="sidebar" style="height: 200px;">
+                        <h3>Sidebar Test</h3>
+                        <p>This should look like a proper sidebar</p>
+                    </div>
+                    <div style="flex: 1; padding: 1rem; background: var(--background-color, #fafafa);">
+                        <h3>Main Content Area</h3>
+                        <p>This should use the background color variable</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">6. Optimizer-Specific Styles Test</h2>
+            <div class="css-test">
+                <div class="piece-input-form">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Width (mm)</label>
+                            <input type="number" placeholder="1000">
+                        </div>
+                        <div class="input-group">
+                            <label>Height (mm)</label>
+                            <input type="number" placeholder="200">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pieces-list" style="max-height: 150px;">
+                    <div class="piece-item">
+                        <div class="piece-info">
+                            <div class="piece-name">Test Piece</div>
+                            <div class="piece-details">1000 × 200 mm <span class="piece-quantity">× 5</span></div>
+                        </div>
+                        <button class="btn-remove">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">7. Mobile Responsiveness Test</h2>
+            <div class="css-test">
+                <p>Resize your browser window to test mobile styles</p>
+                <div class="optimizer-layout" style="min-height: 200px;">
+                    <div class="sidebar" style="height: 200px;">Mobile Sidebar</div>
+                    <div class="optimizer-main">Mobile Main Content</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="diagnostic-section">
+            <h2 class="diagnostic-title">8. JavaScript CSS Detection</h2>
+            <div id="js-results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check if CSS files are loading
+        function checkCSS() {
+            const statusDiv = document.getElementById('css-status');
+            const cssFiles = [
+                '/static/css/main.css',
+                '/static/css/optimizer.css',
+                '/static/css/mobile.css'
+            ];
+
+            cssFiles.forEach(file => {
+                fetch(file)
+                    .then(response => {
+                        const status = document.createElement('div');
+                        status.className = response.ok ? 'status loaded' : 'status error';
+                        status.textContent = `${file}: ${response.ok ? 'LOADED ✓' : 'ERROR ✗'}`;
+                        statusDiv.appendChild(status);
+                    })
+                    .catch(error => {
+                        const status = document.createElement('div');
+                        status.className = 'status error';
+                        status.textContent = `${file}: ERROR - ${error.message}`;
+                        statusDiv.appendChild(status);
+                    });
+            });
+        }
+
+        // Check computed styles
+        function checkComputedStyles() {
+            const resultsDiv = document.getElementById('js-results');
+            const testElement = document.createElement('div');
+            testElement.style.cssText = `
+                color: var(--primary-color);
+                background: var(--surface-color);
+                padding: var(--spacing-md);
+                border-radius: var(--border-radius-md);
+            `;
+            document.body.appendChild(testElement);
+
+            const computed = window.getComputedStyle(testElement);
+
+            const results = [
+                `Primary Color: ${computed.color}`,
+                `Background: ${computed.backgroundColor}`,
+                `Padding: ${computed.padding}`,
+                `Border Radius: ${computed.borderRadius}`
+            ];
+
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = 'css-test';
+                div.textContent = result;
+                resultsDiv.appendChild(div);
+            });
+
+            document.body.removeChild(testElement);
+        }
+
+        // Check specific optimizer styles
+        function checkOptimizerStyles() {
+            const styles = [
+                '.piece-input-form',
+                '.input-row',
+                '.piece-item',
+                '.btn-remove',
+                '.optimizer-layout'
+            ];
+
+            styles.forEach(selector => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    const computed = window.getComputedStyle(element);
+                    console.log(`${selector}:`, {
+                        display: computed.display,
+                        padding: computed.padding,
+                        background: computed.backgroundColor,
+                        border: computed.border
+                    });
+                }
+            });
+        }
+
+        // Run diagnostics
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Running CSS diagnostics...');
+            checkCSS();
+
+            setTimeout(() => {
+                checkComputedStyles();
+                checkOptimizerStyles();
+
+                // Final summary
+                console.log('CSS Diagnostic completed. Check the page and console for results.');
+
+                const summary = document.createElement('div');
+                summary.className = 'diagnostic-section';
+                summary.innerHTML = `
+                    <h2>Diagnostic Complete</h2>
+                    <p>Check the browser console for detailed style information.</p>
+                    <p>If elements above look styled correctly, CSS is loading properly!</p>
+                `;
+                document.body.appendChild(summary);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
