@@ -1,8 +1,8 @@
-# Glass Optimizer Project Documentation
+# Vitari Project Documentation
 
 ## Project Overview
 
-The Glass Optimizer is a web application that allows users to design custom glass pieces and optimize their cutting patterns to minimize waste. The application serves two primary functions:
+The Vitari is a web application that allows users to design custom glass pieces and optimize their cutting patterns to minimize waste. The application serves two primary functions:
 
 1. **Glass Design Tool**: Visual editor for creating custom glass designs with features like holes, custom shapes, and measurements
 2. **Sheet Optimization**: Algorithm to arrange multiple glass pieces on standard sheets to minimize waste and calculate material efficiency

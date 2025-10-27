@@ -13,6 +13,7 @@ import (
 
 	"glass-optimizer/internal/handlers"
 	"glass-optimizer/internal/models"
+	"glass-optimizer/internal/services"
 	"glass-optimizer/internal/storage"
 )
 
@@ -37,8 +38,16 @@ func main() {
 	// Create storage layer
 	store := storage.NewSQLiteStorage(db, logger)
 
+	// Create services
+	jwtSecret := getEnv("JWT_SECRET", "vitrari-dev-secret-change-in-production")
+	authService := services.NewAuthService(store, logger, jwtSecret)
+
 	// Create handlers
 	projectHandler := handlers.NewProjectHandler(store, logger)
+	authHandler := handlers.NewAuthHandler(authService, logger)
+
+	// Create middleware
+	authMiddleware := services.NewAuthMiddleware(authService, logger)
 
 	// Load templates
 	templates, err = template.ParseGlob("templates/*.html")
@@ -46,28 +55,47 @@ func main() {
 		log.Printf("Warning: Failed to load templates: %v", err)
 	}
 
+	// Apply global middleware
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	// Create a ServeMux for better routing control
+	mux := http.NewServeMux()
+
 	// Static files
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// Favicon
-	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/favicon.ico")
 	})
 
-	// Routes
-	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/designer", handleDesigner)
-	http.HandleFunc("/optimizer", handleOptimizer)
-	http.HandleFunc("/projects", handleProjects)
-	http.HandleFunc("/projects/", handleProjectDetail)
-	http.HandleFunc("/debug-mobile", handleDebugMobile)
+	// Public routes (no authentication required)
+	mux.HandleFunc("/", authMiddleware.OptionalAuth(http.HandlerFunc(handleIndex)).ServeHTTP)
+	mux.HandleFunc("/login", handleAuth)
+	mux.HandleFunc("/signup", handleAuth)
+	mux.HandleFunc("/auth", handleAuth)
+
+	// Protected routes (authentication required)
+	mux.Handle("/designer", authMiddleware.RequireAuth(http.HandlerFunc(handleDesigner)))
+	mux.Handle("/optimizer", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizer)))
+	mux.Handle("/projects", authMiddleware.RequireAuth(http.HandlerFunc(handleProjects)))
+	mux.Handle("/projects/", authMiddleware.RequireAuth(http.HandlerFunc(handleProjectDetail)))
+	mux.HandleFunc("/debug-mobile", handleDebugMobile)
 
 	// API routes
-	http.HandleFunc("/api/health", handleHealth)
+	mux.HandleFunc("/api/health", handleHealth)
 
-	// Design routes
-	http.HandleFunc("/api/designs/", func(w http.ResponseWriter, r *http.Request) {
+	// Auth API routes (public)
+	mux.HandleFunc("/api/auth/login", authHandler.HandleLogin)
+	mux.HandleFunc("/api/auth/signup", authHandler.HandleSignup)
+	mux.HandleFunc("/api/auth/forgot-password", authHandler.HandleForgotPassword)
+	mux.HandleFunc("/api/auth/reset-password", authHandler.HandleResetPassword)
+	mux.HandleFunc("/api/auth/logout", authHandler.HandleLogout)
+	mux.HandleFunc("/api/auth/me", authHandler.HandleMe)
+	mux.HandleFunc("/api/auth/verify-email", authHandler.HandleVerifyEmail)
+
+	// Protected API routes (authentication required)
+	mux.Handle("/api/designs/", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Route to specific design operations
 		if strings.HasPrefix(r.URL.Path, "/api/designs/") && r.URL.Path != "/api/designs/" {
 			// Check for move endpoint
@@ -79,15 +107,15 @@ func main() {
 		} else {
 			handleDesigns(w, r, store, logger)
 		}
-	})
-	http.HandleFunc("/api/designs", func(w http.ResponseWriter, r *http.Request) {
+	})))
+	mux.Handle("/api/designs", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleDesigns(w, r, store, logger)
-	})
+	})))
 
-	http.HandleFunc("/api/sheets", handleSheets)
+	mux.Handle("/api/sheets", authMiddleware.RequireAuth(http.HandlerFunc(handleSheets)))
 
-	// Project routes
-	http.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
+	// Project routes (protected)
+	mux.Handle("/api/projects/", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Route to specific project operations
 		if strings.HasPrefix(r.URL.Path, "/api/projects/") && r.URL.Path != "/api/projects/" {
 			// Check for sub-routes like /designs or /optimizations
@@ -101,17 +129,26 @@ func main() {
 		} else {
 			projectHandler.HandleProjects(w, r)
 		}
-	})
-	http.HandleFunc("/api/projects", projectHandler.HandleProjects)
+	})))
+	mux.Handle("/api/projects", authMiddleware.RequireAuth(http.HandlerFunc(projectHandler.HandleProjects)))
 
-	http.HandleFunc("/api/optimizations", handleOptimizations)
-	http.HandleFunc("/api/optimize", handleOptimize)
+	mux.Handle("/api/optimizations", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizations)))
+	mux.Handle("/api/optimize", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimize)))
+
+	// Apply global middleware chain
+	handler := authMiddleware.SecurityHeaders(
+		authMiddleware.CORS(
+			authMiddleware.Logging(
+				authMiddleware.RateLimiting(mux),
+			),
+		),
+	)
 
 	port := getEnv("PORT", "9995")
-	log.Printf("Starting server on port %s", port)
+	log.Printf("Starting Vitrari server on port %s", port)
 	log.Printf("Open http://localhost:%s in your browser", port)
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -742,4 +779,17 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(result)
+}
+
+// Vitrari Authentication page handler
+func handleAuth(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title": "Login",
+		"Page":  "auth",
+	}
+
+	if err := templates.ExecuteTemplate(w, "auth.html", data); err != nil {
+		log.Printf("Template error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

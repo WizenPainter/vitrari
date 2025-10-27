@@ -65,6 +65,7 @@ const (
 	CodeDatabaseQuery      = "DATABASE_QUERY"
 	CodeAlgorithmTimeout   = "ALGORITHM_TIMEOUT"
 	CodeInvalidAlgorithm   = "INVALID_ALGORITHM"
+	CodeInternal           = "INTERNAL_ERROR"
 )
 
 // Error implements the error interface
@@ -198,7 +199,14 @@ type ErrorResponse struct {
 	Error   string      `json:"error"`
 	Code    string      `json:"code,omitempty"`
 	Details interface{} `json:"details,omitempty"`
-	Field   string      `json:"field,omitempty"`
+	Message string      `json:"message,omitempty"`
+}
+
+// SuccessResponse represents a success response
+type SuccessResponse struct {
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // NewErrorResponse creates a new error response from an AppError
@@ -208,7 +216,7 @@ func NewErrorResponse(err error) *ErrorResponse {
 			Error:   appErr.Message,
 			Code:    appErr.Code,
 			Details: appErr.Details,
-			Field:   appErr.Field,
+			Message: appErr.Message,
 		}
 	}
 
@@ -217,12 +225,14 @@ func NewErrorResponse(err error) *ErrorResponse {
 			Error:   "Validation failed",
 			Code:    CodeInvalidValue,
 			Details: valErr.Errors,
+			Message: "Validation failed",
 		}
 	}
 
 	return &ErrorResponse{
-		Error: err.Error(),
-		Code:  "UNKNOWN_ERROR",
+		Error:   err.Error(),
+		Code:    CodeInternal,
+		Message: err.Error(),
 	}
 }
 

@@ -20,6 +20,26 @@ type SQLiteStorage struct {
 
 // Storage interface defines the contract for data storage operations
 type Storage interface {
+	// User operations
+	CreateUser(user *models.User) error
+	GetUser(id int64) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	UpdateUser(user *models.User) error
+	DeleteUser(id int64) error
+	UpdateUserPassword(id int64, passwordHash string) error
+	SetPasswordResetToken(id int64, token string, expiresAt time.Time) error
+	ClearPasswordResetToken(id int64) error
+	GetUserByResetToken(token string) (*models.User, error)
+	UpdateFailedLoginAttempts(id int64, attempts int, lockedUntil *time.Time) error
+	UpdateLastLogin(id int64) error
+
+	// Session operations
+	CreateSession(session *models.UserSession) error
+	GetSession(token string) (*models.UserSession, error)
+	DeleteSession(token string) error
+	DeleteExpiredSessions() error
+	GetUserSessions(userID int64) ([]models.UserSession, error)
+
 	// Design operations
 	CreateDesign(design *models.Design) error
 	GetDesign(id int) (*models.Design, error)
@@ -77,6 +97,395 @@ func NewSQLiteStorage(db *sql.DB, logger *slog.Logger) *SQLiteStorage {
 		db:     db,
 		logger: logger,
 	}
+}
+
+// User operations implementation
+
+// CreateUser creates a new user in the database
+func (s *SQLiteStorage) CreateUser(user *models.User) error {
+	query := `
+		INSERT INTO users (
+			email, password_hash, first_name, last_name,
+			email_verified, email_verification_token,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	result, err := s.db.Exec(query,
+		user.Email, user.PasswordHash, user.FirstName, user.LastName,
+		user.EmailVerified, user.EmailVerificationToken,
+		user.CreatedAt, user.UpdatedAt,
+	)
+	if err != nil {
+		s.logger.Error("Failed to create user", "error", err, "email", user.Email)
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	user.ID = id
+
+	s.logger.Info("User created successfully", "user_id", user.ID, "email", user.Email)
+	return nil
+}
+
+// GetUser retrieves a user by ID
+func (s *SQLiteStorage) GetUser(id int64) (*models.User, error) {
+	user := &models.User{}
+	query := `
+		SELECT id, email, password_hash, first_name, last_name,
+			   email_verified, email_verification_token, password_reset_token,
+			   password_reset_expires, last_login, failed_login_attempts,
+			   account_locked_until, created_at, updated_at
+		FROM users WHERE id = ?
+	`
+
+	row := s.db.QueryRow(query, id)
+	err := s.scanUser(row, user)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		s.logger.Error("Failed to get user by ID", "error", err, "user_id", id)
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// GetUserByEmail retrieves a user by email
+func (s *SQLiteStorage) GetUserByEmail(email string) (*models.User, error) {
+	user := &models.User{}
+	query := `
+		SELECT id, email, password_hash, first_name, last_name,
+			   email_verified, email_verification_token, password_reset_token,
+			   password_reset_expires, last_login, failed_login_attempts,
+			   account_locked_until, created_at, updated_at
+		FROM users WHERE email = ?
+	`
+
+	row := s.db.QueryRow(query, email)
+	err := s.scanUser(row, user)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		s.logger.Error("Failed to get user by email", "error", err, "email", email)
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// UpdateUser updates an existing user
+func (s *SQLiteStorage) UpdateUser(user *models.User) error {
+	query := `
+		UPDATE users SET
+			email = ?, first_name = ?, last_name = ?,
+			email_verified = ?, updated_at = ?
+		WHERE id = ?
+	`
+
+	user.UpdatedAt = time.Now()
+	_, err := s.db.Exec(query,
+		user.Email, user.FirstName, user.LastName,
+		user.EmailVerified, user.UpdatedAt, user.ID,
+	)
+	if err != nil {
+		s.logger.Error("Failed to update user", "error", err, "user_id", user.ID)
+		return err
+	}
+
+	return nil
+}
+
+// DeleteUser deletes a user by ID
+func (s *SQLiteStorage) DeleteUser(id int64) error {
+	query := `DELETE FROM users WHERE id = ?`
+	_, err := s.db.Exec(query, id)
+	if err != nil {
+		s.logger.Error("Failed to delete user", "error", err, "user_id", id)
+		return err
+	}
+
+	s.logger.Info("User deleted", "user_id", id)
+	return nil
+}
+
+// UpdateUserPassword updates a user's password
+func (s *SQLiteStorage) UpdateUserPassword(id int64, passwordHash string) error {
+	query := `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`
+	_, err := s.db.Exec(query, passwordHash, time.Now(), id)
+	if err != nil {
+		s.logger.Error("Failed to update user password", "error", err, "user_id", id)
+		return err
+	}
+
+	return nil
+}
+
+// SetPasswordResetToken sets a password reset token for a user
+func (s *SQLiteStorage) SetPasswordResetToken(id int64, token string, expiresAt time.Time) error {
+	query := `
+		UPDATE users SET
+			password_reset_token = ?,
+			password_reset_expires = ?,
+			updated_at = ?
+		WHERE id = ?
+	`
+	_, err := s.db.Exec(query, token, expiresAt, time.Now(), id)
+	if err != nil {
+		s.logger.Error("Failed to set password reset token", "error", err, "user_id", id)
+		return err
+	}
+
+	return nil
+}
+
+// ClearPasswordResetToken clears the password reset token for a user
+func (s *SQLiteStorage) ClearPasswordResetToken(id int64) error {
+	query := `
+		UPDATE users SET
+			password_reset_token = NULL,
+			password_reset_expires = NULL,
+			updated_at = ?
+		WHERE id = ?
+	`
+	_, err := s.db.Exec(query, time.Now(), id)
+	if err != nil {
+		s.logger.Error("Failed to clear password reset token", "error", err, "user_id", id)
+		return err
+	}
+
+	return nil
+}
+
+// GetUserByResetToken retrieves a user by their password reset token
+func (s *SQLiteStorage) GetUserByResetToken(token string) (*models.User, error) {
+	user := &models.User{}
+	query := `
+		SELECT id, email, password_hash, first_name, last_name,
+			   email_verified, email_verification_token, password_reset_token,
+			   password_reset_expires, last_login, failed_login_attempts,
+			   account_locked_until, created_at, updated_at
+		FROM users WHERE password_reset_token = ?
+	`
+
+	row := s.db.QueryRow(query, token)
+	err := s.scanUser(row, user)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		s.logger.Error("Failed to get user by reset token", "error", err)
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// UpdateFailedLoginAttempts updates the failed login attempts for a user
+func (s *SQLiteStorage) UpdateFailedLoginAttempts(id int64, attempts int, lockedUntil *time.Time) error {
+	query := `
+		UPDATE users SET
+			failed_login_attempts = ?,
+			account_locked_until = ?,
+			updated_at = ?
+		WHERE id = ?
+	`
+	_, err := s.db.Exec(query, attempts, lockedUntil, time.Now(), id)
+	if err != nil {
+		s.logger.Error("Failed to update failed login attempts", "error", err, "user_id", id)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateLastLogin updates the last login time for a user
+func (s *SQLiteStorage) UpdateLastLogin(id int64) error {
+	now := time.Now()
+	query := `UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?`
+	_, err := s.db.Exec(query, now, now, id)
+	if err != nil {
+		s.logger.Error("Failed to update last login", "error", err, "user_id", id)
+		return err
+	}
+
+	return nil
+}
+
+// Session operations implementation
+
+// CreateSession creates a new user session
+func (s *SQLiteStorage) CreateSession(session *models.UserSession) error {
+	query := `
+		INSERT INTO user_sessions (
+			user_id, session_token, expires_at, created_at,
+			last_accessed, ip_address, user_agent
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`
+
+	result, err := s.db.Exec(query,
+		session.UserID, session.SessionToken, session.ExpiresAt,
+		session.CreatedAt, session.LastAccessed, session.IPAddress, session.UserAgent,
+	)
+	if err != nil {
+		s.logger.Error("Failed to create session", "error", err, "user_id", session.UserID)
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	session.ID = id
+
+	return nil
+}
+
+// GetSession retrieves a session by token
+func (s *SQLiteStorage) GetSession(token string) (*models.UserSession, error) {
+	session := &models.UserSession{}
+	query := `
+		SELECT id, user_id, session_token, expires_at,
+			   created_at, last_accessed, ip_address, user_agent
+		FROM user_sessions WHERE session_token = ?
+	`
+
+	row := s.db.QueryRow(query, token)
+	err := s.scanSession(row, session)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		s.logger.Error("Failed to get session", "error", err)
+		return nil, err
+	}
+
+	return session, nil
+}
+
+// DeleteSession deletes a session by token
+func (s *SQLiteStorage) DeleteSession(token string) error {
+	query := `DELETE FROM user_sessions WHERE session_token = ?`
+	_, err := s.db.Exec(query, token)
+	if err != nil {
+		s.logger.Error("Failed to delete session", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// DeleteExpiredSessions deletes all expired sessions
+func (s *SQLiteStorage) DeleteExpiredSessions() error {
+	query := `DELETE FROM user_sessions WHERE expires_at < ?`
+	result, err := s.db.Exec(query, time.Now())
+	if err != nil {
+		s.logger.Error("Failed to delete expired sessions", "error", err)
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected > 0 {
+		s.logger.Info("Deleted expired sessions", "count", rowsAffected)
+	}
+
+	return nil
+}
+
+// GetUserSessions retrieves all sessions for a user
+func (s *SQLiteStorage) GetUserSessions(userID int64) ([]models.UserSession, error) {
+	query := `
+		SELECT id, user_id, session_token, expires_at,
+			   created_at, last_accessed, ip_address, user_agent
+		FROM user_sessions
+		WHERE user_id = ? AND expires_at > ?
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.Query(query, userID, time.Now())
+	if err != nil {
+		s.logger.Error("Failed to get user sessions", "error", err, "user_id", userID)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []models.UserSession
+	for rows.Next() {
+		var session models.UserSession
+		err := s.scanSession(rows, &session)
+		if err != nil {
+			s.logger.Error("Failed to scan session", "error", err)
+			continue
+		}
+		sessions = append(sessions, session)
+	}
+
+	return sessions, nil
+}
+
+// Helper methods for scanning database rows
+
+// scanUser scans a database row into a User struct
+func (s *SQLiteStorage) scanUser(row interface{ Scan(...interface{}) error }, user *models.User) error {
+	var emailVerificationToken, passwordResetToken sql.NullString
+	var passwordResetExpires, lastLogin, accountLockedUntil sql.NullTime
+
+	err := row.Scan(
+		&user.ID, &user.Email, &user.PasswordHash, &user.FirstName, &user.LastName,
+		&user.EmailVerified, &emailVerificationToken, &passwordResetToken,
+		&passwordResetExpires, &lastLogin, &user.FailedLoginAttempts,
+		&accountLockedUntil, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Handle nullable fields
+	if emailVerificationToken.Valid {
+		user.EmailVerificationToken = &emailVerificationToken.String
+	}
+	if passwordResetToken.Valid {
+		user.PasswordResetToken = &passwordResetToken.String
+	}
+	if passwordResetExpires.Valid {
+		user.PasswordResetExpires = &passwordResetExpires.Time
+	}
+	if lastLogin.Valid {
+		user.LastLogin = &lastLogin.Time
+	}
+	if accountLockedUntil.Valid {
+		user.AccountLockedUntil = &accountLockedUntil.Time
+	}
+
+	return nil
+}
+
+// scanSession scans a database row into a UserSession struct
+func (s *SQLiteStorage) scanSession(row interface{ Scan(...interface{}) error }, session *models.UserSession) error {
+	var ipAddress, userAgent sql.NullString
+
+	err := row.Scan(
+		&session.ID, &session.UserID, &session.SessionToken, &session.ExpiresAt,
+		&session.CreatedAt, &session.LastAccessed, &ipAddress, &userAgent,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Handle nullable fields
+	if ipAddress.Valid {
+		session.IPAddress = &ipAddress.String
+	}
+	if userAgent.Valid {
+		session.UserAgent = &userAgent.String
+	}
+
+	return nil
 }
 
 // Design operations
