@@ -462,6 +462,9 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Received optimization request: name=%s, sheet_id=%d, designs=%d, algorithm=%s",
+		req.Name, req.SheetID, len(req.Designs), req.Algorithm)
+
 	// Validate required fields
 	if req.SheetID == 0 {
 		http.Error(w, "Sheet ID is required", http.StatusBadRequest)
@@ -508,96 +511,201 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Calculate basic statistics
-	sheetWidth := selectedSheet["width"].(int)
-	sheetHeight := selectedSheet["height"].(int)
-	sheetArea := float64(sheetWidth * sheetHeight)
+	// Multi-sheet optimization algorithm
+	sheetWidth := float64(selectedSheet["width"].(int))
+	sheetHeight := float64(selectedSheet["height"].(int))
+	sheetArea := sheetWidth * sheetHeight
+	pricePerSqm := selectedSheet["price_per_sqm"].(float64)
+	sheetAreaSqm := sheetArea / 1000000.0 // Convert mm² to m²
 
-	totalPieceArea := 0.0
-	placedPieces := []map[string]interface{}{}
+	// Calculate total pieces requested
+	totalPieces := 0
+	allPieces := []map[string]interface{}{}
 
-	// Simple placement algorithm (bottom-left)
-	currentX := float64(req.Options.EdgeMargin)
-	currentY := float64(req.Options.EdgeMargin)
-	rowHeight := 0.0
-	placedCount := 0
-
+	// Expand pieces with quantities
 	for _, design := range req.Designs {
+		totalPieces += design.Quantity
 		for i := 0; i < design.Quantity; i++ {
-			pieceWidth := design.Width
-			pieceHeight := design.Height
-			totalPieceArea += pieceWidth * pieceHeight
+			allPieces = append(allPieces, map[string]interface{}{
+				"id":          fmt.Sprintf("piece_%d_%d", design.DesignID, i+1),
+				"design_id":   design.DesignID,
+				"design_name": design.Name,
+				"width":       design.Width,
+				"height":      design.Height,
+				"area":        design.Width * design.Height,
+			})
+		}
+	}
 
-			// Check if piece fits in current position
-			if currentX+pieceWidth+req.Options.EdgeMargin <= float64(sheetWidth) &&
-				currentY+pieceHeight+req.Options.EdgeMargin <= float64(sheetHeight) {
+	log.Printf("Starting multi-sheet optimization: %d total pieces requested", totalPieces)
 
-				// Place the piece
-				placedPieces = append(placedPieces, map[string]interface{}{
-					"id":          fmt.Sprintf("piece_%d_%d", design.DesignID, i),
-					"design_id":   design.DesignID,
-					"design_name": design.Name,
-					"x":           currentX,
-					"y":           currentY,
-					"width":       pieceWidth,
-					"height":      pieceHeight,
-					"rotation":    0,
-					"flipped":     false,
-				})
-
-				placedCount++
-
-				// Update position for next piece
-				currentX += pieceWidth + req.Options.MinimumGap
-				if pieceHeight > rowHeight {
-					rowHeight = pieceHeight
-				}
-			} else {
-				// Move to next row
-				currentX = req.Options.EdgeMargin
-				currentY += rowHeight + req.Options.MinimumGap
-				rowHeight = 0
-
-				// Try to place in new row
-				if currentX+pieceWidth+req.Options.EdgeMargin <= float64(sheetWidth) &&
-					currentY+pieceHeight+req.Options.EdgeMargin <= float64(sheetHeight) {
-
-					placedPieces = append(placedPieces, map[string]interface{}{
-						"id":          fmt.Sprintf("piece_%d_%d", design.DesignID, i),
-						"design_id":   design.DesignID,
-						"design_name": design.Name,
-						"x":           currentX,
-						"y":           currentY,
-						"width":       pieceWidth,
-						"height":      pieceHeight,
-						"rotation":    0,
-						"flipped":     false,
-					})
-
-					placedCount++
-					currentX += pieceWidth + req.Options.MinimumGap
-					rowHeight = pieceHeight
-				}
-				// If piece doesn't fit in new row, skip it (would be unplaced)
+	// Sort pieces by area (largest first for better packing)
+	for i := 0; i < len(allPieces)-1; i++ {
+		for j := i + 1; j < len(allPieces); j++ {
+			if allPieces[i]["area"].(float64) < allPieces[j]["area"].(float64) {
+				allPieces[i], allPieces[j] = allPieces[j], allPieces[i]
 			}
 		}
 	}
 
-	// Calculate utilization
-	placedArea := 0.0
-	for _, piece := range placedPieces {
-		width := piece["width"].(float64)
-		height := piece["height"].(float64)
-		placedArea += width * height
+	// Multi-sheet placement
+	optimizationSheets := []map[string]interface{}{}
+	totalPlacedPieces := 0
+
+	for len(allPieces) > 0 {
+		sheetNum := len(optimizationSheets) + 1
+		log.Printf("Starting sheet %d with %d remaining pieces", sheetNum, len(allPieces))
+
+		// Initialize new sheet
+		currentSheet := map[string]interface{}{
+			"sheet_number": sheetNum,
+			"width":        sheetWidth,
+			"height":       sheetHeight,
+			"pieces":       []map[string]interface{}{},
+		}
+
+		// Track available rectangles for this sheet
+		availableRects := []map[string]interface{}{
+			{
+				"x":      req.Options.EdgeMargin,
+				"y":      req.Options.EdgeMargin,
+				"width":  sheetWidth - 2*req.Options.EdgeMargin,
+				"height": sheetHeight - 2*req.Options.EdgeMargin,
+			},
+		}
+
+		piecesPlacedThisSheet := 0
+
+		// Try to place pieces on current sheet
+		for i := 0; i < len(allPieces); i++ {
+			piece := allPieces[i]
+			pieceWidth := piece["width"].(float64)
+			pieceHeight := piece["height"].(float64)
+
+			placed := false
+
+			// Try both orientations if rotation is allowed
+			orientations := []map[string]float64{
+				{"width": pieceWidth, "height": pieceHeight, "rotation": 0},
+			}
+			if req.Options.AllowRotation {
+				orientations = append(orientations, map[string]float64{
+					"width": pieceHeight, "height": pieceWidth, "rotation": 90,
+				})
+			}
+
+			// Try each orientation and each available rectangle
+			for _, orientation := range orientations {
+				if placed {
+					break
+				}
+
+				w := orientation["width"]
+				h := orientation["height"]
+				rotation := orientation["rotation"]
+
+				for rectIdx, rect := range availableRects {
+					if w <= rect["width"].(float64) && h <= rect["height"].(float64) {
+						// Place the piece
+						placedPiece := map[string]interface{}{
+							"id":          piece["id"],
+							"design_id":   piece["design_id"],
+							"design_name": piece["design_name"],
+							"x":           rect["x"].(float64),
+							"y":           rect["y"].(float64),
+							"width":       w,
+							"height":      h,
+							"rotation":    rotation,
+							"flipped":     false,
+							"sheet":       sheetNum,
+						}
+
+						currentSheet["pieces"] = append(currentSheet["pieces"].([]map[string]interface{}), placedPiece)
+						piecesPlacedThisSheet++
+						totalPlacedPieces++
+						placed = true
+
+						// Update available rectangles
+						newRects := []map[string]interface{}{}
+
+						// Add rectangles to the right and below the placed piece
+						rightRect := map[string]interface{}{
+							"x":      rect["x"].(float64) + w + req.Options.MinimumGap,
+							"y":      rect["y"].(float64),
+							"width":  rect["width"].(float64) - w - req.Options.MinimumGap,
+							"height": h,
+						}
+						if rightRect["width"].(float64) > 0 {
+							newRects = append(newRects, rightRect)
+						}
+
+						belowRect := map[string]interface{}{
+							"x":      rect["x"].(float64),
+							"y":      rect["y"].(float64) + h + req.Options.MinimumGap,
+							"width":  rect["width"].(float64),
+							"height": rect["height"].(float64) - h - req.Options.MinimumGap,
+						}
+						if belowRect["height"].(float64) > 0 {
+							newRects = append(newRects, belowRect)
+						}
+
+						// Replace the used rectangle with new ones
+						availableRects = append(availableRects[:rectIdx], availableRects[rectIdx+1:]...)
+						availableRects = append(availableRects, newRects...)
+
+						// Remove placed piece from remaining pieces
+						allPieces = append(allPieces[:i], allPieces[i+1:]...)
+						i-- // Adjust index since we removed an element
+
+						log.Printf("Placed piece %s on sheet %d at (%.0f,%.0f) size %.0fx%.0f rotation=%.0f°",
+							piece["id"], sheetNum, rect["x"].(float64), rect["y"].(float64), w, h, rotation)
+
+						break
+					}
+				}
+			}
+		}
+
+		if piecesPlacedThisSheet > 0 {
+			optimizationSheets = append(optimizationSheets, currentSheet)
+			log.Printf("Sheet %d completed with %d pieces", sheetNum, piecesPlacedThisSheet)
+		} else {
+			// No more pieces can be placed
+			log.Printf("No more pieces can be placed. Stopping optimization.")
+			break
+		}
 	}
 
-	utilizationRate := (placedArea / sheetArea) * 100
-	wasteRate := 100 - utilizationRate
+	log.Printf("Optimization completed: %d pieces placed across %d sheets, %d pieces unplaced",
+		totalPlacedPieces, len(optimizationSheets), len(allPieces))
 
-	// Calculate total cost
-	sheetAreaSqm := sheetArea / 1000000.0 // Convert mm² to m²
-	pricePerSqm := selectedSheet["price_per_sqm"].(float64)
-	totalCost := sheetAreaSqm * pricePerSqm
+	// Calculate overall statistics
+	totalUsedArea := 0.0
+	totalSheetArea := float64(len(optimizationSheets)) * sheetArea
+
+	for _, sheet := range optimizationSheets {
+		pieces := sheet["pieces"].([]map[string]interface{})
+		for _, piece := range pieces {
+			width := piece["width"].(float64)
+			height := piece["height"].(float64)
+			totalUsedArea += width * height
+		}
+	}
+
+	overallUtilization := 0.0
+	if totalSheetArea > 0 {
+		overallUtilization = (totalUsedArea / totalSheetArea) * 100
+	}
+
+	totalCost := float64(len(optimizationSheets)) * sheetAreaSqm * pricePerSqm
+
+	// Return first sheet for primary visualization, with overall statistics
+	firstSheet := map[string]interface{}{
+		"pieces": []map[string]interface{}{},
+	}
+	if len(optimizationSheets) > 0 {
+		firstSheet = optimizationSheets[0]
+	}
 
 	result := map[string]interface{}{
 		"optimization": map[string]interface{}{
@@ -606,15 +714,27 @@ func handleOptimize(w http.ResponseWriter, r *http.Request) {
 			"layout": map[string]interface{}{
 				"sheet_width":  sheetWidth,
 				"sheet_height": sheetHeight,
-				"pieces":       placedPieces,
+				"pieces":       firstSheet["pieces"],
 				"statistics": map[string]interface{}{
-					"utilization_rate": utilizationRate,
-					"waste_rate":       wasteRate,
-					"placed_pieces":    placedCount,
-					"total_pieces":     len(req.Designs),
-					"cutting_length":   0,
-					"cutting_time":     0,
+					"utilization_rate":    overallUtilization,
+					"waste_rate":          100 - overallUtilization,
+					"placed_pieces":       totalPlacedPieces,
+					"total_pieces":        totalPieces,
+					"unplaced_pieces":     len(allPieces),
+					"sheets_used":         len(optimizationSheets),
+					"total_sheet_area_m2": totalSheetArea / 1000000.0,
+					"used_area_m2":        totalUsedArea / 1000000.0,
+					"waste_area_m2":       (totalSheetArea - totalUsedArea) / 1000000.0,
+					"cutting_length":      0,
+					"cutting_time":        0,
 				},
+			},
+			"sheets": optimizationSheets,
+			"sheet_details": map[string]interface{}{
+				"sheet_type":     selectedSheet["name"],
+				"sheet_size":     fmt.Sprintf("%.0fx%.0fmm", sheetWidth, sheetHeight),
+				"price_per_m2":   pricePerSqm,
+				"cost_per_sheet": sheetAreaSqm * pricePerSqm,
 			},
 			"execution_time": 0.1,
 			"total_cost":     totalCost,

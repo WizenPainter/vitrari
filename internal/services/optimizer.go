@@ -171,11 +171,24 @@ func (s *OptimizerService) loadDesignsForOptimization(designRequests []models.De
 
 	for _, req := range designRequests {
 		if _, exists := designs[req.DesignID]; !exists {
-			design, err := s.storage.GetDesign(req.DesignID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load design %d: %w", req.DesignID, err)
+			if req.DesignID == 0 {
+				// Handle custom pieces - create a temporary design
+				design := &models.Design{
+					ID:        0,
+					Name:      req.Name,
+					Width:     req.Width,
+					Height:    req.Height,
+					Thickness: 6.0, // Default thickness for custom pieces
+				}
+				designs[req.DesignID] = design
+			} else {
+				// Load existing design from database
+				design, err := s.storage.GetDesign(req.DesignID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load design %d: %w", req.DesignID, err)
+				}
+				designs[req.DesignID] = design
 			}
-			designs[req.DesignID] = design
 		}
 	}
 

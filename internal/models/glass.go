@@ -78,12 +78,12 @@ type Optimization struct {
 	LayoutData      string       `json:"-" db:"layout_data"` // JSON blob
 	Layout          Layout       `json:"layout"`             // Parsed layout
 	WastePercentage float64      `json:"waste_percentage" db:"waste_percentage"`
-	TotalArea       float64      `json:"total_area" db:"total_area"`         // Sheet area in mm²
-	UsedArea        float64      `json:"used_area" db:"used_area"`           // Used area in mm²
-	WastedArea      float64      `json:"wasted_area"`                        // Calculated waste area
-	TotalCost       float64      `json:"total_cost"`                         // Total material cost
-	Algorithm       string       `json:"algorithm" db:"algorithm"`           // Algorithm used
-	ExecutionTime   float64      `json:"execution_time" db:"execution_time"` // Time taken in seconds
+	TotalArea       float64      `json:"total_area" db:"total_area"`           // Sheet area in mm²
+	UsedArea        float64      `json:"used_area" db:"used_area"`             // Used area in mm²
+	WastedArea      float64      `json:"wasted_area"`                          // Calculated waste area
+	TotalCost       float64      `json:"total_cost"`                           // Total material cost
+	Algorithm       string       `json:"algorithm" db:"algorithm"`             // Algorithm used
+	ExecutionTime   float64      `json:"execution_time" db:"execution_time"`   // Time taken in seconds
 	ProjectID       *int         `json:"project_id,omitempty" db:"project_id"` // Link to project
 	CreatedAt       time.Time    `json:"created_at" db:"created_at"`
 }
@@ -94,6 +94,10 @@ type DesignItem struct {
 	Design   *Design `json:"design,omitempty"`
 	Quantity int     `json:"quantity"`
 	Priority int     `json:"priority"` // Higher priority pieces are placed first
+	// Fields for custom pieces (when DesignID = 0)
+	Width  float64 `json:"width,omitempty"`
+	Height float64 `json:"height,omitempty"`
+	Name   string  `json:"name,omitempty"`
 }
 
 // Layout represents the optimized layout of pieces on a sheet

@@ -181,6 +181,24 @@
                         <p data-i18n="loadingSheets">Loading sheets...</p>
                     </div>
 
+                    <div
+                        id="sheet-status"
+                        style="
+                            display: none;
+                            align-items: center;
+                            gap: 0.5rem;
+                            padding: 0.5rem;
+                            background: rgba(16, 185, 129, 0.1);
+                            border-radius: 0.25rem;
+                            margin-bottom: 1rem;
+                        "
+                    >
+                        <span style="color: var(--success)">✓</span>
+                        <span style="font-size: 0.875rem"
+                            >Selected: <strong id="selected-sheet-name"></strong
+                        ></span>
+                    </div>
+
                     <h3 data-i18n="algorithm">Algorithm</h3>
                     <select class="full-width" id="algorithm-select">
                         <option value="bottom-left" data-i18n="bottomLeftFill">
@@ -225,23 +243,100 @@
                         <h3 data-i18n="results">Results</h3>
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <h4 data-i18n="utilization">Utilization</h4>
+                                <h4 data-i18n="utilization">
+                                    Overall Utilization
+                                </h4>
                                 <div class="stat-value" id="utilization">
                                     0%
                                 </div>
                             </div>
                             <div class="stat-card">
-                                <h4 data-i18n="waste">Waste</h4>
+                                <h4 data-i18n="waste">Overall Waste</h4>
                                 <div class="stat-value" id="waste">0%</div>
                             </div>
                             <div class="stat-card">
                                 <h4 data-i18n="piecesPlaced">Pieces Placed</h4>
                                 <div class="stat-value" id="pieces">0</div>
                             </div>
+                            <div class="stat-card">
+                                <h4 data-i18n="sheetsUsed">Sheets Used</h4>
+                                <div class="stat-value" id="sheets-used">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h4 data-i18n="totalCost">Total Cost</h4>
+                                <div class="stat-value" id="total-cost">$0</div>
+                            </div>
+                        </div>
+                        <div
+                            class="sheet-summary"
+                            id="sheet-summary"
+                            style="display: none"
+                        >
+                            <h4>📋 Sheet Breakdown</h4>
+                            <div id="sheet-list" class="sheet-breakdown"></div>
                         </div>
                         <div id="visualization" class="visualization">
-                            <p data-i18n="visualizationPlaceholder">
-                                Visualization will appear here
+                            <div class="visualization-controls">
+                                <div class="control-group">
+                                    <button
+                                        id="zoom-out"
+                                        class="btn btn-sm"
+                                        title="Zoom Out"
+                                    >
+                                        🔍-
+                                    </button>
+                                    <span id="zoom-level">100%</span>
+                                    <button
+                                        id="zoom-in"
+                                        class="btn btn-sm"
+                                        title="Zoom In"
+                                    >
+                                        🔍+
+                                    </button>
+                                </div>
+                                <div class="control-group">
+                                    <button
+                                        id="fit-to-view"
+                                        class="btn btn-sm"
+                                        title="Fit to View"
+                                    >
+                                        📐
+                                    </button>
+                                    <button
+                                        id="toggle-labels"
+                                        class="btn btn-sm"
+                                        title="Toggle Labels"
+                                    >
+                                        🏷️
+                                    </button>
+                                </div>
+                                <div class="control-group">
+                                    <select
+                                        id="sheet-selector"
+                                        class="btn btn-sm"
+                                    >
+                                        <option value="0">Sheet 1</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="canvas-container" class="canvas-container">
+                                <canvas
+                                    id="layout-canvas"
+                                    width="800"
+                                    height="600"
+                                ></canvas>
+                                <div
+                                    id="piece-tooltip"
+                                    class="piece-tooltip"
+                                    style="display: none"
+                                ></div>
+                            </div>
+                            <p
+                                id="visualization-placeholder"
+                                data-i18n="visualizationPlaceholder"
+                            >
+                                Visualization will appear here after
+                                optimization
                             </p>
                         </div>
                     </div>
@@ -266,6 +361,34 @@
         <script>
             let pieces = [];
             let designsVisible = false;
+            let selectedSheetId = null; // Track selected sheet for persistence
+
+            // Define updateSheetStatusDisplay function early to prevent "not a function" errors
+            function updateSheetStatusDisplay() {
+                try {
+                    const selectedSheet = document.querySelector(
+                        'input[name="sheet"]:checked',
+                    );
+                    const statusDiv = document.getElementById("sheet-status");
+                    const nameSpan = document.getElementById(
+                        "selected-sheet-name",
+                    );
+
+                    if (selectedSheet && statusDiv && nameSpan) {
+                        const sheetLabel =
+                            selectedSheet.parentElement.textContent.trim();
+                        nameSpan.textContent = sheetLabel;
+                        statusDiv.style.display = "flex";
+                        statusDiv.style.color = "var(--success)";
+                        console.log("Sheet status updated:", sheetLabel);
+                    } else if (statusDiv) {
+                        statusDiv.style.display = "none";
+                        console.log("Sheet status hidden - no selection");
+                    }
+                } catch (error) {
+                    console.warn("Error updating sheet status display:", error);
+                }
+            }
 
             // Load sheets
             fetch("/api/sheets")
@@ -281,6 +404,17 @@
                     </label>`,
                         )
                         .join("");
+
+                    // Set initial selected sheet
+                    if (!selectedSheetId && data.sheets.length > 0) {
+                        selectedSheetId = data.sheets[0].id;
+                    }
+
+                    // Add event listeners to track sheet selection changes
+                    setupSheetSelectionTracking();
+
+                    // Update status indicator
+                    updateSheetStatus(data.sheets);
                 });
 
             function addPiece() {
@@ -460,22 +594,79 @@
             }
 
             function runOptimization() {
+                console.log("Starting optimization with pieces:", pieces);
+
                 if (pieces.length === 0) {
                     alert("Please add some pieces first");
                     return;
                 }
 
+                // Validate that pieces have valid data
+                for (let i = 0; i < pieces.length; i++) {
+                    const piece = pieces[i];
+                    if (!piece.width || !piece.height || !piece.quantity) {
+                        alert(
+                            `Piece ${i + 1} has invalid data. Please check your inputs.`,
+                        );
+                        return;
+                    }
+                }
+
+                // Ensure sheet selection is preserved
+                restoreSheetSelection();
+
                 const selectedSheet = document.querySelector(
                     'input[name="sheet"]:checked',
                 );
                 if (!selectedSheet) {
-                    alert("Please select a glass sheet");
-                    return;
+                    // Try to restore sheet selection first
+                    restoreSheetSelection();
+
+                    // Check again after restoration
+                    const restoredSheet = document.querySelector(
+                        'input[name="sheet"]:checked',
+                    );
+
+                    if (!restoredSheet) {
+                        alert(
+                            "Please select a glass sheet. If this problem persists, try refreshing the page.",
+                        );
+
+                        // Highlight sheet selection area for user
+                        const sheetList = document.getElementById("sheet-list");
+                        if (sheetList) {
+                            sheetList.style.border = "2px solid var(--danger)";
+                            sheetList.style.borderRadius = "0.5rem";
+                            setTimeout(() => {
+                                sheetList.style.border = "";
+                                sheetList.style.borderRadius = "";
+                            }, 3000);
+                        }
+                        return;
+                    } else {
+                        selectedSheetId = parseInt(restoredSheet.value);
+                        console.log(
+                            "Sheet selection restored automatically:",
+                            selectedSheetId,
+                        );
+                    }
                 }
 
+                // Update selected sheet ID for persistence (handle restored sheet case)
+                const finalSelectedSheet =
+                    selectedSheet ||
+                    document.querySelector('input[name="sheet"]:checked');
+                selectedSheetId = parseInt(finalSelectedSheet.value);
+
+                // Reset visualization state
+                document.getElementById("canvas-container").style.display =
+                    "none";
                 document.getElementById("placeholder-message").style.display =
                     "none";
                 document.getElementById("results-area").style.display = "block";
+
+                // Show loading state
+                showVisualizationLoading();
 
                 // Convert pieces to the expected format
                 const designs = pieces.map((piece) => ({
@@ -487,9 +678,12 @@
                     name: piece.name,
                 }));
 
+                console.log("Converted designs for API:", designs);
+                console.log("Using sheet ID:", selectedSheetId);
+
                 const optimizationData = {
-                    name: `Optimization ${new Date().toISOString().split("T")[0]}`,
-                    sheet_id: parseInt(selectedSheet.value),
+                    name: `Optimization ${new Date().toISOString().split("T")[0]}-${Date.now()}`,
+                    sheet_id: selectedSheetId,
                     designs: designs,
                     algorithm:
                         document.getElementById("algorithm-select").value,
@@ -501,6 +695,8 @@
                     },
                 };
 
+                console.log("Sending optimization request:", optimizationData);
+
                 fetch("/api/optimize", {
                     method: "POST",
                     headers: {
@@ -508,19 +704,78 @@
                     },
                     body: JSON.stringify(optimizationData),
                 })
-                    .then((r) => r.json())
+                    .then((response) => {
+                        console.log(
+                            "Optimization response status:",
+                            response.status,
+                        );
+                        if (!response.ok) {
+                            throw new Error(
+                                `HTTP error! status: ${response.status}`,
+                            );
+                        }
+                        return response.json();
+                    })
                     .then((data) => {
+                        console.log("Optimization result:", data);
+
+                        if (!data.optimization || !data.optimization.layout) {
+                            throw new Error(
+                                "Invalid optimization result structure",
+                            );
+                        }
+
                         const stats = data.optimization.layout.statistics;
                         document.getElementById("utilization").textContent =
                             stats.utilization_rate.toFixed(1) + "%";
                         document.getElementById("waste").textContent =
                             stats.waste_rate.toFixed(1) + "%";
                         document.getElementById("pieces").textContent =
-                            stats.placed_pieces;
+                            `${stats.placed_pieces}/${stats.total_pieces}`;
+                        document.getElementById("sheets-used").textContent =
+                            stats.sheets_used || 1;
+                        document.getElementById("total-cost").textContent =
+                            `$${data.optimization.total_cost.toFixed(2)}`;
+
+                        // Update sheet breakdown
+                        updateSheetBreakdown(data.optimization);
+
+                        console.log(
+                            "Total pieces requested:",
+                            designs.reduce((sum, d) => sum + d.quantity, 0),
+                        );
+                        console.log("Pieces placed:", stats.placed_pieces);
+                        console.log("Sheets used:", stats.sheets_used);
+
+                        // Render the optimization visualization with slight delay for smooth transition
+                        setTimeout(() => {
+                            renderOptimizationVisualization(data.optimization);
+                        }, 100);
+
+                        // Don't clear pieces array - allow for subsequent optimizations
+                        console.log("Optimization completed successfully");
                     })
                     .catch((error) => {
                         console.error("Optimization error:", error);
-                        alert("Error running optimization. Please try again.");
+
+                        // Hide loading state and show error
+                        document.getElementById(
+                            "visualization-placeholder",
+                        ).style.display = "flex";
+                        document.getElementById(
+                            "visualization-placeholder",
+                        ).innerHTML =
+                            `<div style="color: var(--danger); text-align: center;">
+                                <strong>Optimization Error</strong><br>
+                                ${error.message || "Please try again."}
+                            </div>`;
+                        document.getElementById(
+                            "canvas-container",
+                        ).style.display = "none";
+
+                        alert(
+                            `Error running optimization: ${error.message || "Please try again."}`,
+                        );
                     });
             }
 
@@ -541,6 +796,920 @@
             });
 
             // Update algorithm select options when language changes
+            // Optimization Visualization System
+            let optimizationResult = null;
+            let canvasState = {
+                zoom: 1,
+                panX: 0,
+                panY: 0,
+                showLabels: true,
+                isDragging: false,
+                lastMouseX: 0,
+                lastMouseY: 0,
+            };
+
+            // Global variable to track if canvas interactions are set up
+            let canvasInteractionsSetup = false;
+            let currentSheetIndex = 0;
+
+            function updateSheetBreakdown(optimization) {
+                const sheetSummary = document.getElementById("sheet-summary");
+                const sheetList = document.getElementById("sheet-list");
+                const sheetSelector = document.getElementById("sheet-selector");
+
+                if (!optimization.sheets || optimization.sheets.length <= 1) {
+                    sheetSummary.style.display = "none";
+                    return;
+                }
+
+                sheetSummary.style.display = "block";
+                sheetList.innerHTML = "";
+                sheetSelector.innerHTML = "";
+
+                const stats = optimization.layout.statistics;
+                const sheetDetails = optimization.sheet_details;
+
+                optimization.sheets.forEach((sheet, index) => {
+                    const pieces = sheet.pieces;
+                    const sheetArea = sheet.width * sheet.height;
+                    let usedArea = 0;
+
+                    pieces.forEach((piece) => {
+                        usedArea += piece.width * piece.height;
+                    });
+
+                    const utilization = ((usedArea / sheetArea) * 100).toFixed(
+                        1,
+                    );
+
+                    const sheetDiv = document.createElement("div");
+                    sheetDiv.className = "sheet-info";
+                    sheetDiv.innerHTML = `
+                        <div class="sheet-header">
+                            <strong>Sheet ${sheet.sheet_number}</strong>
+                            <span class="sheet-util">${utilization}% utilized</span>
+                        </div>
+                        <div class="sheet-details">
+                            <span>📦 ${pieces.length} pieces</span>
+                            <span>📐 ${sheet.width}×${sheet.height}mm</span>
+                            <span>💰 $${sheetDetails.cost_per_sheet.toFixed(2)}</span>
+                        </div>
+                    `;
+                    sheetList.appendChild(sheetDiv);
+
+                    // Add to selector
+                    const option = document.createElement("option");
+                    option.value = index;
+                    option.textContent = `Sheet ${sheet.sheet_number}`;
+                    sheetSelector.appendChild(option);
+                });
+
+                // Add summary
+                const summaryDiv = document.createElement("div");
+                summaryDiv.className = "optimization-summary";
+                summaryDiv.innerHTML = `
+                    <div class="summary-header"><strong>📊 Overall Summary</strong></div>
+                    <div class="summary-grid">
+                        <div>🗂️ Total Sheets: <strong>${stats.sheets_used}</strong></div>
+                        <div>📦 Placed Pieces: <strong>${stats.placed_pieces}/${stats.total_pieces}</strong></div>
+                        <div>📏 Total Area: <strong>${stats.total_sheet_area_m2.toFixed(2)}m²</strong></div>
+                        <div>✅ Used Area: <strong>${stats.used_area_m2.toFixed(2)}m²</strong></div>
+                        <div>❌ Waste Area: <strong>${stats.waste_area_m2.toFixed(2)}m²</strong></div>
+                        <div>💰 Total Cost: <strong>$${optimization.total_cost.toFixed(2)}</strong></div>
+                    </div>
+                `;
+                sheetList.appendChild(summaryDiv);
+
+                // Setup sheet selector
+                sheetSelector.addEventListener("change", (e) => {
+                    currentSheetIndex = parseInt(e.target.value);
+                    if (
+                        optimization.sheets &&
+                        optimization.sheets[currentSheetIndex]
+                    ) {
+                        // Update the current sheet data for visualization
+                        optimizationResult.layout.pieces =
+                            optimization.sheets[currentSheetIndex].pieces;
+                        drawLayout();
+                    }
+                });
+            }
+
+            function showVisualizationLoading() {
+                const placeholder = document.getElementById(
+                    "visualization-placeholder",
+                );
+                placeholder.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                        <div class="spinner" style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span>Generating visualization...</span>
+                    </div>
+                `;
+                placeholder.style.display = "flex";
+                document.getElementById("canvas-container").style.display =
+                    "none";
+            }
+
+            function renderOptimizationVisualization(optimization) {
+                optimizationResult = optimization;
+                fullOptimizationResult = optimization;
+                currentSheetIndex = 0;
+
+                // Hide placeholder and show canvas
+                document.getElementById(
+                    "visualization-placeholder",
+                ).style.display = "none";
+                document.getElementById("canvas-container").style.display =
+                    "block";
+
+                const canvas = document.getElementById("layout-canvas");
+                const container = document.getElementById("canvas-container");
+
+                // Resize canvas to fit container
+                resizeCanvas();
+
+                // Initial render
+                drawLayout();
+
+                // Setup event listeners (only once)
+                if (!canvasInteractionsSetup) {
+                    setupCanvasInteractions();
+                    canvasInteractionsSetup = true;
+                }
+            }
+
+            function resizeCanvas() {
+                const canvas = document.getElementById("layout-canvas");
+                const container = document.getElementById("canvas-container");
+
+                const rect = container.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+
+                // Fit to view on resize
+                fitToView();
+            }
+
+            function drawLayout() {
+                if (!optimizationResult) return;
+
+                const canvas = document.getElementById("layout-canvas");
+                const ctx = canvas.getContext("2d");
+                const layout = optimizationResult.layout;
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Apply transformations
+                ctx.save();
+                ctx.translate(canvasState.panX, canvasState.panY);
+                ctx.scale(canvasState.zoom, canvasState.zoom);
+
+                // Calculate scale to fit sheet in canvas
+                const sheetWidth = layout.sheet_width;
+                const sheetHeight = layout.sheet_height;
+                const padding = 50;
+
+                const scaleX = (canvas.width - padding * 2) / sheetWidth;
+                const scaleY = (canvas.height - padding * 2) / sheetHeight;
+                const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 1:1
+
+                ctx.scale(scale, scale);
+                ctx.translate(padding / scale, padding / scale);
+
+                // Draw sheet background
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#333333";
+                ctx.lineWidth = 2 / scale;
+                ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+                ctx.strokeRect(0, 0, sheetWidth, sheetHeight);
+
+                // Color palette for pieces
+                const colors = [
+                    "#4f46e5",
+                    "#7c3aed",
+                    "#db2777",
+                    "#dc2626",
+                    "#ea580c",
+                    "#d97706",
+                    "#ca8a04",
+                    "#65a30d",
+                    "#16a34a",
+                    "#059669",
+                    "#0891b2",
+                    "#0284c7",
+                    "#2563eb",
+                    "#4338ca",
+                    "#7c2d12",
+                ];
+
+                // Draw placed pieces
+                layout.pieces.forEach((piece, index) => {
+                    const color = colors[index % colors.length];
+
+                    // Piece background
+                    ctx.fillStyle = color + "80"; // Semi-transparent
+                    ctx.fillRect(piece.x, piece.y, piece.width, piece.height);
+
+                    // Piece border
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1 / scale;
+                    ctx.strokeRect(piece.x, piece.y, piece.width, piece.height);
+
+                    // Draw rotation indicator if rotated
+                    if (piece.rotation !== 0) {
+                        const centerX = piece.x + piece.width / 2;
+                        const centerY = piece.y + piece.height / 2;
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, 3 / scale, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    // Draw labels if enabled
+                    if (canvasState.showLabels) {
+                        ctx.fillStyle = "#000000";
+                        ctx.font = `${12 / scale}px Arial`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+
+                        const centerX = piece.x + piece.width / 2;
+                        const centerY = piece.y + piece.height / 2;
+                        const text = piece.design_name || `Piece ${index + 1}`;
+
+                        // Text background for readability
+                        const metrics = ctx.measureText(text);
+                        const textWidth = metrics.width;
+                        const textHeight = 12 / scale;
+
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                        ctx.fillRect(
+                            centerX - textWidth / 2 - 2,
+                            centerY - textHeight / 2 - 1,
+                            textWidth + 4,
+                            textHeight + 2,
+                        );
+
+                        ctx.fillStyle = "#000000";
+                        ctx.fillText(text, centerX, centerY);
+
+                        // Dimensions
+                        if (canvasState.zoom > 0.5) {
+                            ctx.font = `${10 / scale}px Arial`;
+                            ctx.fillText(
+                                `${piece.width.toFixed(0)}×${piece.height.toFixed(0)}`,
+                                centerX,
+                                centerY + 15 / scale,
+                            );
+                        }
+                    }
+                });
+
+                // Draw cut paths if available
+                if (layout.cut_paths && layout.cut_paths.length > 0) {
+                    ctx.strokeStyle = "#ff0000";
+                    ctx.lineWidth = 1 / scale;
+                    ctx.setLineDash([2 / scale, 2 / scale]);
+
+                    layout.cut_paths.forEach((path) => {
+                        if (path.points && path.points.length > 1) {
+                            ctx.beginPath();
+                            ctx.moveTo(path.points[0].x, path.points[0].y);
+                            for (let i = 1; i < path.points.length; i++) {
+                                ctx.lineTo(path.points[i].x, path.points[i].y);
+                            }
+                            ctx.stroke();
+                        }
+                    });
+
+                    ctx.setLineDash([]);
+                }
+
+                ctx.restore();
+
+                // Update zoom level display
+                document.getElementById("zoom-level").textContent =
+                    Math.round(canvasState.zoom * 100) + "%";
+            }
+
+            function setupCanvasInteractions() {
+                const canvas = document.getElementById("layout-canvas");
+
+                // Mouse events for panning
+                canvas.addEventListener("mousedown", (e) => {
+                    canvasState.isDragging = true;
+                    canvasState.lastMouseX = e.clientX;
+                    canvasState.lastMouseY = e.clientY;
+                });
+
+                canvas.addEventListener("mousemove", (e) => {
+                    if (canvasState.isDragging) {
+                        const deltaX = e.clientX - canvasState.lastMouseX;
+                        const deltaY = e.clientY - canvasState.lastMouseY;
+
+                        canvasState.panX += deltaX;
+                        canvasState.panY += deltaY;
+
+                        canvasState.lastMouseX = e.clientX;
+                        canvasState.lastMouseY = e.clientY;
+
+                        drawLayout();
+                    } else {
+                        // Show tooltip on hover
+                        showPieceTooltip(e);
+                    }
+                });
+
+                canvas.addEventListener("mouseup", () => {
+                    canvasState.isDragging = false;
+                });
+
+                canvas.addEventListener("mouseleave", () => {
+                    canvasState.isDragging = false;
+                    hideTooltip();
+                });
+
+                // Touch events for mobile
+                canvas.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    canvasState.isDragging = true;
+                    canvasState.lastMouseX = touch.clientX;
+                    canvasState.lastMouseY = touch.clientY;
+                });
+
+                canvas.addEventListener("touchmove", (e) => {
+                    e.preventDefault();
+                    if (canvasState.isDragging && e.touches.length === 1) {
+                        const touch = e.touches[0];
+                        const deltaX = touch.clientX - canvasState.lastMouseX;
+                        const deltaY = touch.clientY - canvasState.lastMouseY;
+
+                        canvasState.panX += deltaX;
+                        canvasState.panY += deltaY;
+
+                        canvasState.lastMouseX = touch.clientX;
+                        canvasState.lastMouseY = touch.clientY;
+
+                        drawLayout();
+                    }
+                });
+
+                canvas.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    canvasState.isDragging = false;
+                });
+
+                // Pinch zoom for mobile
+                let lastPinchDistance = 0;
+                canvas.addEventListener("touchstart", (e) => {
+                    if (e.touches.length === 2) {
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        lastPinchDistance = Math.sqrt(
+                            Math.pow(touch2.clientX - touch1.clientX, 2) +
+                                Math.pow(touch2.clientY - touch1.clientY, 2),
+                        );
+                    }
+                });
+
+                canvas.addEventListener("touchmove", (e) => {
+                    if (e.touches.length === 2) {
+                        e.preventDefault();
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = Math.sqrt(
+                            Math.pow(touch2.clientX - touch1.clientX, 2) +
+                                Math.pow(touch2.clientY - touch1.clientY, 2),
+                        );
+
+                        if (lastPinchDistance > 0) {
+                            const zoomFactor =
+                                currentDistance / lastPinchDistance;
+                            canvasState.zoom = Math.max(
+                                0.1,
+                                Math.min(5, canvasState.zoom * zoomFactor),
+                            );
+                            drawLayout();
+                        }
+                        lastPinchDistance = currentDistance;
+                    }
+                });
+
+                // Zoom with mouse wheel
+                canvas.addEventListener("wheel", (e) => {
+                    e.preventDefault();
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    canvasState.zoom = Math.max(
+                        0.1,
+                        Math.min(5, canvasState.zoom * zoomFactor),
+                    );
+                    drawLayout();
+                });
+
+                // Control buttons
+                document
+                    .getElementById("zoom-in")
+                    .addEventListener("click", () => {
+                        canvasState.zoom = Math.min(5, canvasState.zoom * 1.2);
+                        drawLayout();
+                    });
+
+                document
+                    .getElementById("zoom-out")
+                    .addEventListener("click", () => {
+                        canvasState.zoom = Math.max(
+                            0.1,
+                            canvasState.zoom / 1.2,
+                        );
+                        drawLayout();
+                    });
+
+                document
+                    .getElementById("fit-to-view")
+                    .addEventListener("click", fitToView);
+
+                document
+                    .getElementById("toggle-labels")
+                    .addEventListener("click", () => {
+                        canvasState.showLabels = !canvasState.showLabels;
+                        drawLayout();
+
+                        // Update button appearance
+                        const btn = document.getElementById("toggle-labels");
+                        btn.style.opacity = canvasState.showLabels
+                            ? "1"
+                            : "0.5";
+                    });
+            }
+
+            function fitToView() {
+                if (!optimizationResult) return;
+
+                const canvas = document.getElementById("layout-canvas");
+                const layout = optimizationResult.layout;
+
+                const padding = 50;
+                const scaleX =
+                    (canvas.width - padding * 2) / layout.sheet_width;
+                const scaleY =
+                    (canvas.height - padding * 2) / layout.sheet_height;
+                const optimalScale = Math.min(scaleX, scaleY, 1);
+
+                canvasState.zoom = optimalScale;
+                canvasState.panX = 0;
+                canvasState.panY = 0;
+
+                drawLayout();
+            }
+
+            function showPieceTooltip(e) {
+                if (!optimizationResult || canvasState.isDragging) return;
+
+                const canvas = document.getElementById("layout-canvas");
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Transform mouse coordinates to canvas coordinates
+                const canvasX = (x - canvasState.panX) / canvasState.zoom;
+                const canvasY = (y - canvasState.panY) / canvasState.zoom;
+
+                // Find piece under mouse
+                const hoveredPiece = findPieceAt(canvasX, canvasY);
+
+                if (hoveredPiece) {
+                    const tooltip = document.getElementById("piece-tooltip");
+                    tooltip.innerHTML = `
+                        <strong>${hoveredPiece.design_name || "Custom Piece"}</strong><br>
+                        Size: ${hoveredPiece.width.toFixed(0)} × ${hoveredPiece.height.toFixed(0)} mm<br>
+                        Position: (${hoveredPiece.x.toFixed(0)}, ${hoveredPiece.y.toFixed(0)})<br>
+                        ${hoveredPiece.rotation ? `Rotation: ${hoveredPiece.rotation}°<br>` : ""}
+                        ${hoveredPiece.flipped ? "Flipped: Yes<br>" : ""}
+                        Area: ${((hoveredPiece.width * hoveredPiece.height) / 1000000).toFixed(3)} m²
+                    `;
+                    tooltip.style.left = e.clientX + 10 + "px";
+                    tooltip.style.top = e.clientY - 10 + "px";
+                    tooltip.style.display = "block";
+                } else {
+                    hideTooltip();
+                }
+            }
+
+            function findPieceAt(x, y) {
+                if (!optimizationResult) return null;
+
+                const layout = optimizationResult.layout;
+
+                // Calculate scale factors (same as in drawLayout)
+                const canvas = document.getElementById("layout-canvas");
+                const padding = 50;
+                const scaleX =
+                    (canvas.width - padding * 2) / layout.sheet_width;
+                const scaleY =
+                    (canvas.height - padding * 2) / layout.sheet_height;
+                const scale = Math.min(scaleX, scaleY, 1);
+
+                // Adjust coordinates for scale and padding
+                const adjustedX = x / scale - padding / scale;
+                const adjustedY = y / scale - padding / scale;
+
+                // Check each piece (reverse order for top-most)
+                for (let i = layout.pieces.length - 1; i >= 0; i--) {
+                    const piece = layout.pieces[i];
+                    if (
+                        adjustedX >= piece.x &&
+                        adjustedX <= piece.x + piece.width &&
+                        adjustedY >= piece.y &&
+                        adjustedY <= piece.y + piece.height
+                    ) {
+                        return piece;
+                    }
+                }
+
+                return null;
+            }
+
+            // Store original optimization result for sheet switching
+            let fullOptimizationResult = null;
+
+            function hideTooltip() {
+                document.getElementById("piece-tooltip").style.display = "none";
+            }
+
+            // Handle window resize
+            window.addEventListener("resize", () => {
+                if (optimizationResult) {
+                    resizeCanvas();
+                    drawLayout();
+                }
+            });
+
+            // Test function to verify visualization with sample data
+            function testVisualization() {
+                const sampleOptimization = {
+                    id: 1,
+                    name: "Test Optimization",
+                    layout: {
+                        sheet_width: 3210,
+                        sheet_height: 2250,
+                        pieces: [
+                            {
+                                id: "piece_1",
+                                design_id: 1,
+                                design_name: "Window Panel",
+                                x: 50,
+                                y: 50,
+                                width: 800,
+                                height: 600,
+                                rotation: 0,
+                                flipped: false,
+                                nested: false,
+                            },
+                            {
+                                id: "piece_2",
+                                design_id: 2,
+                                design_name: "Door Glass",
+                                x: 900,
+                                y: 50,
+                                width: 400,
+                                height: 1200,
+                                rotation: 0,
+                                flipped: false,
+                                nested: false,
+                            },
+                            {
+                                id: "piece_3",
+                                design_id: 1,
+                                design_name: "Window Panel",
+                                x: 1350,
+                                y: 50,
+                                width: 800,
+                                height: 600,
+                                rotation: 0,
+                                flipped: false,
+                                nested: false,
+                            },
+                            {
+                                id: "piece_4",
+                                design_id: 3,
+                                design_name: "Shelf Glass",
+                                x: 50,
+                                y: 700,
+                                width: 600,
+                                height: 300,
+                                rotation: 90,
+                                flipped: false,
+                                nested: false,
+                            },
+                        ],
+                        cut_paths: [
+                            {
+                                points: [
+                                    { x: 0, y: 650 },
+                                    { x: 850, y: 650 },
+                                ],
+                            },
+                            {
+                                points: [
+                                    { x: 850, y: 0 },
+                                    { x: 850, y: 1250 },
+                                ],
+                            },
+                        ],
+                        statistics: {
+                            total_pieces: 4,
+                            placed_pieces: 4,
+                            unplaced_pieces: 0,
+                            utilization_rate: 67.5,
+                            waste_rate: 32.5,
+                            material_efficiency: 85.2,
+                            cutting_length: 1500,
+                            cutting_time: 12.5,
+                            largest_waste_area: 2500000,
+                            smallest_gap: 50,
+                        },
+                    },
+                };
+
+                // Update statistics display
+                document.getElementById("utilization").textContent = "67.5%";
+                document.getElementById("waste").textContent = "32.5%";
+                document.getElementById("pieces").textContent = "4";
+
+                // Show results area
+                document.getElementById("placeholder-message").style.display =
+                    "none";
+                document.getElementById("results-area").style.display = "block";
+
+                // Render visualization
+                renderOptimizationVisualization(sampleOptimization);
+            }
+
+            // Test function to add multiple pieces and run optimization
+            function testMultiplePieces() {
+                console.log("Testing multiple pieces optimization...");
+
+                // Clear existing pieces
+                pieces = [];
+                updatePiecesList();
+
+                // Add test piece with multiple quantity
+                const testPiece = {
+                    id: Date.now() + Math.random(),
+                    width: 1000,
+                    height: 2000,
+                    quantity: 15,
+                    name: "Test Panel",
+                };
+
+                pieces.push(testPiece);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+
+                console.log("Added test piece:", testPiece);
+                console.log("Current pieces array:", pieces);
+
+                // Select first sheet option
+                const firstSheet = document.querySelector(
+                    'input[name="sheet"]',
+                );
+                if (firstSheet) {
+                    firstSheet.checked = true;
+                    console.log("Selected sheet:", firstSheet.value);
+                }
+
+                // Run optimization
+                setTimeout(() => {
+                    runOptimization();
+                }, 500);
+            }
+
+            // Test function for comprehensive multi-sheet optimization
+            function testCompleteOptimization() {
+                console.log(
+                    "Testing comprehensive multi-sheet optimization...",
+                );
+
+                // Clear existing pieces
+                pieces = [];
+                updatePiecesList();
+
+                // Test Case 1: Add pieces that require multiple sheets
+                const testPieces = [
+                    {
+                        id: Date.now() + Math.random(),
+                        width: 1500,
+                        height: 2000,
+                        quantity: 8, // Should use ~4 sheets (2 per sheet with rotation)
+                        name: "Large Panel",
+                    },
+                    {
+                        id: Date.now() + Math.random() + 0.1,
+                        width: 800,
+                        height: 600,
+                        quantity: 6, // Should fit in remaining spaces
+                        name: "Small Window",
+                    },
+                    {
+                        id: Date.now() + Math.random() + 0.2,
+                        width: 1000,
+                        height: 1000,
+                        quantity: 3, // Square pieces
+                        name: "Square Glass",
+                    },
+                ];
+
+                testPieces.forEach((piece) => {
+                    pieces.push(piece);
+                });
+
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+
+                console.log("Added test pieces:", testPieces);
+                console.log(
+                    "Total pieces:",
+                    pieces.reduce((sum, p) => sum + p.quantity, 0),
+                );
+
+                // Select first sheet option
+                const firstSheet = document.querySelector(
+                    'input[name="sheet"]',
+                );
+                if (firstSheet) {
+                    firstSheet.checked = true;
+                }
+
+                // Run optimization after short delay
+                setTimeout(() => {
+                    console.log("Running multi-sheet optimization test...");
+                    runOptimization();
+                }, 500);
+            }
+
+            // Test function for sheet selection persistence
+            function testSheetPersistence() {
+                console.log("Testing sheet selection persistence...");
+
+                // Step 1: Clear existing pieces
+                pieces = [];
+                updatePiecesList();
+
+                // Step 2: Add initial pieces
+                const initialPiece = {
+                    id: Date.now() + Math.random(),
+                    width: 1000,
+                    height: 1500,
+                    quantity: 2,
+                    name: "Initial Test",
+                };
+
+                pieces.push(initialPiece);
+                updatePiecesList();
+                updateSummary();
+                updateOptimizeButton();
+
+                // Step 3: Ensure sheet is selected
+                const firstSheet = document.querySelector(
+                    'input[name="sheet"]',
+                );
+                if (firstSheet) {
+                    firstSheet.checked = true;
+                    console.log("Selected sheet:", firstSheet.value);
+                }
+
+                // Step 4: Run first optimization
+                setTimeout(() => {
+                    console.log("Running first optimization...");
+                    runOptimization();
+
+                    // Step 5: After a delay, add more pieces and optimize again
+                    setTimeout(() => {
+                        console.log("Adding second batch of pieces...");
+
+                        const secondPiece = {
+                            id: Date.now() + Math.random(),
+                            width: 800,
+                            height: 600,
+                            quantity: 3,
+                            name: "Second Batch",
+                        };
+
+                        pieces.push(secondPiece);
+                        updatePiecesList();
+                        updateSummary();
+
+                        console.log("Total pieces now:", pieces.length);
+                        console.log(
+                            "Sheet selection before second optimization:",
+                            document.querySelector(
+                                'input[name="sheet"]:checked',
+                            )
+                                ? "SELECTED"
+                                : "NOT SELECTED",
+                        );
+
+                        // Step 6: Run second optimization
+                        setTimeout(() => {
+                            console.log("Running second optimization...");
+                            runOptimization();
+                        }, 1000);
+                    }, 3000); // Wait 3 seconds after first optimization
+                }, 500);
+            }
+
+            // Sheet selection persistence functions
+            function setupSheetSelectionTracking() {
+                const sheetInputs = document.querySelectorAll(
+                    'input[name="sheet"]',
+                );
+                sheetInputs.forEach((input) => {
+                    input.addEventListener("change", (e) => {
+                        if (e.target.checked) {
+                            selectedSheetId = parseInt(e.target.value);
+                            console.log(
+                                "Sheet selection updated:",
+                                selectedSheetId,
+                            );
+                            // Update status indicator
+                            setTimeout(() => updateSheetStatusDisplay(), 100);
+                        }
+                    });
+                });
+            }
+
+            function restoreSheetSelection() {
+                if (selectedSheetId) {
+                    const targetSheet = document.querySelector(
+                        `input[name="sheet"][value="${selectedSheetId}"]`,
+                    );
+                    if (targetSheet) {
+                        // Clear all selections first
+                        document
+                            .querySelectorAll('input[name="sheet"]')
+                            .forEach((input) => {
+                                input.checked = false;
+                            });
+                        // Select the target sheet
+                        targetSheet.checked = true;
+                        console.log(
+                            "Restored sheet selection:",
+                            selectedSheetId,
+                        );
+                        // Update status indicator
+                        setTimeout(() => updateSheetStatusDisplay(), 100);
+                    }
+                } else {
+                    console.warn(
+                        "Could not find sheet with ID:",
+                        selectedSheetId,
+                    );
+                    // Fallback to first available sheet
+                    const firstSheet = document.querySelector(
+                        'input[name="sheet"]',
+                    );
+                    if (firstSheet) {
+                        firstSheet.checked = true;
+                        selectedSheetId = parseInt(firstSheet.value);
+                        console.log(
+                            "Fallback to first sheet:",
+                            selectedSheetId,
+                        );
+                        // Update status indicator
+                        setTimeout(() => updateSheetStatusDisplay(), 100);
+                    } else {
+                        console.error("No sheet options available!");
+                        // Show user-friendly message
+                        const sheetList = document.getElementById("sheet-list");
+                        if (sheetList) {
+                            sheetList.innerHTML =
+                                '<p style="color: var(--danger); text-align: center; padding: 1rem;">⚠️ No glass sheets available. Please refresh the page.</p>';
+                        }
+                    }
+                }
+            }
+
+            function updateSheetStatus(sheets) {
+                // Initial setup of sheet status
+                if (sheets && sheets.length > 0) {
+                    const statusDiv = document.getElementById("sheet-status");
+                    if (statusDiv) {
+                        statusDiv.style.display = "flex";
+                        updateSheetStatusDisplay();
+                    }
+                }
+            }
+
+            // Expose test functions to global scope for console access
+            window.testVisualization = testVisualization;
+            window.testMultiplePieces = testMultiplePieces;
+            window.testCompleteOptimization = testCompleteOptimization;
+            window.testSheetPersistence = testSheetPersistence;
+            window.restoreSheetSelection = restoreSheetSelection; // For debugging
+
             function updateAlgorithmOptions() {
                 const select = document.getElementById("algorithm-select");
                 const options = select.querySelectorAll("option");
