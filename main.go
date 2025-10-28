@@ -3,6 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"glass-optimizer/internal/handlers"
+	"glass-optimizer/internal/models"
+	"glass-optimizer/internal/services"
+	"glass-optimizer/internal/storage"
 	"html/template"
 	"log"
 	"log/slog"
@@ -10,11 +14,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"glass-optimizer/internal/handlers"
-	"glass-optimizer/internal/models"
-	"glass-optimizer/internal/services"
-	"glass-optimizer/internal/storage"
 )
 
 var templates *template.Template
@@ -52,7 +51,7 @@ func main() {
 	// Load templates
 	templates, err = template.ParseGlob("templates/*.html")
 	if err != nil {
-		log.Printf("Warning: Failed to load templates: %v", err)
+		log.Fatalf("Failed to load templates: %v", err)
 	}
 
 	// Apply global middleware
@@ -71,15 +70,16 @@ func main() {
 
 	// Public routes (no authentication required)
 	mux.HandleFunc("/", authMiddleware.OptionalAuth(http.HandlerFunc(handleIndex)).ServeHTTP)
-	mux.HandleFunc("/login", handleAuth)
-	mux.HandleFunc("/signup", handleAuth)
-	mux.HandleFunc("/auth", handleAuth)
+	mux.HandleFunc("/login", authMiddleware.OptionalAuth(http.HandlerFunc(handleAuth)).ServeHTTP)
+	mux.HandleFunc("/signup", authMiddleware.OptionalAuth(http.HandlerFunc(handleAuth)).ServeHTTP)
+	mux.HandleFunc("/auth", authMiddleware.OptionalAuth(http.HandlerFunc(handleAuth)).ServeHTTP)
 
 	// Protected routes (authentication required)
 	mux.Handle("/designer", authMiddleware.RequireAuth(http.HandlerFunc(handleDesigner)))
 	mux.Handle("/optimizer", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizer)))
 	mux.Handle("/projects", authMiddleware.RequireAuth(http.HandlerFunc(handleProjects)))
 	mux.Handle("/projects/", authMiddleware.RequireAuth(http.HandlerFunc(handleProjectDetail)))
+	mux.Handle("/profile", authMiddleware.RequireAuth(http.HandlerFunc(handleProfile)))
 	mux.HandleFunc("/debug-mobile", handleDebugMobile)
 
 	// API routes
@@ -160,15 +160,31 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+// getUserFromContext extracts user from request context
+func getUserFromContext(r *http.Request) *models.User {
+	user := r.Context().Value(services.UserContextKey)
+	if user == nil {
+		return nil
+	}
+	if u, ok := user.(*models.User); ok {
+		return u
+	}
+	return nil
+}
+
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 
+	user := getUserFromContext(r)
+	log.Printf("DEBUG: handleIndex - User context: %+v", user)
+
 	data := map[string]interface{}{
 		"Title": "Dashboard",
 		"Page":  "home",
+		"User":  user,
 	}
 
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
@@ -178,9 +194,13 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDesigner(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
+	log.Printf("DEBUG: handleDesigner - User context: %+v", user)
+
 	data := map[string]interface{}{
 		"Title": "Designer",
 		"Page":  "designer",
+		"User":  user,
 	}
 
 	if err := templates.ExecuteTemplate(w, "designer.html", data); err != nil {
@@ -193,6 +213,7 @@ func handleOptimizer(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Optimizer",
 		"Page":  "optimizer",
+		"User":  getUserFromContext(r),
 	}
 
 	if err := templates.ExecuteTemplate(w, "optimizer.html", data); err != nil {
@@ -205,6 +226,7 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Projects",
 		"Page":  "projects",
+		"User":  getUserFromContext(r),
 	}
 
 	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
@@ -221,9 +243,29 @@ func handleProjectDetail(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Project Details",
 		"Page":  "project",
+		"User":  getUserFromContext(r),
 	}
 
 	if err := templates.ExecuteTemplate(w, "project.html", data); err != nil {
+		log.Printf("Template error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func handleProfile(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Redirect(w, r, "/auth", http.StatusFound)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title": "Profile",
+		"Page":  "profile",
+		"User":  user,
+	}
+
+	if err := templates.ExecuteTemplate(w, "profile.html", data); err != nil {
 		log.Printf("Template error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
@@ -786,6 +828,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Title": "Login",
 		"Page":  "auth",
+		"User":  getUserFromContext(r),
 	}
 
 	if err := templates.ExecuteTemplate(w, "auth.html", data); err != nil {

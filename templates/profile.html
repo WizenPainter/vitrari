@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{{.Title}} - Vitrari</title>
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link
+            rel="icon"
+            type="image/svg+xml"
+            href="/static/assets/favicon.svg"
+        />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/static/assets/apple-touch-icon.png"
+        />
+
+        <link rel="stylesheet" href="/static/css/style.css" />
+        <link rel="stylesheet" href="/static/css/mobile.css" />
+
+        <style>
+            .profile-container {
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 0 20px;
+            }
+
+            .profile-header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+
+            .profile-avatar {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                background: #42a5f5;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                margin: 0 auto 20px;
+                font-size: 48px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+
+            .profile-name {
+                font-size: 32px;
+                font-weight: 600;
+                color: #212121;
+                margin: 0 0 8px 0;
+            }
+
+            .profile-email {
+                font-size: 16px;
+                color: #757575;
+                margin: 0;
+            }
+
+            .profile-content {
+                display: grid;
+                gap: 30px;
+                grid-template-columns: 1fr;
+            }
+
+            .profile-section {
+                background: white;
+                border-radius: 12px;
+                padding: 30px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border: 1px solid #e0e0e0;
+            }
+
+            .section-title {
+                font-size: 20px;
+                font-weight: 600;
+                color: #212121;
+                margin: 0 0 20px 0;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .section-title svg {
+                opacity: 0.7;
+            }
+
+            .profile-info-grid {
+                display: grid;
+                gap: 20px;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+
+            .info-item {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .info-label {
+                font-size: 14px;
+                font-weight: 500;
+                color: #757575;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .info-value {
+                font-size: 16px;
+                color: #212121;
+                font-weight: 500;
+            }
+
+            .info-value.secondary {
+                color: #757575;
+            }
+
+            .btn-primary {
+                background: #1976d2;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                text-decoration: none;
+            }
+
+            .btn-primary:hover {
+                background: #1565c0;
+                color: white;
+                text-decoration: none;
+            }
+
+            .btn-secondary {
+                background: white;
+                color: #1976d2;
+                border: 2px solid #1976d2;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                text-decoration: none;
+            }
+
+            .btn-secondary:hover {
+                background: #1976d2;
+                color: white;
+                text-decoration: none;
+            }
+
+            .subscription-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 500;
+                background: #e8f5e8;
+                color: #2e7d32;
+                border: 1px solid #c8e6c9;
+            }
+
+            .subscription-badge.premium {
+                background: #fff3e0;
+                color: #f57c00;
+                border-color: #ffcc02;
+            }
+
+            .subscription-badge.trial {
+                background: #e3f2fd;
+                color: #1976d2;
+                border-color: #90caf9;
+            }
+
+            .action-buttons {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin-top: 20px;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }
+
+            .stat-item {
+                text-align: center;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border: 1px solid #e9ecef;
+            }
+
+            .stat-number {
+                font-size: 28px;
+                font-weight: 700;
+                color: #1976d2;
+                margin: 0;
+            }
+
+            .stat-label {
+                font-size: 14px;
+                color: #757575;
+                margin: 4px 0 0 0;
+            }
+
+            .back-button {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                color: #1976d2;
+                text-decoration: none;
+                font-weight: 500;
+                margin-bottom: 20px;
+                transition: color 0.2s;
+            }
+
+            .back-button:hover {
+                color: #1565c0;
+                text-decoration: none;
+            }
+
+            /* Mobile responsive */
+            @media (max-width: 768px) {
+                .profile-container {
+                    margin: 20px auto;
+                    padding: 0 16px;
+                }
+
+                .profile-avatar {
+                    width: 100px;
+                    height: 100px;
+                    font-size: 40px;
+                }
+
+                .profile-name {
+                    font-size: 28px;
+                }
+
+                .profile-section {
+                    padding: 20px;
+                }
+
+                .profile-info-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .action-buttons {
+                    flex-direction: column;
+                }
+
+                .stats-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header class="header">
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <h1>Vitrari</h1>
+                        <nav>
+                            <a href="/" data-i18n="dashboard">Dashboard</a>
+                            <a href="/designer" data-i18n="designer"
+                                >Designer</a
+                            >
+                            <a href="/optimizer" data-i18n="optimizer"
+                                >Optimizer</a
+                            >
+                        </nav>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px">
+                        <div class="language-selector">
+                            <button class="lang-btn" data-lang="en">EN</button>
+                            <button class="lang-btn active" data-lang="es">
+                                ES
+                            </button>
+                        </div>
+
+                        <!-- User Menu -->
+                        {{if .User}}
+                        <div class="user-menu" style="position: relative">
+                            <button
+                                class="user-menu-trigger"
+                                onclick="toggleUserMenu()"
+                                aria-expanded="false"
+                                aria-haspopup="true"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    background: none;
+                                    border: none;
+                                    color: inherit;
+                                    cursor: pointer;
+                                    padding: 8px 12px;
+                                    border-radius: 6px;
+                                    transition: background-color 0.2s;
+                                "
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                    />
+                                </svg>
+                                <span class="user-name"
+                                    >{{.User.FirstName}}</span
+                                >
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    fill="currentColor"
+                                    class="dropdown-chevron"
+                                    viewBox="0 0 16 16"
+                                    style="transition: transform 0.2s"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+                                    />
+                                </svg>
+                            </button>
+                            <div
+                                class="user-dropdown-menu"
+                                id="userDropdownMenu"
+                                style="
+                                    position: absolute;
+                                    top: calc(100% + 4px);
+                                    right: 0;
+                                    min-width: 280px;
+                                    background: white;
+                                    border: 1px solid #e0e0e0;
+                                    border-radius: 8px;
+                                    box-shadow: 0 10px 15px -3px
+                                        rgba(0, 0, 0, 0.1);
+                                    z-index: 1000;
+                                    opacity: 0;
+                                    visibility: hidden;
+                                    transform: translateY(-8px);
+                                    transition: all 0.15s ease-in-out;
+                                "
+                            >
+                                <div
+                                    class="user-info"
+                                    style="
+                                        padding: 16px;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 12px;
+                                    "
+                                >
+                                    <div
+                                        class="user-avatar"
+                                        style="
+                                            width: 40px;
+                                            height: 40px;
+                                            border-radius: 50%;
+                                            background: #42a5f5;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            flex-shrink: 0;
+                                        "
+                                    >
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            fill="currentColor"
+                                            viewBox="0 0 16 16"
+                                        >
+                                            <path
+                                                d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <div
+                                        class="user-details"
+                                        style="flex: 1; min-width: 0"
+                                    >
+                                        <div
+                                            class="user-full-name"
+                                            style="
+                                                font-weight: 500;
+                                                color: #212121;
+                                                margin-bottom: 2px;
+                                                overflow: hidden;
+                                                text-overflow: ellipsis;
+                                                white-space: nowrap;
+                                            "
+                                        >
+                                            {{.User.FirstName}}
+                                            {{.User.LastName}}
+                                        </div>
+                                        <div
+                                            class="user-email"
+                                            style="
+                                                font-size: 14px;
+                                                color: #757575;
+                                                overflow: hidden;
+                                                text-overflow: ellipsis;
+                                                white-space: nowrap;
+                                            "
+                                        >
+                                            {{.User.Email}}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    class="dropdown-divider"
+                                    style="
+                                        height: 1px;
+                                        background: #e0e0e0;
+                                        margin: 0;
+                                    "
+                                ></div>
+                                <a
+                                    href="/profile"
+                                    class="dropdown-item active"
+                                    style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        padding: 8px 16px;
+                                        color: #212121;
+                                        text-decoration: none;
+                                        transition: background-color 0.15s;
+                                        border: none;
+                                        background: #f5f5f5;
+                                        width: 100%;
+                                        text-align: left;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    "
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                        style="flex-shrink: 0; opacity: 0.7"
+                                    >
+                                        <path
+                                            d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                        />
+                                    </svg>
+                                    Profile
+                                </a>
+                                <div
+                                    class="dropdown-divider"
+                                    style="
+                                        height: 1px;
+                                        background: #e0e0e0;
+                                        margin: 0;
+                                    "
+                                ></div>
+                                <button
+                                    class="dropdown-item logout-btn"
+                                    onclick="handleLogout()"
+                                    style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        padding: 8px 16px;
+                                        color: #f44336;
+                                        text-decoration: none;
+                                        transition: background-color 0.15s;
+                                        border: none;
+                                        background: none;
+                                        width: 100%;
+                                        text-align: left;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    "
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                        style="flex-shrink: 0; opacity: 0.7"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"
+                                        />
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
+                                        />
+                                    </svg>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="auth-actions">
+                            <a
+                                href="/auth"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    background: none;
+                                    border: none;
+                                    color: inherit;
+                                    cursor: pointer;
+                                    padding: 8px 12px;
+                                    border-radius: 6px;
+                                    transition: background-color 0.2s;
+                                    text-decoration: none;
+                                "
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"
+                                    />
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
+                                    />
+                                </svg>
+                                Login
+                            </a>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="profile-container">
+                    <a href="/" class="back-button">
+                        <svg
+                            width="16"
+                            height="16"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"
+                            />
+                        </svg>
+                        Back to Dashboard
+                    </a>
+
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <svg
+                                width="48"
+                                height="48"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                            >
+                                <path
+                                    d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                />
+                            </svg>
+                        </div>
+                        <h1 class="profile-name">
+                            {{.User.FirstName}} {{.User.LastName}}
+                        </h1>
+                        <p class="profile-email">{{.User.Email}}</p>
+                    </div>
+
+                    <div class="profile-content">
+                        <!-- Account Information -->
+                        <div class="profile-section">
+                            <h2 class="section-title">
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                    />
+                                </svg>
+                                Account Information
+                            </h2>
+
+                            <div class="profile-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Email Address</div>
+                                    <div class="info-value">
+                                        {{.User.Email}}
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Full Name</div>
+                                    <div class="info-value">
+                                        {{.User.FirstName}} {{.User.LastName}}
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Account Status</div>
+                                    <div class="info-value">
+                                        {{if .User.EmailVerified}}
+                                        <span style="color: #4caf50"
+                                            >✓ Verified</span
+                                        >
+                                        {{else}}
+                                        <span style="color: #ff9800"
+                                            >⚠ Pending Verification</span
+                                        >
+                                        {{end}}
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Member Since</div>
+                                    <div class="info-value">
+                                        {{.User.CreatedAt.Format "January 2, 2006"}}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-buttons">
+                                <button
+                                    class="btn-primary"
+                                    onclick="showChangePasswordModal()"
+                                    disabled
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                    >
+                                        <path
+                                            d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"
+                                        />
+                                    </svg>
+                                    Change Password (Coming Soon)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Subscription Information -->
+                        <div class="profile-section">
+                            <h2 class="section-title">
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7z"
+                                    />
+                                    <path
+                                        d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-1z"
+                                    />
+                                </svg>
+                                Subscription & Billing
+                            </h2>
+
+                            <div class="profile-info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">Current Plan</div>
+                                    <div class="info-value">
+                                        <span class="subscription-badge trial">
+                                            <svg
+                                                width="16"
+                                                height="16"
+                                                fill="currentColor"
+                                                viewBox="0 0 16 16"
+                                            >
+                                                <path
+                                                    d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"
+                                                />
+                                                <path
+                                                    d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"
+                                                />
+                                            </svg>
+                                            Free Trial (Coming Soon)
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Trial Period</div>
+                                    <div class="info-value secondary">
+                                        30 days remaining
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">
+                                        Next Billing Date
+                                    </div>
+                                    <div class="info-value secondary">
+                                        Not applicable
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Payment Method</div>
+                                    <div class="info-value secondary">
+                                        None on file
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-buttons">
+                                <button
+                                    class="btn-secondary"
+                                    onclick="showUpgradeModal()"
+                                    disabled
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                    >
+                                        <path
+                                            d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"
+                                        />
+                                        <path
+                                            d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"
+                                        />
+                                    </svg>
+                                    Upgrade Plan (Coming Soon)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Usage Statistics -->
+                        <div class="profile-section">
+                            <h2 class="section-title">
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5v12h-2V2h2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 0 1 1v5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zM1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3z"
+                                    />
+                                </svg>
+                                Usage Statistics
+                            </h2>
+
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-label">
+                                        Projects Created
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-label">
+                                        Optimizations Run
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-label">Designs Saved</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-number">0</div>
+                                    <div class="stat-label">API Calls Made</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Scripts -->
+        <script src="/static/js/app.js"></script>
+        <script>
+            function showChangePasswordModal() {
+                alert("Password change functionality coming soon!");
+            }
+
+            function showUpgradeModal() {
+                alert("Subscription upgrade functionality coming soon!");
+            }
+
+            function toggleUserMenu() {
+                const menu = document.getElementById("userDropdownMenu");
+                const trigger = document.querySelector(".user-menu-trigger");
+                const chevron = document.querySelector(".dropdown-chevron");
+
+                const isOpen = menu.style.opacity === "1";
+
+                if (isOpen) {
+                    menu.style.opacity = "0";
+                    menu.style.visibility = "hidden";
+                    menu.style.transform = "translateY(-8px)";
+                    trigger.setAttribute("aria-expanded", "false");
+                    chevron.style.transform = "rotate(0deg)";
+                } else {
+                    menu.style.opacity = "1";
+                    menu.style.visibility = "visible";
+                    menu.style.transform = "translateY(0)";
+                    trigger.setAttribute("aria-expanded", "true");
+                    chevron.style.transform = "rotate(180deg)";
+                }
+            }
+
+            function handleLogout() {
+                if (confirm("Are you sure you want to logout?")) {
+                    fetch("/api/auth/logout", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    })
+                        .then((response) => {
+                            if (response.ok) {
+                                window.location.href = "/";
+                            } else {
+                                alert("Logout failed. Please try again.");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Logout error:", error);
+                            alert("Logout failed. Please try again.");
+                        });
+                }
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener("click", function (event) {
+                const userMenu = document.querySelector(".user-menu");
+                const dropdown = document.getElementById("userDropdownMenu");
+
+                if (!userMenu.contains(event.target)) {
+                    dropdown.style.opacity = "0";
+                    dropdown.style.visibility = "hidden";
+                    dropdown.style.transform = "translateY(-8px)";
+                    document
+                        .querySelector(".user-menu-trigger")
+                        .setAttribute("aria-expanded", "false");
+                    document.querySelector(
+                        ".dropdown-chevron",
+                    ).style.transform = "rotate(0deg)";
+                }
+            });
+
+            // Language selector functionality
+            document.querySelectorAll(".lang-btn").forEach((btn) => {
+                btn.addEventListener("click", function () {
+                    document
+                        .querySelectorAll(".lang-btn")
+                        .forEach((b) => b.classList.remove("active"));
+                    this.classList.add("active");
+
+                    const lang = this.dataset.lang;
+                    document.documentElement.lang = lang;
+
+                    // Update translations (placeholder for future i18n implementation)
+                    updateTranslations(lang);
+                });
+            });
+
+            function updateTranslations(lang) {
+                // Placeholder for future internationalization
+                console.log("Language changed to:", lang);
+            }
+        </script>
+    </body>
+</html>

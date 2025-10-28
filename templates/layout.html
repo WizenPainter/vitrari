@@ -131,6 +131,71 @@
                                 </svg>
                             </button>
                         </div>
+
+                        <!-- Debug: User context -->
+                        <!-- User: {{.User}} -->
+                        <!-- User FirstName: {{if .User}}{{.User.FirstName}}{{else}}NO USER{{end}} -->
+
+                        <!-- User Menu -->
+                        {{if .User}}
+                        <div class="user-menu dropdown">
+                            <button class="btn-ghost btn-sm user-menu-trigger" onclick="toggleUserMenu()" aria-expanded="false" aria-haspopup="true">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                </svg>
+                                <span class="user-name">{{.User.FirstName}}</span>
+                                <svg width="12" height="12" fill="currentColor" class="dropdown-chevron" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                                </svg>
+                            </button>
+                            <div class="user-dropdown-menu" id="userDropdownMenu">
+                                <div class="user-info">
+                                    <div class="user-avatar">
+                                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="user-details">
+                                        <div class="user-full-name">{{.User.FirstName}} {{.User.LastName}}</div>
+                                        <div class="user-email">{{.User.Email}}</div>
+                                    </div>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <a href="/profile" class="dropdown-item">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                                    </svg>
+                                    Profile
+                                </a>
+                                <a href="/settings" class="dropdown-item">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                                        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+                                    </svg>
+                                    Account Settings
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item logout-btn" onclick="handleLogout()">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                                        <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                    </svg>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                        {{else}}
+                        <!-- Debug: No user, showing login -->
+                        <div class="auth-actions">
+                            <a href="/auth" class="btn-ghost btn-sm">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5 1 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"/>
+                                    <path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                </svg>
+                                Login
+                            </a>
+                        </div>
+                        {{end}}
                     </div>
                 </nav>
 
@@ -448,6 +513,171 @@
                     openSettings();
                 }
             });
+        });
+
+        // User menu dropdown functions
+        function toggleUserMenu() {
+            const trigger = document.querySelector('.user-menu-trigger');
+            const menu = document.getElementById('userDropdownMenu');
+
+            if (!trigger || !menu) return;
+
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+
+            if (isOpen) {
+                closeUserMenu();
+            } else {
+                openUserMenu();
+            }
+        }
+
+        function openUserMenu() {
+            const trigger = document.querySelector('.user-menu-trigger');
+            const menu = document.getElementById('userDropdownMenu');
+
+            if (!trigger || !menu) return;
+
+            trigger.setAttribute('aria-expanded', 'true');
+            menu.classList.add('show');
+
+            // Close menu when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', closeUserMenuOnOutsideClick);
+            }, 10);
+        }
+
+        function closeUserMenu() {
+            const trigger = document.querySelector('.user-menu-trigger');
+            const menu = document.getElementById('userDropdownMenu');
+
+            if (!trigger || !menu) return;
+
+            trigger.setAttribute('aria-expanded', 'false');
+            menu.classList.remove('show');
+
+            document.removeEventListener('click', closeUserMenuOnOutsideClick);
+        }
+
+        function closeUserMenuOnOutsideClick(event) {
+            const userMenu = document.querySelector('.user-menu');
+
+            if (!userMenu || userMenu.contains(event.target)) {
+                return;
+            }
+
+            closeUserMenu();
+        }
+
+        // Logout function
+        async function handleLogout() {
+            try {
+                // Close user menu first
+                closeUserMenu();
+
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    // Show success message
+                    if (window.glassApp && window.glassApp.notificationManager) {
+                        window.glassApp.notificationManager.success('Logged out successfully');
+                    } else {
+                        // Fallback notification
+                        showSimpleNotification('Logged out successfully', 'success');
+                    }
+
+                    // Redirect to auth page after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/auth';
+                    }, 1000);
+                } else {
+                    throw new Error('Logout failed');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+
+                // Show error message
+                if (window.glassApp && window.glassApp.notificationManager) {
+                    window.glassApp.notificationManager.error('Failed to logout. Please try again.');
+                } else {
+                    showSimpleNotification('Failed to logout. Please try again.', 'error');
+                }
+            }
+        }
+
+        // Simple notification fallback
+        function showSimpleNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                font-weight: 500;
+                z-index: 10000;
+                max-width: 300px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                opacity: 0;
+                transform: translateX(100%);
+                transition: all 0.3s ease;
+                background-color: ${type === 'success' ? '#4caf50' : '#f44336'};
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+
+            // Hide notification after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Enhanced keyboard navigation for user menu
+        document.addEventListener('keydown', function(e) {
+            const userMenu = document.querySelector('.user-menu');
+            const isUserMenuOpen = userMenu && userMenu.querySelector('.user-menu-trigger[aria-expanded="true"]');
+
+            if (e.key === 'Escape') {
+                closeUserMenu();
+            }
+
+            // Arrow key navigation in user menu
+            if (isUserMenuOpen) {
+                const menuItems = userMenu.querySelectorAll('.dropdown-item');
+                const currentFocus = document.activeElement;
+                let currentIndex = Array.from(menuItems).indexOf(currentFocus);
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    currentIndex = currentIndex < menuItems.length - 1 ? currentIndex + 1 : 0;
+                    menuItems[currentIndex].focus();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    currentIndex = currentIndex > 0 ? currentIndex - 1 : menuItems.length - 1;
+                    menuItems[currentIndex].focus();
+                } else if (e.key === 'Enter' && currentFocus.classList.contains('dropdown-item')) {
+                    e.preventDefault();
+                    currentFocus.click();
+                }
+            }
         });
     </script>
 

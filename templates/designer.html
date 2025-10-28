@@ -46,11 +46,272 @@
                             >
                         </nav>
                     </div>
-                    <div class="language-selector">
-                        <button class="lang-btn" data-lang="en">EN</button>
-                        <button class="lang-btn active" data-lang="es">
-                            ES
-                        </button>
+                    <div style="display: flex; align-items: center; gap: 16px">
+                        <div class="language-selector">
+                            <button class="lang-btn" data-lang="en">EN</button>
+                            <button class="lang-btn active" data-lang="es">
+                                ES
+                            </button>
+                        </div>
+
+                        <!-- User Menu -->
+                        {{if .User}}
+                        <div class="user-menu" style="position: relative">
+                            <button
+                                class="user-menu-trigger"
+                                onclick="toggleUserMenu()"
+                                aria-expanded="false"
+                                aria-haspopup="true"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    background: none;
+                                    border: none;
+                                    color: inherit;
+                                    cursor: pointer;
+                                    padding: 8px 12px;
+                                    border-radius: 6px;
+                                    transition: background-color 0.2s;
+                                "
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                    />
+                                </svg>
+                                <span class="user-name"
+                                    >{{.User.FirstName}}</span
+                                >
+                                <svg
+                                    width="12"
+                                    height="12"
+                                    fill="currentColor"
+                                    class="dropdown-chevron"
+                                    viewBox="0 0 16 16"
+                                    style="transition: transform 0.2s"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+                                    />
+                                </svg>
+                            </button>
+                            <div
+                                class="user-dropdown-menu"
+                                id="userDropdownMenu"
+                                style="
+                                    position: absolute;
+                                    top: calc(100% + 4px);
+                                    right: 0;
+                                    min-width: 280px;
+                                    background: white;
+                                    border: 1px solid #e0e0e0;
+                                    border-radius: 8px;
+                                    box-shadow: 0 10px 15px -3px
+                                        rgba(0, 0, 0, 0.1);
+                                    z-index: 1000;
+                                    opacity: 0;
+                                    visibility: hidden;
+                                    transform: translateY(-8px);
+                                    transition: all 0.15s ease-in-out;
+                                "
+                            >
+                                <div
+                                    class="user-info"
+                                    style="
+                                        padding: 16px;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 12px;
+                                    "
+                                >
+                                    <div
+                                        class="user-avatar"
+                                        style="
+                                            width: 40px;
+                                            height: 40px;
+                                            border-radius: 50%;
+                                            background: #42a5f5;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            color: white;
+                                            flex-shrink: 0;
+                                        "
+                                    >
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            fill="currentColor"
+                                            viewBox="0 0 16 16"
+                                        >
+                                            <path
+                                                d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <div
+                                        class="user-details"
+                                        style="flex: 1; min-width: 0"
+                                    >
+                                        <div
+                                            class="user-full-name"
+                                            style="
+                                                font-weight: 500;
+                                                color: #212121;
+                                                margin-bottom: 2px;
+                                                overflow: hidden;
+                                                text-overflow: ellipsis;
+                                                white-space: nowrap;
+                                            "
+                                        >
+                                            {{.User.FirstName}}
+                                            {{.User.LastName}}
+                                        </div>
+                                        <div
+                                            class="user-email"
+                                            style="
+                                                font-size: 14px;
+                                                color: #757575;
+                                                overflow: hidden;
+                                                text-overflow: ellipsis;
+                                                white-space: nowrap;
+                                            "
+                                        >
+                                            {{.User.Email}}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    class="dropdown-divider"
+                                    style="
+                                        height: 1px;
+                                        background: #e0e0e0;
+                                        margin: 0;
+                                    "
+                                ></div>
+                                <a
+                                    href="/profile"
+                                    class="dropdown-item"
+                                    style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        padding: 8px 16px;
+                                        color: #212121;
+                                        text-decoration: none;
+                                        transition: background-color 0.15s;
+                                        border: none;
+                                        background: none;
+                                        width: 100%;
+                                        text-align: left;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    "
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                        style="flex-shrink: 0; opacity: 0.7"
+                                    >
+                                        <path
+                                            d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                                        />
+                                    </svg>
+                                    Profile
+                                </a>
+                                <div
+                                    class="dropdown-divider"
+                                    style="
+                                        height: 1px;
+                                        background: #e0e0e0;
+                                        margin: 0;
+                                    "
+                                ></div>
+                                <button
+                                    class="dropdown-item logout-btn"
+                                    onclick="handleLogout()"
+                                    style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        padding: 8px 16px;
+                                        color: #f44336;
+                                        text-decoration: none;
+                                        transition: background-color 0.15s;
+                                        border: none;
+                                        background: none;
+                                        width: 100%;
+                                        text-align: left;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    "
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                        style="flex-shrink: 0; opacity: 0.7"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"
+                                        />
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
+                                        />
+                                    </svg>
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                        {{else}}
+                        <div class="auth-actions">
+                            <a
+                                href="/auth"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    background: none;
+                                    border: none;
+                                    color: inherit;
+                                    cursor: pointer;
+                                    padding: 8px 12px;
+                                    border-radius: 6px;
+                                    transition: background-color 0.2s;
+                                    text-decoration: none;
+                                "
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"
+                                    />
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
+                                    />
+                                </svg>
+                                Login
+                            </a>
+                        </div>
+                        {{end}}
                     </div>
                 </div>
             </header>
@@ -499,6 +760,91 @@
             // Initialize immediately
             initializeEnvironment();
             initializeMobile();
+
+            // User menu functions
+            function toggleUserMenu() {
+                const menu = document.getElementById("userDropdownMenu");
+                const trigger = document.querySelector(".user-menu-trigger");
+                const chevron = document.querySelector(".dropdown-chevron");
+
+                const isOpen = menu.style.opacity === "1";
+
+                if (isOpen) {
+                    menu.style.opacity = "0";
+                    menu.style.visibility = "hidden";
+                    menu.style.transform = "translateY(-8px)";
+                    trigger.setAttribute("aria-expanded", "false");
+                    chevron.style.transform = "rotate(0deg)";
+                } else {
+                    menu.style.opacity = "1";
+                    menu.style.visibility = "visible";
+                    menu.style.transform = "translateY(0)";
+                    trigger.setAttribute("aria-expanded", "true");
+                    chevron.style.transform = "rotate(180deg)";
+                }
+            }
+
+            function handleLogout() {
+                if (confirm("Are you sure you want to logout?")) {
+                    fetch("/api/auth/logout", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                    })
+                        .then((response) => {
+                            if (response.ok) {
+                                window.location.href = "/";
+                            } else {
+                                alert("Logout failed. Please try again.");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Logout error:", error);
+                            alert("Logout failed. Please try again.");
+                        });
+                }
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener("click", function (event) {
+                const userMenu = document.querySelector(".user-menu");
+                const dropdown = document.getElementById("userDropdownMenu");
+
+                if (userMenu && !userMenu.contains(event.target)) {
+                    if (dropdown) {
+                        dropdown.style.opacity = "0";
+                        dropdown.style.visibility = "hidden";
+                        dropdown.style.transform = "translateY(-8px)";
+                        const trigger =
+                            document.querySelector(".user-menu-trigger");
+                        if (trigger) {
+                            trigger.setAttribute("aria-expanded", "false");
+                        }
+                        const chevron =
+                            document.querySelector(".dropdown-chevron");
+                        if (chevron) {
+                            chevron.style.transform = "rotate(0deg)";
+                        }
+                    }
+                }
+            });
+
+            // Language selector functionality
+            document.querySelectorAll(".lang-btn").forEach((btn) => {
+                btn.addEventListener("click", function () {
+                    document
+                        .querySelectorAll(".lang-btn")
+                        .forEach((b) => b.classList.remove("active"));
+                    this.classList.add("active");
+
+                    const lang = this.dataset.lang;
+                    document.documentElement.lang = lang;
+
+                    // Update translations (placeholder for future i18n implementation)
+                    console.log("Language changed to:", lang);
+                });
+            });
         </script>
     </body>
 </html>
