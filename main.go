@@ -82,6 +82,11 @@ func main() {
 	mux.Handle("/profile", authMiddleware.RequireAuth(http.HandlerFunc(handleProfile)))
 	mux.HandleFunc("/debug-mobile", handleDebugMobile)
 
+	// Route aliases for user-preferred URLs
+	mux.HandleFunc("/dashboard", authMiddleware.OptionalAuth(http.HandlerFunc(handleIndex)).ServeHTTP)
+	mux.Handle("/design", authMiddleware.RequireAuth(http.HandlerFunc(handleDesigner)))
+	mux.Handle("/optimize", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizer)))
+
 	// API routes
 	mux.HandleFunc("/api/health", handleHealth)
 
