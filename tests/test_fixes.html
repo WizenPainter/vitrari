@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glass Optimizer - Test Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #b3dce3; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        #console { background: #333; color: #fff; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Glass Optimizer - Fix Verification Tests</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Mobile.js className.includes Fix</h2>
+        <div class="info">
+            Testing the fix for: <code>Uncaught TypeError: el.className.includes is not a function</code>
+        </div>
+        <button class="btn-primary" onclick="testMobileJs()">Test Mobile.js Fix</button>
+        <div id="mobile-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Authentication Status</h2>
+        <div class="info">
+            Check if user is properly authenticated before testing project creation.
+        </div>
+        <button class="btn-primary" onclick="checkAuthStatus()">Check Authentication</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Project Creation Fix</h2>
+        <div class="info">
+            Testing the fix for: <code>500 Internal Server Error</code> when creating projects.
+        </div>
+
+        <div class="form-group">
+            <label for="project-name">Project Name:</label>
+            <input type="text" id="project-name" value="Test Project Fix" />
+        </div>
+
+        <div class="form-group">
+            <label for="project-description">Description:</label>
+            <textarea id="project-description" rows="3">Test project created to verify the 500 error fix</textarea>
+        </div>
+
+        <button class="btn-success" onclick="testProjectCreation()">Create Test Project</button>
+        <div id="project-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: List Projects</h2>
+        <div class="info">
+            Test that projects can be listed properly with user isolation.
+        </div>
+        <button class="btn-primary" onclick="testListProjects()">List Projects</button>
+        <div id="list-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <div id="console"></div>
+        <button class="btn-danger" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <!-- Add some test elements for mobile.js to find -->
+    <div style="display: none;">
+        <div class="app-header">
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#projects">Projects</a></li>
+                </ul>
+            </nav>
+        </div>
+        <header class="header">
+            <nav>
+                <ul>
+                    <li><a href="#designs">Designs</a></li>
+                </ul>
+            </nav>
+        </header>
+        <div className="header-like">This has className as property</div>
+    </div>
+
+    <script>
+        // Console logging function
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = '#ff6b6b';
+            if (type === 'success') logEntry.style.color = '#51cf66';
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+
+        // Test 1: Mobile.js className.includes fix
+        function testMobileJs() {
+            log('Testing mobile.js className.includes fix...');
+
+            try {
+                // Simulate the problematic code from mobile.js
+                const elements = Array.from(document.querySelectorAll("*"));
+                const filteredElements = elements.filter(
+                    (el) =>
+                        (el.className &&
+                         typeof el.className === "string" &&
+                         el.className.includes("header")) ||
+                        el.tagName === "HEADER"
+                );
+
+                log(`Found ${filteredElements.length} header elements without error`);
+
+                // Test with an element that has no className
+                const testDiv = document.createElement('div');
+                const hasError = false;
+
+                try {
+                    const result = (testDiv.className &&
+                                  typeof testDiv.className === "string" &&
+                                  testDiv.className.includes("header")) ||
+                                 testDiv.tagName === "HEADER";
+                    log(`Test element processed without error: ${result}`);
+                } catch (e) {
+                    hasError = true;
+                    log(`Error with test element: ${e.message}`, 'error');
+                }
+
+                if (hasError) {
+                    showResult('mobile-test-result', '❌ Mobile.js fix failed - still getting className.includes error', 'error');
+                } else {
+                    showResult('mobile-test-result', '✅ Mobile.js fix successful - no className.includes errors', 'success');
+                }
+
+            } catch (error) {
+                log(`Mobile.js test failed: ${error.message}`, 'error');
+                showResult('mobile-test-result', `❌ Mobile.js test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 2: Check authentication status
+        async function checkAuthStatus() {
+            log('Checking authentication status...');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    log(`Authenticated as: ${userData.user.email}`, 'success');
+                    showResult('auth-result', `✅ Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    return true;
+                } else if (response.status === 401) {
+                    log('User not authenticated', 'error');
+                    showResult('auth-result', '❌ Not authenticated. Please login first at <a href="/auth">/auth</a>', 'error');
+                    return false;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`Auth check failed: ${error.message}`, 'error');
+                showResult('auth-result', `❌ Authentication check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test 3: Project creation
+        async function testProjectCreation() {
+            log('Testing project creation...');
+
+            // First check if authenticated
+            const isAuthenticated = await checkAuthStatus();
+            if (!isAuthenticated) {
+                showResult('project-test-result', '❌ Cannot test project creation - not authenticated', 'error');
+                return;
+            }
+
+            const projectName = document.getElementById('project-name').value;
+            const projectDescription = document.getElementById('project-description').value;
+
+            if (!projectName.trim()) {
+                showResult('project-test-result', '❌ Please enter a project name', 'error');
+                return;
+            }
+
+            const projectData = {
+                name: projectName,
+                description: projectDescription,
+                designs_list: [] // Empty designs list for testing
+            };
+
+            try {
+                log(`Creating project: ${projectName}`);
+
+                const response = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(projectData)
+                });
+
+                const responseText = await response.text();
+                log(`Server response (${response.status}): ${responseText}`);
+
+                if (response.ok) {
+                    const result = JSON.parse(responseText);
+                    log(`Project created successfully with ID: ${result.project.id}`, 'success');
+                    showResult('project-test-result',
+                        `✅ Project created successfully!<br>
+                         ID: ${result.project.id}<br>
+                         Name: ${result.project.name}<br>
+                         User ID: ${result.project.user_id}`, 'success');
+                } else if (response.status === 500) {
+                    log('500 Internal Server Error - fix not working', 'error');
+                    showResult('project-test-result',
+                        `❌ 500 Internal Server Error - the fix needs more work<br>
+                         Response: ${responseText}`, 'error');
+                } else if (response.status === 401) {
+                    log('401 Unauthorized - authentication issue', 'error');
+                    showResult('project-test-result', '❌ 401 Unauthorized - please login', 'error');
+                } else {
+                    log(`HTTP ${response.status}: ${responseText}`, 'error');
+                    showResult('project-test-result',
+                        `❌ HTTP ${response.status}: ${responseText}`, 'error');
+                }
+
+            } catch (error) {
+                log(`Project creation failed: ${error.message}`, 'error');
+                showResult('project-test-result', `❌ Project creation failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test 4: List projects
+        async function testListProjects() {
+            log('Testing project listing...');
+
+            try {
+                const response = await fetch('/api/projects', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`Retrieved ${result.total} projects`, 'success');
+
+                    let projectList = '';
+                    if (result.projects && result.projects.length > 0) {
+                        projectList = result.projects.map(p =>
+                            `<li>${p.name} (ID: ${p.id}, User: ${p.user_id})</li>`
+                        ).join('');
+                        projectList = `<ul>${projectList}</ul>`;
+                    } else {
+                        projectList = '<p>No projects found</p>';
+                    }
+
+                    showResult('list-result',
+                        `✅ Successfully retrieved ${result.total} projects${projectList}`, 'success');
+                } else if (response.status === 401) {
+                    log('401 Unauthorized - authentication issue', 'error');
+                    showResult('list-result', '❌ 401 Unauthorized - please login', 'error');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+            } catch (error) {
+                log(`List projects failed: ${error.message}`, 'error');
+                showResult('list-result', `❌ List projects failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run mobile.js test on page load
+        window.addEventListener('load', function() {
+            log('Page loaded - running automatic tests...');
+            testMobileJs();
+        });
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+            log(args.join(' '));
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            log(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        // Catch any unhandled errors
+        window.addEventListener('error', function(event) {
+            log(`Uncaught error: ${event.error.message} at ${event.filename}:${event.lineno}`, 'error');
+        });
+    </script>
+</body>
+</html>

@@ -71,41 +71,43 @@ func isNewDatabase(db *sql.DB) (bool, error) {
 
 // runMigrations updates existing tables to match the current schema
 func runMigrations(db *sql.DB, logger *slog.Logger) error {
-	// Check if parent_id column exists in projects table
+	// Check if user_id column exists in projects table (security fix)
 	var columnExists bool
 	err := db.QueryRow(`
 		SELECT COUNT(*) > 0
 		FROM pragma_table_info('projects')
-		WHERE name = 'parent_id'
+		WHERE name = 'user_id'
 	`).Scan(&columnExists)
 
 	if err != nil {
 		return err
 	}
 
-	// Add parent_id column if it doesn't exist
+	// Add user_id column if it doesn't exist (security fix migration)
 	if !columnExists {
-		logger.Info("Migrating projects table to add hierarchical support")
+		logger.Info("Migrating projects table to add user_id for security")
 
 		// SQLite doesn't support adding foreign key columns directly,
 		// so we need to recreate the table
 		_, err = db.Exec(`
-			-- Create new projects table with all columns
+			-- Create new projects table with user_id column
 			CREATE TABLE IF NOT EXISTS projects_new (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				name TEXT NOT NULL,
 				description TEXT,
+				user_id INTEGER NOT NULL,
 				parent_id INTEGER DEFAULT NULL,
 				path TEXT NOT NULL DEFAULT '/',
 				designs TEXT DEFAULT '[]',
 				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 				FOREIGN KEY (parent_id) REFERENCES projects(id) ON DELETE CASCADE
 			);
 
-			-- Copy data from old table to new table
-			INSERT INTO projects_new (id, name, description, designs, created_at, updated_at)
-			SELECT id, name, description, designs, created_at, updated_at
+			-- Copy data from old table to new table (set user_id to 1 for existing data)
+			INSERT INTO projects_new (id, name, description, user_id, parent_id, path, designs, created_at, updated_at)
+			SELECT id, name, description, 1, parent_id, path, designs, created_at, updated_at
 			FROM projects;
 
 			-- Drop old table
@@ -115,6 +117,7 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 			ALTER TABLE projects_new RENAME TO projects;
 
 			-- Recreate indexes
+			CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 			CREATE INDEX IF NOT EXISTS idx_projects_parent_id ON projects(parent_id);
 			CREATE INDEX IF NOT EXISTS idx_projects_path ON projects(path);
 		`)
@@ -123,7 +126,87 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 			return err
 		}
 
-		logger.Info("Projects table migration completed")
+		logger.Info("Projects table user_id migration completed")
+	}
+
+	// Check if parent_id column exists in projects table
+	err = db.QueryRow(`
+		SELECT COUNT(*) > 0
+		FROM pragma_table_info('projects')
+		WHERE name = 'parent_id'
+	`).Scan(&columnExists)
+
+	if err != nil {
+		return err
+	}
+
+	// Add parent_id column if it doesn't exist (this should be rare now)
+	if !columnExists {
+		logger.Info("Migrating projects table to add hierarchical support")
+
+		// This migration is less likely to be needed now since we handle user_id above
+		// But keeping it for completeness
+		_, err = db.Exec(`
+			-- Add parent_id column
+			ALTER TABLE projects ADD COLUMN parent_id INTEGER DEFAULT NULL;
+			ALTER TABLE projects ADD COLUMN path TEXT DEFAULT '/';
+
+			-- Create indexes
+			CREATE INDEX IF NOT EXISTS idx_projects_parent_id ON projects(parent_id);
+			CREATE INDEX IF NOT EXISTS idx_projects_path ON projects(path);
+		`)
+
+		if err != nil {
+			logger.Warn("Failed to add parent_id column (may already exist)", "error", err)
+		} else {
+			logger.Info("Projects table hierarchical migration completed")
+		}
+	}
+
+	// Check and migrate designs table for user_id (security fix)
+	err = db.QueryRow(`
+		SELECT COUNT(*) > 0
+		FROM pragma_table_info('designs')
+		WHERE name = 'user_id'
+	`).Scan(&columnExists)
+
+	if err == nil && !columnExists {
+		logger.Info("Migrating designs table to add user_id for security")
+
+		_, err = db.Exec(`
+			CREATE TABLE IF NOT EXISTS designs_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT NOT NULL,
+				description TEXT,
+				width REAL NOT NULL,
+				height REAL NOT NULL,
+				thickness REAL NOT NULL,
+				design_data TEXT NOT NULL,
+				user_id INTEGER NOT NULL,
+				project_id INTEGER DEFAULT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+			);
+
+			INSERT INTO designs_new (id, name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at)
+			SELECT id, name, description, width, height, thickness, design_data, 1, project_id, created_at, updated_at
+			FROM designs;
+
+			DROP TABLE designs;
+			ALTER TABLE designs_new RENAME TO designs;
+
+			CREATE INDEX IF NOT EXISTS idx_designs_user_id ON designs(user_id);
+			CREATE INDEX IF NOT EXISTS idx_designs_project_id ON designs(project_id);
+			CREATE INDEX IF NOT EXISTS idx_designs_created_at ON designs(created_at DESC);
+		`)
+
+		if err != nil {
+			logger.Warn("Failed to migrate designs table for user_id", "error", err)
+		} else {
+			logger.Info("Designs table user_id migration completed")
+		}
 	}
 
 	// Check and migrate designs table for project_id if needed
@@ -137,35 +220,64 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 		logger.Info("Migrating designs table to add project_id")
 
 		_, err = db.Exec(`
-			CREATE TABLE IF NOT EXISTS designs_new (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				name TEXT NOT NULL,
-				description TEXT,
-				width REAL NOT NULL,
-				height REAL NOT NULL,
-				thickness REAL NOT NULL,
-				design_data TEXT NOT NULL,
-				project_id INTEGER DEFAULT NULL,
-				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-				FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
-			);
-
-			INSERT INTO designs_new (id, name, description, width, height, thickness, design_data, created_at, updated_at)
-			SELECT id, name, description, width, height, thickness, design_data, created_at, updated_at
-			FROM designs;
-
-			DROP TABLE designs;
-			ALTER TABLE designs_new RENAME TO designs;
-
+			ALTER TABLE designs ADD COLUMN project_id INTEGER DEFAULT NULL;
 			CREATE INDEX IF NOT EXISTS idx_designs_project_id ON designs(project_id);
-			CREATE INDEX IF NOT EXISTS idx_designs_created_at ON designs(created_at DESC);
 		`)
 
 		if err != nil {
-			logger.Warn("Failed to migrate designs table", "error", err)
+			logger.Warn("Failed to migrate designs table for project_id", "error", err)
 		} else {
-			logger.Info("Designs table migration completed")
+			logger.Info("Designs table project_id migration completed")
+		}
+	}
+
+	// Check and migrate optimizations table for user_id (security fix)
+	err = db.QueryRow(`
+		SELECT COUNT(*) > 0
+		FROM pragma_table_info('optimizations')
+		WHERE name = 'user_id'
+	`).Scan(&columnExists)
+
+	if err == nil && !columnExists {
+		logger.Info("Migrating optimizations table to add user_id for security")
+
+		_, err = db.Exec(`
+			CREATE TABLE IF NOT EXISTS optimizations_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT NOT NULL,
+				sheet_id INTEGER NOT NULL,
+				design_ids TEXT NOT NULL,
+				layout_data TEXT NOT NULL,
+				waste_percentage REAL NOT NULL,
+				total_area REAL NOT NULL,
+				used_area REAL NOT NULL,
+				algorithm TEXT DEFAULT 'blf',
+				execution_time REAL DEFAULT 0,
+				user_id INTEGER NOT NULL,
+				project_id INTEGER DEFAULT NULL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (sheet_id) REFERENCES glass_sheets(id) ON DELETE CASCADE,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+			);
+
+			INSERT INTO optimizations_new (id, name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, algorithm, execution_time, user_id, project_id, created_at)
+			SELECT id, name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, 'blf', 0, 1, project_id, created_at
+			FROM optimizations;
+
+			DROP TABLE optimizations;
+			ALTER TABLE optimizations_new RENAME TO optimizations;
+
+			CREATE INDEX IF NOT EXISTS idx_optimizations_user_id ON optimizations(user_id);
+			CREATE INDEX IF NOT EXISTS idx_optimizations_project_id ON optimizations(project_id);
+			CREATE INDEX IF NOT EXISTS idx_optimizations_sheet_id ON optimizations(sheet_id);
+			CREATE INDEX IF NOT EXISTS idx_optimizations_created_at ON optimizations(created_at DESC);
+		`)
+
+		if err != nil {
+			logger.Warn("Failed to migrate optimizations table for user_id", "error", err)
+		} else {
+			logger.Info("Optimizations table user_id migration completed")
 		}
 	}
 
@@ -180,39 +292,14 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 		logger.Info("Migrating optimizations table to add project_id")
 
 		_, err = db.Exec(`
-			CREATE TABLE IF NOT EXISTS optimizations_new (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				name TEXT NOT NULL,
-				sheet_id INTEGER NOT NULL,
-				design_ids TEXT NOT NULL,
-				layout_data TEXT NOT NULL,
-				waste_percentage REAL NOT NULL,
-				total_area REAL NOT NULL,
-				used_area REAL NOT NULL,
-				algorithm TEXT DEFAULT 'blf',
-				execution_time REAL DEFAULT 0,
-				project_id INTEGER DEFAULT NULL,
-				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-				FOREIGN KEY (sheet_id) REFERENCES glass_sheets(id) ON DELETE CASCADE,
-				FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
-			);
-
-			INSERT INTO optimizations_new (id, name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, algorithm, execution_time, created_at)
-			SELECT id, name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, 'blf', 0, created_at
-			FROM optimizations;
-
-			DROP TABLE optimizations;
-			ALTER TABLE optimizations_new RENAME TO optimizations;
-
+			ALTER TABLE optimizations ADD COLUMN project_id INTEGER DEFAULT NULL;
 			CREATE INDEX IF NOT EXISTS idx_optimizations_project_id ON optimizations(project_id);
-			CREATE INDEX IF NOT EXISTS idx_optimizations_sheet_id ON optimizations(sheet_id);
-			CREATE INDEX IF NOT EXISTS idx_optimizations_created_at ON optimizations(created_at DESC);
 		`)
 
 		if err != nil {
-			logger.Warn("Failed to migrate optimizations table", "error", err)
+			logger.Warn("Failed to migrate optimizations table for project_id", "error", err)
 		} else {
-			logger.Info("Optimizations table migration completed")
+			logger.Info("Optimizations table project_id migration completed")
 		}
 	}
 

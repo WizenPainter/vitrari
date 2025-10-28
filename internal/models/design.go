@@ -10,11 +10,12 @@ type Design struct {
 	ID          int       `json:"id" db:"id"`
 	Name        string    `json:"name" db:"name"`
 	Description string    `json:"description" db:"description"`
-	Width       float64   `json:"width" db:"width"`         // in millimeters
-	Height      float64   `json:"height" db:"height"`       // in millimeters
-	Thickness   float64   `json:"thickness" db:"thickness"` // in millimeters
-	DesignData  string    `json:"-" db:"design_data"`       // JSON blob
-	Elements    Elements  `json:"elements"`                 // Parsed design elements
+	Width       float64   `json:"width" db:"width"`                     // in millimeters
+	Height      float64   `json:"height" db:"height"`                   // in millimeters
+	Thickness   float64   `json:"thickness" db:"thickness"`             // in millimeters
+	DesignData  string    `json:"-" db:"design_data"`                   // JSON blob
+	Elements    Elements  `json:"elements"`                             // Parsed design elements
+	UserID      int64     `json:"user_id" db:"user_id"`                 // Owner of the design
 	ProjectID   *int      `json:"project_id,omitempty" db:"project_id"` // Link to project
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`

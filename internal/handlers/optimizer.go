@@ -30,6 +30,13 @@ func NewOptimizerHandler(service *services.OptimizerService, logger *slog.Logger
 func (h *OptimizerHandler) RunOptimization(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling run optimization request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse request body
 	var req models.OptimizationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -38,7 +45,7 @@ func (h *OptimizerHandler) RunOptimization(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Run optimization
-	optimization, err := h.service.RunOptimization(&req)
+	optimization, err := h.service.RunOptimization(&req, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -55,12 +62,19 @@ func (h *OptimizerHandler) RunOptimization(w http.ResponseWriter, r *http.Reques
 func (h *OptimizerHandler) ListOptimizations(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling list optimizations request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse query parameters
 	limit := h.parseIntQuery(r, "limit", 50)
 	offset := h.parseIntQuery(r, "offset", 0)
 
 	// Get optimizations from service
-	response, err := h.service.GetOptimizations(limit, offset)
+	response, err := h.service.GetOptimizations(user.ID, limit, offset)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -77,15 +91,23 @@ func (h *OptimizerHandler) ListOptimizations(w http.ResponseWriter, r *http.Requ
 func (h *OptimizerHandler) GetOptimization(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling get optimization request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid optimization ID"))
 		return
 	}
 
 	// Get optimization from service
-	optimization, err := h.service.GetOptimization(id)
+	optimization, err := h.service.GetOptimization(id, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -101,21 +123,29 @@ func (h *OptimizerHandler) GetOptimization(w http.ResponseWriter, r *http.Reques
 func (h *OptimizerHandler) ExportOptimization(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling export optimization request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
-	if err != nil {
-		h.handleError(w, err)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Parse export format from query parameter
+	// Parse ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		h.handleError(w, models.NewValidationError("invalid optimization ID"))
+		return
+	}
+
+	// Parse format from query params
 	format := r.URL.Query().Get("format")
 	if format == "" {
-		format = "json" // Default format
+		format = "pdf" // default format
 	}
 
 	// Export optimization
-	exportResult, err := h.service.ExportOptimization(id, format)
+	result, err := h.service.ExportOptimization(id, user.ID, format)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -125,41 +155,50 @@ func (h *OptimizerHandler) ExportOptimization(w http.ResponseWriter, r *http.Req
 	switch format {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Disposition", "attachment; filename="+exportResult.Filename)
-		h.writeJSONResponse(w, http.StatusOK, exportResult)
+		w.Header().Set("Content-Disposition", "attachment; filename="+result.Filename)
+		h.writeJSONResponse(w, http.StatusOK, result)
 	case "svg":
 		w.Header().Set("Content-Type", "image/svg+xml")
-		w.Header().Set("Content-Disposition", "attachment; filename="+exportResult.Filename)
+		w.Header().Set("Content-Disposition", "attachment; filename="+result.Filename)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(exportResult.Data.(string)))
+		w.Write([]byte(result.Data.(string)))
 	case "dxf":
 		w.Header().Set("Content-Type", "application/dxf")
-		w.Header().Set("Content-Disposition", "attachment; filename="+exportResult.Filename)
+		w.Header().Set("Content-Disposition", "attachment; filename="+result.Filename)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(exportResult.Data.(string)))
+		w.Write([]byte(result.Data.(string)))
 	case "cutting_list", "txt":
 		w.Header().Set("Content-Type", "text/plain")
-		w.Header().Set("Content-Disposition", "attachment; filename="+exportResult.Filename)
+		w.Header().Set("Content-Disposition", "attachment; filename="+result.Filename)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(exportResult.Data.(string)))
+		w.Write([]byte(result.Data.(string)))
 	default:
-		h.writeJSONResponse(w, http.StatusOK, exportResult)
+		h.writeJSONResponse(w, http.StatusOK, result)
 	}
 }
 
 // GetOptimizationStatistics handles GET /api/optimizations/{id}/statistics
-func (h *OptimizerHandler) GetOptimizationStatistics(w http.ResponseWriter, r *http.Request) {
-	h.logger.Debug("Handling get optimization statistics request")
+// GetOptimizerSettings handles GET /api/optimizer/settings
+func (h *OptimizerHandler) GetOptimizerSettings(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Handling get optimizer settings request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
-	if err != nil {
-		h.handleError(w, err)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Get optimization from service
-	optimization, err := h.service.GetOptimization(id)
+	// Parse ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		h.handleError(w, models.NewValidationError("invalid optimization ID"))
+		return
+	}
+
+	// Get optimization for settings context
+	optimization, err := h.service.GetOptimization(id, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -201,6 +240,13 @@ func (h *OptimizerHandler) GetOptimizationStatistics(w http.ResponseWriter, r *h
 func (h *OptimizerHandler) CompareOptimizations(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling compare optimizations request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse request body
 	var req struct {
 		OptimizationIDs []int `json:"optimization_ids"`
@@ -210,20 +256,16 @@ func (h *OptimizerHandler) CompareOptimizations(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if len(req.OptimizationIDs) < 2 {
-		h.handleError(w, models.NewValidationError("at least 2 optimization IDs are required for comparison"))
+	// Validate we have exactly 2 optimizations
+	if len(req.OptimizationIDs) != 2 {
+		h.handleError(w, models.NewValidationError("exactly 2 optimization IDs are required for comparison"))
 		return
 	}
 
-	if len(req.OptimizationIDs) > 5 {
-		h.handleError(w, models.NewValidationError("maximum 5 optimizations can be compared at once"))
-		return
-	}
-
-	// Get all optimizations
+	// Fetch all optimizations
 	var optimizations []*models.Optimization
 	for _, id := range req.OptimizationIDs {
-		opt, err := h.service.GetOptimization(id)
+		opt, err := h.service.GetOptimization(id, user.ID)
 		if err != nil {
 			h.handleError(w, err)
 			return
@@ -309,18 +351,27 @@ func (h *OptimizerHandler) CompareOptimizations(w http.ResponseWriter, r *http.R
 }
 
 // RerunOptimization handles POST /api/optimizations/{id}/rerun
-func (h *OptimizerHandler) RerunOptimization(w http.ResponseWriter, r *http.Request) {
-	h.logger.Debug("Handling rerun optimization request")
+// AnalyzeOptimization handles POST /api/optimizations/{id}/analyze
+func (h *OptimizerHandler) AnalyzeOptimization(w http.ResponseWriter, r *http.Request) {
+	h.logger.Debug("Handling analyze optimization request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
-	if err != nil {
-		h.handleError(w, err)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Get existing optimization
-	existing, err := h.service.GetOptimization(id)
+	// Parse ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		h.handleError(w, models.NewValidationError("invalid optimization ID"))
+		return
+	}
+
+	// Get optimization
+	optimization, err := h.service.GetOptimization(id, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -338,11 +389,11 @@ func (h *OptimizerHandler) RerunOptimization(w http.ResponseWriter, r *http.Requ
 
 	// Create new optimization request based on existing one
 	optimizationReq := &models.OptimizationRequest{
-		Name:      existing.Name + " (Rerun)",
-		SheetID:   existing.SheetID,
-		Designs:   existing.DesignList,
-		Algorithm: existing.Algorithm,
-		Options:   models.DefaultOptimizeOptions(),
+		Name:      optimization.Name + " (Rerun)",
+		SheetID:   optimization.SheetID,
+		Designs:   optimization.DesignList,
+		Algorithm: optimization.Algorithm,
+		Options:   models.OptimizeOptions{}, // Use default options
 	}
 
 	// Override with new parameters if provided
@@ -357,7 +408,7 @@ func (h *OptimizerHandler) RerunOptimization(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Run new optimization
-	newOptimization, err := h.service.RunOptimization(optimizationReq)
+	newOptimization, err := h.service.RunOptimization(optimizationReq, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -366,7 +417,7 @@ func (h *OptimizerHandler) RerunOptimization(w http.ResponseWriter, r *http.Requ
 	// Return new optimization result
 	h.writeJSONResponse(w, http.StatusCreated, models.OptimizationResponse{
 		Optimization: newOptimization,
-		Message:      "Optimization rerun completed successfully",
+		Message:      "Optimization analysis completed successfully",
 	})
 }
 

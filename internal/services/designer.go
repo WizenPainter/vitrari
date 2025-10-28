@@ -24,8 +24,12 @@ func NewDesignerService(storage storage.Storage, logger *slog.Logger) *DesignerS
 }
 
 // CreateDesign creates a new design with validation and business logic
-func (s *DesignerService) CreateDesign(req *models.DesignRequest) (*models.Design, error) {
-	s.logger.Info("Creating new design", "name", req.Name)
+func (s *DesignerService) CreateDesign(req *models.DesignRequest, userID int64) (*models.Design, error) {
+	s.logger.Info("Creating new design", "name", req.Name, "user_id", userID)
+
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
 
 	// Validate request
 	if err := s.validateDesignRequest(req); err != nil {
@@ -40,6 +44,7 @@ func (s *DesignerService) CreateDesign(req *models.DesignRequest) (*models.Desig
 		Height:      req.Height,
 		Thickness:   req.Thickness,
 		Elements:    req.Elements,
+		UserID:      userID,
 	}
 
 	// Apply business rules
@@ -58,10 +63,15 @@ func (s *DesignerService) CreateDesign(req *models.DesignRequest) (*models.Desig
 }
 
 // GetDesign retrieves a design by ID with additional processing
-func (s *DesignerService) GetDesign(id int) (*models.Design, error) {
-	s.logger.Debug("Retrieving design", "id", id)
+// GetDesign retrieves a single design by ID
+func (s *DesignerService) GetDesign(id int, userID int64) (*models.Design, error) {
+	s.logger.Debug("Retrieving design", "id", id, "user_id", userID)
 
-	design, err := s.storage.GetDesign(id)
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	design, err := s.storage.GetDesign(id, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +83,12 @@ func (s *DesignerService) GetDesign(id int) (*models.Design, error) {
 }
 
 // GetDesigns retrieves designs with pagination and optional filtering
-func (s *DesignerService) GetDesigns(limit, offset int, filters *DesignFilters) (*DesignListResponse, error) {
-	s.logger.Debug("Retrieving designs", "limit", limit, "offset", offset)
+func (s *DesignerService) GetDesigns(userID int64, limit, offset int, filters *DesignFilters) (*DesignListResponse, error) {
+	s.logger.Debug("Retrieving designs", "limit", limit, "offset", offset, "user_id", userID)
+
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
 
 	var designs []models.Design
 	var total int
@@ -82,9 +96,9 @@ func (s *DesignerService) GetDesigns(limit, offset int, filters *DesignFilters) 
 
 	// Apply filters if provided
 	if filters != nil && filters.Search != "" {
-		designs, total, err = s.storage.SearchDesigns(filters.Search, limit, offset)
+		designs, total, err = s.storage.SearchDesigns(filters.Search, userID, limit, offset)
 	} else {
-		designs, total, err = s.storage.GetDesigns(limit, offset)
+		designs, total, err = s.storage.GetDesigns(userID, limit, offset)
 	}
 
 	if err != nil {
@@ -110,8 +124,13 @@ func (s *DesignerService) GetDesigns(limit, offset int, filters *DesignFilters) 
 }
 
 // UpdateDesign updates an existing design
-func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest) (*models.Design, error) {
-	s.logger.Info("Updating design", "id", id, "name", req.Name)
+// UpdateDesign updates an existing design with validation and business logic
+func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest, userID int64) (*models.Design, error) {
+	s.logger.Info("Updating design", "id", id, "name", req.Name, "user_id", userID)
+
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
 
 	// Validate request
 	if err := s.validateDesignRequest(req); err != nil {
@@ -119,7 +138,7 @@ func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest) (*mode
 	}
 
 	// Get existing design
-	existing, err := s.storage.GetDesign(id)
+	existing, err := s.storage.GetDesign(id, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +150,7 @@ func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest) (*mode
 	existing.Height = req.Height
 	existing.Thickness = req.Thickness
 	existing.Elements = req.Elements
+	existing.UserID = userID
 	existing.UpdatedAt = time.Now()
 
 	// Apply business rules
@@ -139,7 +159,7 @@ func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest) (*mode
 	}
 
 	// Save to storage
-	if err := s.storage.UpdateDesign(existing); err != nil {
+	if err := s.storage.UpdateDesign(existing, userID); err != nil {
 		s.logger.Error("Failed to update design in storage", "error", err, "id", id)
 		return nil, err
 	}
@@ -149,11 +169,15 @@ func (s *DesignerService) UpdateDesign(id int, req *models.DesignRequest) (*mode
 }
 
 // DeleteDesign deletes a design after validation
-func (s *DesignerService) DeleteDesign(id int) error {
-	s.logger.Info("Deleting design", "id", id)
+func (s *DesignerService) DeleteDesign(id int, userID int64) error {
+	s.logger.Info("Deleting design", "id", id, "user_id", userID)
 
-	// Check if design exists
-	design, err := s.storage.GetDesign(id)
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
+	// Check if design exists and user owns it
+	design, err := s.storage.GetDesign(id, userID)
 	if err != nil {
 		return err
 	}
@@ -164,12 +188,12 @@ func (s *DesignerService) DeleteDesign(id int) error {
 	}
 
 	// Delete from storage
-	if err := s.storage.DeleteDesign(id); err != nil {
-		s.logger.Error("Failed to delete design from storage", "error", err, "id", id)
+	if err := s.storage.DeleteDesign(id, userID); err != nil {
+		s.logger.Error("Failed to delete design from storage", "error", err, "id", id, "user_id", userID)
 		return err
 	}
 
-	s.logger.Info("Design deleted successfully", "id", id)
+	s.logger.Info("Design deleted successfully", "id", id, "user_id", userID)
 	return nil
 }
 
@@ -208,11 +232,15 @@ func (s *DesignerService) ValidateDesign(design *models.Design) (*ValidationResu
 }
 
 // CloneDesign creates a copy of an existing design
-func (s *DesignerService) CloneDesign(id int, newName string) (*models.Design, error) {
-	s.logger.Info("Cloning design", "id", id, "new_name", newName)
+func (s *DesignerService) CloneDesign(id int, userID int64, newName string) (*models.Design, error) {
+	s.logger.Info("Cloning design", "id", id, "user_id", userID, "new_name", newName)
+
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
 
 	// Get existing design
-	existing, err := s.storage.GetDesign(id)
+	existing, err := s.storage.GetDesign(id, userID)
 	if err != nil {
 		return nil, err
 	}

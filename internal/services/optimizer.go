@@ -26,8 +26,11 @@ func NewOptimizerService(storage storage.Storage, logger *slog.Logger) *Optimize
 	}
 }
 
-// RunOptimization executes the optimization algorithm on a set of designs
-func (s *OptimizerService) RunOptimization(req *models.OptimizationRequest) (*models.Optimization, error) {
+// RunOptimization executes the optimization algorithm and returns results
+func (s *OptimizerService) RunOptimization(req *models.OptimizationRequest, userID int64) (*models.Optimization, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
 	s.logger.Info("Starting optimization", "name", req.Name, "algorithm", req.Algorithm)
 	startTime := time.Now()
 
@@ -43,7 +46,8 @@ func (s *OptimizerService) RunOptimization(req *models.OptimizationRequest) (*mo
 	}
 
 	// Load design information
-	designs, err := s.loadDesignsForOptimization(req.Designs)
+	// Load designs from the database
+	designs, err := s.loadDesignsForOptimization(req.Designs, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +58,7 @@ func (s *OptimizerService) RunOptimization(req *models.OptimizationRequest) (*mo
 		SheetID:   req.SheetID,
 		Sheet:     sheet,
 		Algorithm: req.Algorithm,
+		UserID:    userID,
 	}
 
 	// Set design list
@@ -106,13 +111,20 @@ func (s *OptimizerService) RunOptimization(req *models.OptimizationRequest) (*mo
 }
 
 // GetOptimization retrieves an optimization by ID
-func (s *OptimizerService) GetOptimization(id int) (*models.Optimization, error) {
-	return s.storage.GetOptimization(id)
+func (s *OptimizerService) GetOptimization(id int, userID int64) (*models.Optimization, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+	return s.storage.GetOptimization(id, userID)
 }
 
 // GetOptimizations retrieves optimizations with pagination
-func (s *OptimizerService) GetOptimizations(limit, offset int) (*OptimizationListResponse, error) {
-	optimizations, total, err := s.storage.GetOptimizations(limit, offset)
+func (s *OptimizerService) GetOptimizations(userID int64, limit, offset int) (*OptimizationListResponse, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	optimizations, total, err := s.storage.GetOptimizations(userID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +138,12 @@ func (s *OptimizerService) GetOptimizations(limit, offset int) (*OptimizationLis
 }
 
 // ExportOptimization generates cutting instructions for an optimization
-func (s *OptimizerService) ExportOptimization(id int, format string) (*ExportResult, error) {
-	optimization, err := s.storage.GetOptimization(id)
+func (s *OptimizerService) ExportOptimization(id int, userID int64, format string) (*ExportResult, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	optimization, err := s.storage.GetOptimization(id, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +182,7 @@ func (s *OptimizerService) validateOptimizationRequest(req *models.OptimizationR
 	return nil
 }
 
-func (s *OptimizerService) loadDesignsForOptimization(designRequests []models.DesignItem) (map[int]*models.Design, error) {
+func (s *OptimizerService) loadDesignsForOptimization(designRequests []models.DesignItem, userID int64) (map[int]*models.Design, error) {
 	designs := make(map[int]*models.Design)
 
 	for _, req := range designRequests {
@@ -179,11 +195,12 @@ func (s *OptimizerService) loadDesignsForOptimization(designRequests []models.De
 					Width:     req.Width,
 					Height:    req.Height,
 					Thickness: 6.0, // Default thickness for custom pieces
+					UserID:    userID,
 				}
 				designs[req.DesignID] = design
 			} else {
 				// Load existing design from database
-				design, err := s.storage.GetDesign(req.DesignID)
+				design, err := s.storage.GetDesign(req.DesignID, userID)
 				if err != nil {
 					return nil, fmt.Errorf("failed to load design %d: %w", req.DesignID, err)
 				}

@@ -10,6 +10,7 @@ type Project struct {
 	ID          int                 `json:"id" db:"id"`
 	Name        string              `json:"name" db:"name"`
 	Description string              `json:"description" db:"description"`
+	UserID      int64               `json:"user_id" db:"user_id"`               // Owner of the project
 	ParentID    *int                `json:"parent_id,omitempty" db:"parent_id"` // NULL for root projects
 	Path        string              `json:"path" db:"path"`                     // Hierarchical path like /project1/subproject1
 	Designs     string              `json:"-" db:"designs"`                     // JSON array of design IDs with quantities
@@ -321,8 +322,8 @@ func BuildPath(parentPath, projectName string) string {
 
 // ProjectTreeNode represents a project in a tree structure
 type ProjectTreeNode struct {
-	Project  *Project           `json:"project"`
-	Children []ProjectTreeNode  `json:"children,omitempty"`
+	Project  *Project          `json:"project"`
+	Children []ProjectTreeNode `json:"children,omitempty"`
 }
 
 // CalculateItemCosts calculates individual item costs based on design areas

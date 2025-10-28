@@ -30,6 +30,13 @@ func NewDesignHandler(service *services.DesignerService, logger *slog.Logger) *D
 func (h *DesignHandler) ListDesigns(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling list designs request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse query parameters
 	limit := h.parseIntQuery(r, "limit", 50)
 	offset := h.parseIntQuery(r, "offset", 0)
@@ -44,7 +51,7 @@ func (h *DesignHandler) ListDesigns(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get designs from service
-	response, err := h.service.GetDesigns(limit, offset, filters)
+	response, err := h.service.GetDesigns(user.ID, limit, offset, filters)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -61,6 +68,13 @@ func (h *DesignHandler) ListDesigns(w http.ResponseWriter, r *http.Request) {
 func (h *DesignHandler) CreateDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling create design request")
 
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Parse request body
 	var req models.DesignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -69,7 +83,7 @@ func (h *DesignHandler) CreateDesign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create design
-	design, err := h.service.CreateDesign(&req)
+	design, err := h.service.CreateDesign(&req, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -82,19 +96,27 @@ func (h *DesignHandler) CreateDesign(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetDesign handles GET /api/designs/{id}
+// GetDesign handles GET /api/designs/:id
 func (h *DesignHandler) GetDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling get design request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get design ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid design ID"))
 		return
 	}
 
 	// Get design from service
-	design, err := h.service.GetDesign(id)
+	design, err := h.service.GetDesign(id, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -110,10 +132,18 @@ func (h *DesignHandler) GetDesign(w http.ResponseWriter, r *http.Request) {
 func (h *DesignHandler) UpdateDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling update design request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get design ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid design ID"))
 		return
 	}
 
@@ -125,7 +155,7 @@ func (h *DesignHandler) UpdateDesign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update design
-	design, err := h.service.UpdateDesign(id, &req)
+	design, err := h.service.UpdateDesign(id, &req, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -138,19 +168,28 @@ func (h *DesignHandler) UpdateDesign(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// DeleteDesign handles DELETE /api/designs/{id}
+// DeleteDesign handles DELETE /api/designs/:id
 func (h *DesignHandler) DeleteDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling delete design request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get design ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid design ID"))
 		return
 	}
 
 	// Delete design
-	if err := h.service.DeleteDesign(id); err != nil {
+	err = h.service.DeleteDesign(id, user.ID)
+	if err != nil {
 		h.handleError(w, err)
 		return
 	}
@@ -165,15 +204,23 @@ func (h *DesignHandler) DeleteDesign(w http.ResponseWriter, r *http.Request) {
 func (h *DesignHandler) ValidateDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling validate design request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get design ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid design ID"))
 		return
 	}
 
 	// Get design
-	design, err := h.service.GetDesign(id)
+	design, err := h.service.GetDesign(id, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -197,10 +244,18 @@ func (h *DesignHandler) ValidateDesign(w http.ResponseWriter, r *http.Request) {
 func (h *DesignHandler) CloneDesign(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling clone design request")
 
-	// Parse ID from URL
-	id, err := h.parseIDFromURL(r)
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get design ID from URL
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		h.handleError(w, err)
+		h.handleError(w, models.NewValidationError("invalid design ID"))
 		return
 	}
 
@@ -219,7 +274,7 @@ func (h *DesignHandler) CloneDesign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clone design
-	clonedDesign, err := h.service.CloneDesign(id, req.Name)
+	clonedDesign, err := h.service.CloneDesign(id, user.ID, req.Name)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -253,6 +308,13 @@ func (h *DesignHandler) GetDesignTemplates(w http.ResponseWriter, r *http.Reques
 // CreateDesignFromTemplate handles POST /api/designs/templates/{template}/create
 func (h *DesignHandler) CreateDesignFromTemplate(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debug("Handling create design from template request")
+
+	// Get user from context
+	user := services.GetUserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Parse template name from URL
 	vars := mux.Vars(r)
@@ -310,7 +372,7 @@ func (h *DesignHandler) CreateDesignFromTemplate(w http.ResponseWriter, r *http.
 	}
 
 	// Create design
-	design, err := h.service.CreateDesign(designReq)
+	design, err := h.service.CreateDesign(designReq, user.ID)
 	if err != nil {
 		h.handleError(w, err)
 		return

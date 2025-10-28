@@ -102,7 +102,7 @@ func main() {
 			if strings.Contains(r.URL.Path, "/move") {
 				handleDesignMove(w, r, store, logger)
 			} else {
-				handleDesignByID(w, r, store, logger)
+				handleDesignDetail(w, r, store, logger)
 			}
 		} else {
 			handleDesigns(w, r, store, logger)
@@ -132,7 +132,9 @@ func main() {
 	})))
 	mux.Handle("/api/projects", authMiddleware.RequireAuth(http.HandlerFunc(projectHandler.HandleProjects)))
 
-	mux.Handle("/api/optimizations", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizations)))
+	mux.Handle("/api/optimizations", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleOptimizations(w, r, store, logger)
+	})))
 	mux.Handle("/api/optimize", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimize)))
 
 	// Apply global middleware chain
@@ -280,13 +282,20 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDesigns(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	// Get user from context
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
 	case http.MethodGet:
-		designs, total, err := store.GetDesigns(100, 0)
+		designs, total, err := store.GetDesigns(user.ID, 100, 0)
 		if err != nil {
-			logger.Error("Failed to get designs", "error", err)
+			logger.Error("Failed to get designs", "error", err, "user_id", user.ID)
 			http.Error(w, "Failed to get designs", http.StatusInternalServerError)
 			return
 		}
@@ -304,8 +313,11 @@ func handleDesigns(w http.ResponseWriter, r *http.Request, store storage.Storage
 			return
 		}
 
+		// Set the user ID for the design
+		design.UserID = user.ID
+
 		if err := store.CreateDesign(&design); err != nil {
-			logger.Error("Failed to create design", "error", err)
+			logger.Error("Failed to create design", "error", err, "user_id", user.ID)
 			http.Error(w, "Failed to create design", http.StatusInternalServerError)
 			return
 		}
@@ -321,10 +333,17 @@ func handleDesigns(w http.ResponseWriter, r *http.Request, store storage.Storage
 	}
 }
 
-func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+func handleDesignDetail(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	// Get user from context
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract ID from path
+	// Extract design ID from path
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) < 4 {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
@@ -339,9 +358,9 @@ func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Stor
 
 	switch r.Method {
 	case http.MethodGet:
-		design, err := store.GetDesign(id)
+		design, err := store.GetDesign(id, user.ID)
 		if err != nil {
-			logger.Error("Failed to get design", "error", err, "id", id)
+			logger.Error("Failed to get design", "error", err, "id", id, "user_id", user.ID)
 			if models.IsNotFoundError(err) {
 				http.Error(w, "Design not found", http.StatusNotFound)
 			} else {
@@ -363,8 +382,8 @@ func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Stor
 		}
 
 		design.ID = id
-		if err := store.UpdateDesign(&design); err != nil {
-			logger.Error("Failed to update design", "error", err, "id", id)
+		if err := store.UpdateDesign(&design, user.ID); err != nil {
+			logger.Error("Failed to update design", "error", err, "id", id, "user_id", user.ID)
 			if models.IsNotFoundError(err) {
 				http.Error(w, "Design not found", http.StatusNotFound)
 			} else {
@@ -379,8 +398,8 @@ func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Stor
 		})
 
 	case http.MethodDelete:
-		if err := store.DeleteDesign(id); err != nil {
-			logger.Error("Failed to delete design", "error", err, "id", id)
+		if err := store.DeleteDesign(id, user.ID); err != nil {
+			logger.Error("Failed to delete design", "error", err, "id", id, "user_id", user.ID)
 			if models.IsNotFoundError(err) {
 				http.Error(w, "Design not found", http.StatusNotFound)
 			} else {
@@ -399,6 +418,13 @@ func handleDesignByID(w http.ResponseWriter, r *http.Request, store storage.Stor
 }
 
 func handleDesignMove(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	// Get user from context
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -431,9 +457,9 @@ func handleDesignMove(w http.ResponseWriter, r *http.Request, store storage.Stor
 	}
 
 	// Get the design first to verify it exists
-	design, err := store.GetDesign(id)
+	design, err := store.GetDesign(id, user.ID)
 	if err != nil {
-		logger.Error("Failed to get design", "error", err, "id", id)
+		logger.Error("Failed to get design", "error", err, "id", id, "user_id", user.ID)
 		if models.IsNotFoundError(err) {
 			http.Error(w, "Design not found", http.StatusNotFound)
 		} else {
@@ -442,10 +468,10 @@ func handleDesignMove(w http.ResponseWriter, r *http.Request, store storage.Stor
 		return
 	}
 
-	// Verify target project exists
-	_, err = store.GetProject(moveRequest.ProjectID)
+	// Verify target project exists and user owns it
+	_, err = store.GetProject(moveRequest.ProjectID, user.ID)
 	if err != nil {
-		logger.Error("Failed to get target project", "error", err, "project_id", moveRequest.ProjectID)
+		logger.Error("Failed to get target project", "error", err, "project_id", moveRequest.ProjectID, "user_id", user.ID)
 		if models.IsNotFoundError(err) {
 			http.Error(w, "Target project not found", http.StatusNotFound)
 		} else {
@@ -456,9 +482,9 @@ func handleDesignMove(w http.ResponseWriter, r *http.Request, store storage.Stor
 
 	// Update the design's project_id
 	design.ProjectID = &moveRequest.ProjectID
-	if err := store.UpdateDesign(design); err != nil {
-		logger.Error("Failed to move design", "error", err, "id", id, "target_project", moveRequest.ProjectID)
-		http.Error(w, "Failed to move design", http.StatusInternalServerError)
+	if err := store.UpdateDesign(design, user.ID); err != nil {
+		logger.Error("Failed to update design", "error", err, "design_id", id, "user_id", user.ID)
+		http.Error(w, "Failed to update design", http.StatusInternalServerError)
 		return
 	}
 
@@ -498,17 +524,54 @@ func handleSheets(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleOptimizations(w http.ResponseWriter, r *http.Request) {
+func handleOptimizations(w http.ResponseWriter, r *http.Request, store storage.Storage, logger *slog.Logger) {
+	// Get user from context
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse query parameters
+	limit := 50
+	offset := 0
+
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	// Get optimizations for this user
+	optimizations, total, err := store.GetOptimizations(user.ID, limit, offset)
+	if err != nil {
+		http.Error(w, "Failed to get optimizations", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"optimizations": []interface{}{},
-		"total":         0,
+		"optimizations": optimizations,
+		"total":         total,
 	})
 }
 
 func handleOptimize(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user from context
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 

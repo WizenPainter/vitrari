@@ -212,7 +212,11 @@ class MobileEnhancements {
       "All headers found:",
       Array.from(document.querySelectorAll("*"))
         .filter(
-          (el) => el.className.includes("header") || el.tagName === "HEADER",
+          (el) =>
+            (el.className &&
+              typeof el.className === "string" &&
+              el.className.includes("header")) ||
+            el.tagName === "HEADER",
         )
         .map((el) => ({
           tag: el.tagName,

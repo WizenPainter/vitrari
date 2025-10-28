@@ -42,11 +42,11 @@ type Storage interface {
 
 	// Design operations
 	CreateDesign(design *models.Design) error
-	GetDesign(id int) (*models.Design, error)
-	GetDesigns(limit, offset int) ([]models.Design, int, error)
-	UpdateDesign(design *models.Design) error
-	DeleteDesign(id int) error
-	SearchDesigns(query string, limit, offset int) ([]models.Design, int, error)
+	GetDesign(id int, userID int64) (*models.Design, error)
+	GetDesigns(userID int64, limit, offset int) ([]models.Design, int, error)
+	UpdateDesign(design *models.Design, userID int64) error
+	DeleteDesign(id int, userID int64) error
+	SearchDesigns(query string, userID int64, limit, offset int) ([]models.Design, int, error)
 
 	// Glass sheet operations
 	CreateGlassSheet(sheet *models.GlassSheet) error
@@ -58,17 +58,18 @@ type Storage interface {
 
 	// Optimization operations
 	CreateOptimization(opt *models.Optimization) error
-	GetOptimization(id int) (*models.Optimization, error)
-	GetOptimizations(limit, offset int) ([]models.Optimization, int, error)
-	UpdateOptimization(opt *models.Optimization) error
-	DeleteOptimization(id int) error
+	GetOptimization(id int, userID int64) (*models.Optimization, error)
+	GetOptimizations(userID int64, limit, offset int) ([]models.Optimization, int, error)
+	UpdateOptimization(opt *models.Optimization, userID int64) error
+	DeleteOptimization(id int, userID int64) error
 
 	// Project operations
 	CreateProject(project *models.Project) error
-	GetProject(id int) (*models.Project, error)
-	GetProjects(limit, offset int) ([]models.Project, int, error)
-	UpdateProject(project *models.Project) error
-	DeleteProject(id int) error
+	GetProject(id int, userID int64) (*models.Project, error)
+	GetProjects(userID int64, limit, offset int) ([]models.Project, int, error)
+	UpdateProject(project *models.Project, userID int64) error
+	DeleteProject(id int, userID int64) error
+	GetProjectTree(userID int64) ([]models.Project, error)
 
 	// Health check
 	Ping() error
@@ -495,13 +496,17 @@ func (s *SQLiteStorage) CreateDesign(design *models.Design) error {
 		return models.WrapError(err, "validation failed")
 	}
 
+	if design.UserID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
 	if err := design.MarshalDesignData(); err != nil {
 		return models.NewInternalError("failed to marshal design data", err)
 	}
 
 	query := `
-		INSERT INTO designs (name, description, width, height, thickness, design_data, project_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO designs (name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	now := time.Now()
@@ -515,6 +520,7 @@ func (s *SQLiteStorage) CreateDesign(design *models.Design) error {
 		design.Height,
 		design.Thickness,
 		design.DesignData,
+		design.UserID,
 		design.ProjectID,
 		design.CreatedAt,
 		design.UpdatedAt,
@@ -536,16 +542,16 @@ func (s *SQLiteStorage) CreateDesign(design *models.Design) error {
 	return nil
 }
 
-func (s *SQLiteStorage) GetDesign(id int) (*models.Design, error) {
+func (s *SQLiteStorage) GetDesign(id int, userID int64) (*models.Design, error) {
 	query := `
-		SELECT id, name, description, width, height, thickness, design_data, project_id, created_at, updated_at
+		SELECT id, name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at
 		FROM designs
-		WHERE id = ?
+		WHERE id = ? AND user_id = ?
 	`
 
 	design := &models.Design{}
 	var projectID sql.NullInt64
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRow(query, id, userID).Scan(
 		&design.ID,
 		&design.Name,
 		&design.Description,
@@ -553,6 +559,7 @@ func (s *SQLiteStorage) GetDesign(id int) (*models.Design, error) {
 		&design.Height,
 		&design.Thickness,
 		&design.DesignData,
+		&design.UserID,
 		&projectID,
 		&design.CreatedAt,
 		&design.UpdatedAt,
@@ -579,24 +586,25 @@ func (s *SQLiteStorage) GetDesign(id int) (*models.Design, error) {
 	return design, nil
 }
 
-func (s *SQLiteStorage) GetDesigns(limit, offset int) ([]models.Design, int, error) {
+func (s *SQLiteStorage) GetDesigns(userID int64, limit, offset int) ([]models.Design, int, error) {
 	// Get total count
-	countQuery := "SELECT COUNT(*) FROM designs"
+	countQuery := "SELECT COUNT(*) FROM designs WHERE user_id = ?"
 	var total int
-	err := s.db.QueryRow(countQuery).Scan(&total)
+	err := s.db.QueryRow(countQuery, userID).Scan(&total)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to count designs", err)
 	}
 
 	// Get designs with pagination
 	query := `
-		SELECT id, name, description, width, height, thickness, design_data, project_id, created_at, updated_at
+		SELECT id, name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at
 		FROM designs
+		WHERE user_id = ?
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
 	`
 
-	rows, err := s.db.Query(query, limit, offset)
+	rows, err := s.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to query designs", err)
 	}
@@ -614,6 +622,7 @@ func (s *SQLiteStorage) GetDesigns(limit, offset int) ([]models.Design, int, err
 			&design.Height,
 			&design.Thickness,
 			&design.DesignData,
+			&design.UserID,
 			&projectID,
 			&design.CreatedAt,
 			&design.UpdatedAt,
@@ -639,9 +648,13 @@ func (s *SQLiteStorage) GetDesigns(limit, offset int) ([]models.Design, int, err
 	return designs, total, nil
 }
 
-func (s *SQLiteStorage) UpdateDesign(design *models.Design) error {
+func (s *SQLiteStorage) UpdateDesign(design *models.Design, userID int64) error {
 	if err := design.Validate(); err != nil {
 		return models.WrapError(err, "validation failed")
+	}
+
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
 	}
 
 	if err := design.MarshalDesignData(); err != nil {
@@ -651,7 +664,7 @@ func (s *SQLiteStorage) UpdateDesign(design *models.Design) error {
 	query := `
 		UPDATE designs
 		SET name = ?, description = ?, width = ?, height = ?, thickness = ?, design_data = ?, project_id = ?, updated_at = ?
-		WHERE id = ?
+		WHERE id = ? AND user_id = ?
 	`
 
 	design.UpdatedAt = time.Now()
@@ -666,6 +679,7 @@ func (s *SQLiteStorage) UpdateDesign(design *models.Design) error {
 		design.ProjectID,
 		design.UpdatedAt,
 		design.ID,
+		userID,
 	)
 
 	if err != nil {
@@ -686,10 +700,14 @@ func (s *SQLiteStorage) UpdateDesign(design *models.Design) error {
 	return nil
 }
 
-func (s *SQLiteStorage) DeleteDesign(id int) error {
-	query := "DELETE FROM designs WHERE id = ?"
+func (s *SQLiteStorage) DeleteDesign(id int, userID int64) error {
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
 
-	result, err := s.db.Exec(query, id)
+	query := "DELETE FROM designs WHERE id = ? AND user_id = ?"
+
+	result, err := s.db.Exec(query, id, userID)
 	if err != nil {
 		s.logger.Error("Failed to delete design", "error", err, "id", id)
 		return models.NewDatabaseError("failed to delete design", err)
@@ -708,31 +726,32 @@ func (s *SQLiteStorage) DeleteDesign(id int) error {
 	return nil
 }
 
-func (s *SQLiteStorage) SearchDesigns(query string, limit, offset int) ([]models.Design, int, error) {
+func (s *SQLiteStorage) SearchDesigns(query string, userID int64, limit, offset int) ([]models.Design, int, error) {
 	searchTerm := "%" + strings.ToLower(query) + "%"
 
 	// Get total count
 	countQuery := `
 		SELECT COUNT(*)
 		FROM designs
-		WHERE LOWER(name) LIKE ? OR LOWER(description) LIKE ?
+		WHERE user_id = ? AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
 	`
 	var total int
-	err := s.db.QueryRow(countQuery, searchTerm, searchTerm).Scan(&total)
+	err := s.db.QueryRow(countQuery, userID, searchTerm, searchTerm).Scan(&total)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to count designs", err)
 	}
 
 	// Get designs with search and pagination
+	// Search designs
 	searchQuery := `
-		SELECT id, name, description, width, height, thickness, design_data, project_id, created_at, updated_at
+		SELECT id, name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at
 		FROM designs
-		WHERE LOWER(name) LIKE ? OR LOWER(description) LIKE ?
+		WHERE user_id = ? AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
 		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
 	`
 
-	rows, err := s.db.Query(searchQuery, searchTerm, searchTerm, limit, offset)
+	rows, err := s.db.Query(searchQuery, userID, searchTerm, searchTerm, limit, offset)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to search designs", err)
 	}
@@ -750,6 +769,7 @@ func (s *SQLiteStorage) SearchDesigns(query string, limit, offset int) ([]models
 			&design.Height,
 			&design.Thickness,
 			&design.DesignData,
+			&design.UserID,
 			&projectID,
 			&design.CreatedAt,
 			&design.UpdatedAt,
@@ -1073,6 +1093,10 @@ func (s *SQLiteStorage) CreateOptimization(opt *models.Optimization) error {
 		return models.WrapError(err, "validation failed")
 	}
 
+	if opt.UserID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
 	if err := opt.MarshalDesignIDs(); err != nil {
 		return models.NewInternalError("failed to marshal design IDs", err)
 	}
@@ -1082,8 +1106,8 @@ func (s *SQLiteStorage) CreateOptimization(opt *models.Optimization) error {
 	}
 
 	query := `
-		INSERT INTO optimizations (name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, algorithm, execution_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO optimizations (name, sheet_id, design_ids, layout_data, waste_percentage, total_area, used_area, algorithm, execution_time, user_id, project_id, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	now := time.Now()
@@ -1099,6 +1123,8 @@ func (s *SQLiteStorage) CreateOptimization(opt *models.Optimization) error {
 		opt.UsedArea,
 		opt.Algorithm,
 		opt.ExecutionTime,
+		opt.UserID,
+		opt.ProjectID,
 		opt.CreatedAt,
 	)
 
@@ -1118,20 +1144,18 @@ func (s *SQLiteStorage) CreateOptimization(opt *models.Optimization) error {
 	return nil
 }
 
-func (s *SQLiteStorage) GetOptimization(id int) (*models.Optimization, error) {
+func (s *SQLiteStorage) GetOptimization(id int, userID int64) (*models.Optimization, error) {
 	query := `
-		SELECT o.id, o.name, o.sheet_id, o.design_ids, o.layout_data, o.waste_percentage, o.total_area, o.used_area, o.algorithm, o.execution_time, o.created_at,
-			   gs.name as sheet_name, gs.width, gs.height, gs.thickness, gs.price_per_sqm, gs.in_stock
-		FROM optimizations o
-		LEFT JOIN glass_sheets gs ON o.sheet_id = gs.id
-		WHERE o.id = ?
+		SELECT id, name, sheet_id, design_ids, layout_data, waste_percentage,
+		       total_area, used_area, algorithm, execution_time, user_id, project_id, created_at
+		FROM optimizations
+		WHERE id = ? AND user_id = ?
 	`
 
 	opt := &models.Optimization{}
-	sheet := &models.GlassSheet{}
-	var sheetName sql.NullString
+	var projectID sql.NullInt64
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRow(query, id, userID).Scan(
 		&opt.ID,
 		&opt.Name,
 		&opt.SheetID,
@@ -1142,13 +1166,9 @@ func (s *SQLiteStorage) GetOptimization(id int) (*models.Optimization, error) {
 		&opt.UsedArea,
 		&opt.Algorithm,
 		&opt.ExecutionTime,
+		&opt.UserID,
+		&projectID,
 		&opt.CreatedAt,
-		&sheetName,
-		&sheet.Width,
-		&sheet.Height,
-		&sheet.Thickness,
-		&sheet.PricePerSqm,
-		&sheet.InStock,
 	)
 
 	if err != nil {
@@ -1159,11 +1179,9 @@ func (s *SQLiteStorage) GetOptimization(id int) (*models.Optimization, error) {
 		return nil, models.NewDatabaseError("failed to get optimization", err)
 	}
 
-	// Set sheet data if available
-	if sheetName.Valid {
-		sheet.ID = opt.SheetID
-		sheet.Name = sheetName.String
-		opt.Sheet = sheet
+	if projectID.Valid {
+		pid := int(projectID.Int64)
+		opt.ProjectID = &pid
 	}
 
 	// Unmarshal JSON data
@@ -1179,33 +1197,30 @@ func (s *SQLiteStorage) GetOptimization(id int) (*models.Optimization, error) {
 
 	// Calculate derived values
 	opt.WastedArea = opt.TotalArea - opt.UsedArea
-	if opt.Sheet != nil {
-		opt.TotalCost = opt.Sheet.AreaInSquareMeters() * opt.Sheet.PricePerSqm
-	}
 
 	return opt, nil
 }
 
-func (s *SQLiteStorage) GetOptimizations(limit, offset int) ([]models.Optimization, int, error) {
+func (s *SQLiteStorage) GetOptimizations(userID int64, limit, offset int) ([]models.Optimization, int, error) {
 	// Get total count
-	countQuery := "SELECT COUNT(*) FROM optimizations"
+	countQuery := "SELECT COUNT(*) FROM optimizations WHERE user_id = ?"
 	var total int
-	err := s.db.QueryRow(countQuery).Scan(&total)
+	err := s.db.QueryRow(countQuery, userID).Scan(&total)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to count optimizations", err)
 	}
 
 	// Get optimizations with pagination
 	query := `
-		SELECT o.id, o.name, o.sheet_id, o.design_ids, o.layout_data, o.waste_percentage, o.total_area, o.used_area, o.algorithm, o.execution_time, o.created_at,
-			   gs.name as sheet_name, gs.width, gs.height, gs.thickness, gs.price_per_sqm, gs.in_stock
-		FROM optimizations o
-		LEFT JOIN glass_sheets gs ON o.sheet_id = gs.id
-		ORDER BY o.created_at DESC
+		SELECT id, name, sheet_id, design_ids, layout_data, waste_percentage,
+		       total_area, used_area, algorithm, execution_time, user_id, project_id, created_at
+		FROM optimizations
+		WHERE user_id = ?
+		ORDER BY created_at DESC
 		LIMIT ? OFFSET ?
 	`
 
-	rows, err := s.db.Query(query, limit, offset)
+	rows, err := s.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to query optimizations", err)
 	}
@@ -1214,8 +1229,7 @@ func (s *SQLiteStorage) GetOptimizations(limit, offset int) ([]models.Optimizati
 	var optimizations []models.Optimization
 	for rows.Next() {
 		opt := models.Optimization{}
-		sheet := &models.GlassSheet{}
-		var sheetName sql.NullString
+		var projectID sql.NullInt64
 
 		err := rows.Scan(
 			&opt.ID,
@@ -1228,24 +1242,18 @@ func (s *SQLiteStorage) GetOptimizations(limit, offset int) ([]models.Optimizati
 			&opt.UsedArea,
 			&opt.Algorithm,
 			&opt.ExecutionTime,
+			&opt.UserID,
+			&projectID,
 			&opt.CreatedAt,
-			&sheetName,
-			&sheet.Width,
-			&sheet.Height,
-			&sheet.Thickness,
-			&sheet.PricePerSqm,
-			&sheet.InStock,
 		)
 		if err != nil {
 			s.logger.Error("Failed to scan optimization row", "error", err)
 			continue
 		}
 
-		// Set sheet data if available
-		if sheetName.Valid {
-			sheet.ID = opt.SheetID
-			sheet.Name = sheetName.String
-			opt.Sheet = sheet
+		if projectID.Valid {
+			pid := int(projectID.Int64)
+			opt.ProjectID = &pid
 		}
 
 		// Unmarshal JSON data
@@ -1271,9 +1279,13 @@ func (s *SQLiteStorage) GetOptimizations(limit, offset int) ([]models.Optimizati
 	return optimizations, total, nil
 }
 
-func (s *SQLiteStorage) UpdateOptimization(opt *models.Optimization) error {
+func (s *SQLiteStorage) UpdateOptimization(opt *models.Optimization, userID int64) error {
 	if err := opt.Validate(); err != nil {
 		return models.WrapError(err, "validation failed")
+	}
+
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
 	}
 
 	if err := opt.MarshalDesignIDs(); err != nil {
@@ -1287,7 +1299,7 @@ func (s *SQLiteStorage) UpdateOptimization(opt *models.Optimization) error {
 	query := `
 		UPDATE optimizations
 		SET name = ?, sheet_id = ?, design_ids = ?, layout_data = ?, waste_percentage = ?, total_area = ?, used_area = ?, algorithm = ?, execution_time = ?
-		WHERE id = ?
+		WHERE id = ? AND user_id = ?
 	`
 
 	result, err := s.db.Exec(query,
@@ -1301,6 +1313,7 @@ func (s *SQLiteStorage) UpdateOptimization(opt *models.Optimization) error {
 		opt.Algorithm,
 		opt.ExecutionTime,
 		opt.ID,
+		userID,
 	)
 
 	if err != nil {
@@ -1321,10 +1334,14 @@ func (s *SQLiteStorage) UpdateOptimization(opt *models.Optimization) error {
 	return nil
 }
 
-func (s *SQLiteStorage) DeleteOptimization(id int) error {
-	query := "DELETE FROM optimizations WHERE id = ?"
+func (s *SQLiteStorage) DeleteOptimization(id int, userID int64) error {
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
 
-	result, err := s.db.Exec(query, id)
+	query := "DELETE FROM optimizations WHERE id = ? AND user_id = ?"
+
+	result, err := s.db.Exec(query, id, userID)
 	if err != nil {
 		s.logger.Error("Failed to delete optimization", "error", err, "id", id)
 		return models.NewDatabaseError("failed to delete optimization", err)
@@ -1350,12 +1367,16 @@ func (s *SQLiteStorage) CreateProject(project *models.Project) error {
 		return models.NewValidationError("project name is required")
 	}
 
-	// If parent_id is set, get parent's path
+	if project.UserID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
+	// If parent_id is set, get parent's path and verify ownership
 	var parentPath string
 	if project.ParentID != nil {
-		parent, err := s.GetProject(*project.ParentID)
+		parent, err := s.GetProject(*project.ParentID, project.UserID)
 		if err != nil {
-			return models.NewValidationError("parent project not found")
+			return models.NewValidationError("parent project not found or access denied")
 		}
 		parentPath = parent.Path
 	} else {
@@ -1372,8 +1393,8 @@ func (s *SQLiteStorage) CreateProject(project *models.Project) error {
 	}
 
 	query := `
-		INSERT INTO projects (name, description, parent_id, path, designs, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO projects (name, description, user_id, parent_id, path, designs, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	now := time.Now()
@@ -1383,6 +1404,7 @@ func (s *SQLiteStorage) CreateProject(project *models.Project) error {
 	result, err := s.db.Exec(query,
 		project.Name,
 		project.Description,
+		project.UserID,
 		project.ParentID,
 		project.Path,
 		string(designData),
@@ -1407,22 +1429,23 @@ func (s *SQLiteStorage) CreateProject(project *models.Project) error {
 	return nil
 }
 
-func (s *SQLiteStorage) GetProject(id int) (*models.Project, error) {
+func (s *SQLiteStorage) GetProject(id int, userID int64) (*models.Project, error) {
 	query := `
-		SELECT p.id, p.name, p.description, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
+		SELECT p.id, p.name, p.description, p.user_id, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
 		       (SELECT COUNT(*) FROM designs WHERE project_id = p.id) as design_count,
 		       (SELECT COUNT(*) FROM optimizations WHERE project_id = p.id) as opt_count
 		FROM projects p
-		WHERE p.id = ?
+		WHERE p.id = ? AND p.user_id = ?
 	`
 
 	project := &models.Project{}
 	var parentID sql.NullInt64
 
-	err := s.db.QueryRow(query, id).Scan(
+	err := s.db.QueryRow(query, id, userID).Scan(
 		&project.ID,
 		&project.Name,
 		&project.Description,
+		&project.UserID,
 		&parentID,
 		&project.Path,
 		&project.Designs,
@@ -1456,26 +1479,27 @@ func (s *SQLiteStorage) GetProject(id int) (*models.Project, error) {
 	return project, nil
 }
 
-func (s *SQLiteStorage) GetProjects(limit, offset int) ([]models.Project, int, error) {
+func (s *SQLiteStorage) GetProjects(userID int64, limit, offset int) ([]models.Project, int, error) {
 	// Get total count
-	countQuery := "SELECT COUNT(*) FROM projects"
+	countQuery := "SELECT COUNT(*) FROM projects WHERE user_id = ?"
 	var total int
-	err := s.db.QueryRow(countQuery).Scan(&total)
+	err := s.db.QueryRow(countQuery, userID).Scan(&total)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to count projects", err)
 	}
 
 	// Get projects with counts
 	query := `
-		SELECT p.id, p.name, p.description, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
+		SELECT p.id, p.name, p.description, p.user_id, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
 		       (SELECT COUNT(*) FROM designs WHERE project_id = p.id) as design_count,
 		       (SELECT COUNT(*) FROM optimizations WHERE project_id = p.id) as opt_count
 		FROM projects p
+		WHERE p.user_id = ?
 		ORDER BY p.path
 		LIMIT ? OFFSET ?
 	`
 
-	rows, err := s.db.Query(query, limit, offset)
+	rows, err := s.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, 0, models.NewDatabaseError("failed to query projects", err)
 	}
@@ -1490,6 +1514,7 @@ func (s *SQLiteStorage) GetProjects(limit, offset int) ([]models.Project, int, e
 			&project.ID,
 			&project.Name,
 			&project.Description,
+			&project.UserID,
 			&parentID,
 			&project.Path,
 			&project.Designs,
@@ -1522,13 +1547,17 @@ func (s *SQLiteStorage) GetProjects(limit, offset int) ([]models.Project, int, e
 	return projects, total, nil
 }
 
-func (s *SQLiteStorage) UpdateProject(project *models.Project) error {
+func (s *SQLiteStorage) UpdateProject(project *models.Project, userID int64) error {
 	if project.Name == "" {
 		return models.NewValidationError("project name is required")
 	}
 
-	// Get current project to check if we need to update path
-	current, err := s.GetProject(project.ID)
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
+	// Get current project to check if we need to update path and verify ownership
+	current, err := s.GetProject(project.ID, userID)
 	if err != nil {
 		return err
 	}
@@ -1540,9 +1569,9 @@ func (s *SQLiteStorage) UpdateProject(project *models.Project) error {
 
 		var parentPath string
 		if project.ParentID != nil {
-			parent, err := s.GetProject(*project.ParentID)
+			parent, err := s.GetProject(*project.ParentID, userID)
 			if err != nil {
-				return models.NewValidationError("parent project not found")
+				return models.NewValidationError("parent project not found or access denied")
 			}
 			parentPath = parent.Path
 		} else {
@@ -1562,7 +1591,7 @@ func (s *SQLiteStorage) UpdateProject(project *models.Project) error {
 	query := `
 		UPDATE projects
 		SET name = ?, description = ?, parent_id = ?, path = ?, designs = ?, updated_at = ?
-		WHERE id = ?
+		WHERE id = ? AND user_id = ?
 	`
 
 	project.UpdatedAt = time.Now()
@@ -1575,6 +1604,7 @@ func (s *SQLiteStorage) UpdateProject(project *models.Project) error {
 		string(designData),
 		project.UpdatedAt,
 		project.ID,
+		userID,
 	)
 
 	if err != nil {
@@ -1597,10 +1627,14 @@ func (s *SQLiteStorage) UpdateProject(project *models.Project) error {
 	return nil
 }
 
-func (s *SQLiteStorage) DeleteProject(id int) error {
-	query := "DELETE FROM projects WHERE id = ?"
+func (s *SQLiteStorage) DeleteProject(id int, userID int64) error {
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
 
-	result, err := s.db.Exec(query, id)
+	query := "DELETE FROM projects WHERE id = ? AND user_id = ?"
+
+	result, err := s.db.Exec(query, id, userID)
 	if err != nil {
 		s.logger.Error("Failed to delete project", "error", err, "id", id)
 		return models.NewDatabaseError("failed to delete project", err)
@@ -1624,87 +1658,154 @@ func (s *SQLiteStorage) Ping() error {
 	return s.db.Ping()
 }
 
-// GetProjectTree builds a hierarchical tree of all projects
-func (s *SQLiteStorage) GetProjectTree() ([]models.Project, error) {
-	// Get all projects
-	projects, _, err := s.GetProjects(1000, 0)
+// GetProjectTree builds a hierarchical tree of projects for a specific user
+func (s *SQLiteStorage) GetProjectTree(userID int64) ([]models.Project, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	// Get all projects for this user, ordered by path for hierarchical building
+	query := `
+		SELECT id, name, description, user_id, parent_id, path, designs, created_at, updated_at
+		FROM projects
+		WHERE user_id = ?
+		ORDER BY path ASC
+	`
+
+	rows, err := s.db.Query(query, userID)
 	if err != nil {
-		return nil, err
+		s.logger.Error("Failed to query projects for tree", "error", err, "user_id", userID)
+		return nil, models.NewDatabaseError("failed to get projects", err)
 	}
+	defer rows.Close()
 
-	// Build tree structure
-	projectMap := make(map[int]*models.Project)
-	var rootProjects []models.Project
-
-	// First pass: create map and initialize children
-	for i := range projects {
-		projectMap[projects[i].ID] = &projects[i]
-		projects[i].Children = []models.Project{}
-
-		// Load designs for this project and populate designs_list
-		designs, err := s.GetDesignsByProject(projects[i].ID)
-		if err == nil && len(designs) > 0 {
-			projects[i].DesignList = make([]models.ProjectDesignItem, len(designs))
-			for j, design := range designs {
-				projects[i].DesignList[j] = models.ProjectDesignItem{
-					DesignID:    design.ID,
-					Design:      &designs[j],
-					Quantity:    1,
-					Priority:    0,
-					Notes:       "",
-					UnitCost:    0,
-					TotalCost:   0,
-					IsCompleted: false,
-				}
-			}
+	var projects []models.Project
+	for rows.Next() {
+		var project models.Project
+		err := rows.Scan(
+			&project.ID,
+			&project.Name,
+			&project.Description,
+			&project.UserID,
+			&project.ParentID,
+			&project.Path,
+			&project.Designs,
+			&project.CreatedAt,
+			&project.UpdatedAt,
+		)
+		if err != nil {
+			s.logger.Error("Failed to scan project row", "error", err)
+			continue
 		}
-	}
 
-	// Second pass: build tree by adding children to parents
-	for i := range projects {
-		if projects[i].ParentID != nil {
-			if parent, exists := projectMap[*projects[i].ParentID]; exists {
-				parent.Children = append(parent.Children, projects[i])
-			}
+		// Unmarshal the design data
+		if err := project.UnmarshalDesigns(); err != nil {
+			s.logger.Warn("Failed to unmarshal project designs", "project_id", project.ID, "error", err)
+			project.DesignList = []models.ProjectDesignItem{}
 		}
+
+		project.DesignCount = len(project.DesignList)
+		projects = append(projects, project)
 	}
 
-	// Third pass: collect root projects (now with children populated)
-	for i := range projects {
-		if projects[i].ParentID == nil {
-			if p, exists := projectMap[projects[i].ID]; exists {
-				rootProjects = append(rootProjects, *p)
-			}
-		}
+	if err := rows.Err(); err != nil {
+		s.logger.Error("Error iterating project rows", "error", err)
+		return nil, models.NewDatabaseError("failed to iterate projects", err)
 	}
 
+	// Build hierarchical structure
+	rootProjects := s.buildProjectHierarchy(projects)
+
+	s.logger.Info("Retrieved project tree", "user_id", userID, "total_projects", len(projects), "root_projects", len(rootProjects))
 	return rootProjects, nil
 }
 
+// buildProjectHierarchy builds a hierarchical tree structure from a flat list of projects
+func (s *SQLiteStorage) buildProjectHierarchy(projects []models.Project) []models.Project {
+	// Create a map for quick lookup of projects by ID
+	projectMap := make(map[int]*models.Project)
+	for i := range projects {
+		projectMap[projects[i].ID] = &projects[i]
+	}
+
+	// Separate root projects from child projects
+	var rootProjects []models.Project
+	for i := range projects {
+		project := &projects[i]
+
+		if project.ParentID == nil {
+			// This is a root project
+			rootProjects = append(rootProjects, *project)
+		} else {
+			// This is a child project, add it to its parent's children
+			if parent, exists := projectMap[*project.ParentID]; exists {
+				parent.Children = append(parent.Children, *project)
+			} else {
+				// Parent not found (shouldn't happen with proper data), treat as root
+				s.logger.Warn("Project has missing parent, treating as root",
+					"project_id", project.ID,
+					"parent_id", *project.ParentID)
+				rootProjects = append(rootProjects, *project)
+			}
+		}
+	}
+
+	// Sort each level by name for consistent ordering
+	s.sortProjectsByName(rootProjects)
+	for _, project := range projectMap {
+		if len(project.Children) > 0 {
+			s.sortProjectsByName(project.Children)
+		}
+	}
+
+	return rootProjects
+}
+
+// sortProjectsByName sorts a slice of projects alphabetically by name
+func (s *SQLiteStorage) sortProjectsByName(projects []models.Project) {
+	if len(projects) <= 1 {
+		return
+	}
+
+	// Simple bubble sort by name
+	for i := 0; i < len(projects)-1; i++ {
+		for j := 0; j < len(projects)-i-1; j++ {
+			if projects[j].Name > projects[j+1].Name {
+				projects[j], projects[j+1] = projects[j+1], projects[j]
+			}
+		}
+	}
+}
+
 // GetProjectsByParent gets all direct children of a project
-func (s *SQLiteStorage) GetProjectsByParent(parentID *int) ([]models.Project, error) {
+func (s *SQLiteStorage) GetProjectsByParent(parentID *int, userID int64) ([]models.Project, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
 	var query string
 	var args []interface{}
 
 	if parentID == nil {
 		query = `
-			SELECT p.id, p.name, p.description, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
+			SELECT p.id, p.name, p.description, p.user_id, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
 			       (SELECT COUNT(*) FROM designs WHERE project_id = p.id) as design_count,
 			       (SELECT COUNT(*) FROM optimizations WHERE project_id = p.id) as opt_count
 			FROM projects p
-			WHERE p.parent_id IS NULL
-			ORDER BY p.name
+			WHERE p.parent_id IS NULL AND p.user_id = ?
+			ORDER BY p.path
 		`
+		args = []interface{}{userID}
 	} else {
 		query = `
-			SELECT p.id, p.name, p.description, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
+			SELECT p.id, p.name, p.description, p.user_id, p.parent_id, p.path, p.designs, p.created_at, p.updated_at,
 			       (SELECT COUNT(*) FROM designs WHERE project_id = p.id) as design_count,
 			       (SELECT COUNT(*) FROM optimizations WHERE project_id = p.id) as opt_count
 			FROM projects p
-			WHERE p.parent_id = ?
-			ORDER BY p.name
+			WHERE p.parent_id = ? AND p.user_id = ?
+			ORDER BY p.path
 		`
-		args = append(args, *parentID)
+		args = []interface{}{*parentID, userID}
 	}
 
 	rows, err := s.db.Query(query, args...)
@@ -1716,13 +1817,14 @@ func (s *SQLiteStorage) GetProjectsByParent(parentID *int) ([]models.Project, er
 	var projects []models.Project
 	for rows.Next() {
 		project := models.Project{}
-		var parentIDNullable sql.NullInt64
+		var parentID sql.NullInt64
 
 		err := rows.Scan(
 			&project.ID,
 			&project.Name,
 			&project.Description,
-			&parentIDNullable,
+			&project.UserID,
+			&parentID,
 			&project.Path,
 			&project.Designs,
 			&project.CreatedAt,
@@ -1735,11 +1837,12 @@ func (s *SQLiteStorage) GetProjectsByParent(parentID *int) ([]models.Project, er
 			continue
 		}
 
-		if parentIDNullable.Valid {
-			pid := int(parentIDNullable.Int64)
+		if parentID.Valid {
+			pid := int(parentID.Int64)
 			project.ParentID = &pid
 		}
 
+		// Unmarshal design list
 		if project.Designs != "" {
 			if err := json.Unmarshal([]byte(project.Designs), &project.DesignList); err != nil {
 				s.logger.Error("Failed to unmarshal project designs", "error", err, "id", project.ID)
@@ -1754,15 +1857,19 @@ func (s *SQLiteStorage) GetProjectsByParent(parentID *int) ([]models.Project, er
 }
 
 // GetDesignsByProject gets all designs in a specific project
-func (s *SQLiteStorage) GetDesignsByProject(projectID int) ([]models.Design, error) {
+func (s *SQLiteStorage) GetDesignsByProject(projectID int, userID int64) ([]models.Design, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
 	query := `
-		SELECT id, name, description, width, height, thickness, design_data, project_id, created_at, updated_at
+		SELECT id, name, description, width, height, thickness, design_data, user_id, project_id, created_at, updated_at
 		FROM designs
-		WHERE project_id = ?
+		WHERE project_id = ? AND user_id = ?
 		ORDER BY created_at DESC
 	`
 
-	rows, err := s.db.Query(query, projectID)
+	rows, err := s.db.Query(query, projectID, userID)
 	if err != nil {
 		return nil, models.NewDatabaseError("failed to query designs by project", err)
 	}
@@ -1771,7 +1878,7 @@ func (s *SQLiteStorage) GetDesignsByProject(projectID int) ([]models.Design, err
 	var designs []models.Design
 	for rows.Next() {
 		design := models.Design{}
-		var projectIDNullable sql.NullInt64
+		var projectID sql.NullInt64
 
 		err := rows.Scan(
 			&design.ID,
@@ -1781,7 +1888,8 @@ func (s *SQLiteStorage) GetDesignsByProject(projectID int) ([]models.Design, err
 			&design.Height,
 			&design.Thickness,
 			&design.DesignData,
-			&projectIDNullable,
+			&design.UserID,
+			&projectID,
 			&design.CreatedAt,
 			&design.UpdatedAt,
 		)
@@ -1790,8 +1898,8 @@ func (s *SQLiteStorage) GetDesignsByProject(projectID int) ([]models.Design, err
 			continue
 		}
 
-		if projectIDNullable.Valid {
-			pid := int(projectIDNullable.Int64)
+		if projectID.Valid {
+			pid := int(projectID.Int64)
 			design.ProjectID = &pid
 		}
 
@@ -1807,16 +1915,20 @@ func (s *SQLiteStorage) GetDesignsByProject(projectID int) ([]models.Design, err
 }
 
 // GetOptimizationsByProject gets all optimizations in a specific project
-func (s *SQLiteStorage) GetOptimizationsByProject(projectID int) ([]models.Optimization, error) {
+func (s *SQLiteStorage) GetOptimizationsByProject(projectID int, userID int64) ([]models.Optimization, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
 	query := `
 		SELECT o.id, o.name, o.sheet_id, o.design_ids, o.layout_data, o.waste_percentage,
-		       o.total_area, o.used_area, o.algorithm, o.execution_time, o.project_id, o.created_at
+		       o.total_area, o.used_area, o.algorithm, o.execution_time, o.user_id, o.project_id, o.created_at
 		FROM optimizations o
-		WHERE o.project_id = ?
+		WHERE o.project_id = ? AND o.user_id = ?
 		ORDER BY o.created_at DESC
 	`
 
-	rows, err := s.db.Query(query, projectID)
+	rows, err := s.db.Query(query, projectID, userID)
 	if err != nil {
 		return nil, models.NewDatabaseError("failed to query optimizations by project", err)
 	}
@@ -1825,7 +1937,7 @@ func (s *SQLiteStorage) GetOptimizationsByProject(projectID int) ([]models.Optim
 	var optimizations []models.Optimization
 	for rows.Next() {
 		opt := models.Optimization{}
-		var projectIDNullable sql.NullInt64
+		var projectID sql.NullInt64
 
 		err := rows.Scan(
 			&opt.ID,
@@ -1838,7 +1950,8 @@ func (s *SQLiteStorage) GetOptimizationsByProject(projectID int) ([]models.Optim
 			&opt.UsedArea,
 			&opt.Algorithm,
 			&opt.ExecutionTime,
-			&projectIDNullable,
+			&opt.UserID,
+			&projectID,
 			&opt.CreatedAt,
 		)
 		if err != nil {
@@ -1846,11 +1959,12 @@ func (s *SQLiteStorage) GetOptimizationsByProject(projectID int) ([]models.Optim
 			continue
 		}
 
-		if projectIDNullable.Valid {
-			pid := int(projectIDNullable.Int64)
+		if projectID.Valid {
+			pid := int(projectID.Int64)
 			opt.ProjectID = &pid
 		}
 
+		// Unmarshal JSON data
 		if err := opt.UnmarshalDesignIDs(); err != nil {
 			s.logger.Error("Failed to unmarshal design IDs", "error", err, "id", opt.ID)
 			continue

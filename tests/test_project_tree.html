@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Tree Test - Glass Optimizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #b3dce3; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        input { width: 300px; padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .project-tree { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .project-item { margin: 5px 0; padding: 5px; border-left: 3px solid #007bff; background: white; }
+        .project-child { margin-left: 20px; border-left-color: #28a745; }
+        .project-id { font-size: 0.8em; color: #6c757d; }
+        .project-path { font-size: 0.9em; color: #495057; font-family: monospace; }
+        #console { background: #333; color: #fff; padding: 10px; height: 150px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Project Tree Test - Glass Optimizer</h1>
+
+    <div class="test-section">
+        <h2>Authentication Check</h2>
+        <button class="btn-primary" onclick="checkAuth()">Check Authentication Status</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Create Test Projects</h2>
+        <div class="info">Create a hierarchy of test projects to verify tree functionality</div>
+        <input type="text" id="project-name" placeholder="Project name" value="Parent Project">
+        <button class="btn-success" onclick="createProject()">Create Project</button>
+        <button class="btn-info" onclick="createTestHierarchy()">Create Test Hierarchy</button>
+        <div id="create-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Project Tree Test</h2>
+        <div class="info">Test the /api/projects?tree=true endpoint</div>
+        <button class="btn-primary" onclick="testProjectTree()">Get Project Tree</button>
+        <button class="btn-primary" onclick="testProjectList()">Get Project List</button>
+        <div id="tree-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Project Tree Display</h2>
+        <div id="tree-display"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console"></div>
+        <button class="btn-danger" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let projectCounter = 1;
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = '#ff6b6b';
+            if (type === 'success') logEntry.style.color = '#51cf66';
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+
+        async function checkAuth() {
+            log('Checking authentication status...');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    currentUser = userData.user;
+                    log(`Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    showResult('auth-result', `✅ Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    return true;
+                } else if (response.status === 401) {
+                    log('User not authenticated', 'error');
+                    showResult('auth-result', '❌ Not authenticated. Please login first at <a href="/auth">/auth</a>', 'error');
+                    return false;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`Auth check failed: ${error.message}`, 'error');
+                showResult('auth-result', `❌ Authentication check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function createProject(name = null, parentId = null) {
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return null;
+            }
+
+            const projectName = name || document.getElementById('project-name').value || `Test Project ${projectCounter++}`;
+
+            const projectData = {
+                name: projectName,
+                description: `Test project created at ${new Date().toLocaleTimeString()}`,
+                designs_list: []
+            };
+
+            if (parentId) {
+                projectData.parent_id = parentId;
+            }
+
+            try {
+                log(`Creating project: ${projectName}${parentId ? ` (parent: ${parentId})` : ''}`);
+
+                const response = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(projectData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`Project created: ID ${result.project.id}, Name: ${result.project.name}`, 'success');
+                    showResult('create-result', `✅ Project created: ${result.project.name} (ID: ${result.project.id})`, 'success');
+                    return result.project;
+                } else {
+                    const errorText = await response.text();
+                    log(`Failed to create project: ${response.status} ${errorText}`, 'error');
+                    showResult('create-result', `❌ Failed to create project: ${response.status} ${errorText}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`Create project error: ${error.message}`, 'error');
+                showResult('create-result', `❌ Create project error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function createTestHierarchy() {
+            log('Creating test project hierarchy...');
+
+            // Create parent project
+            const parent = await createProject('Main Project');
+            if (!parent) return;
+
+            // Create child projects
+            await createProject('Design Phase', parent.id);
+            await createProject('Production Phase', parent.id);
+
+            // Create another parent
+            const parent2 = await createProject('Secondary Project');
+            if (parent2) {
+                await createProject('Planning', parent2.id);
+                await createProject('Execution', parent2.id);
+            }
+
+            log('Test hierarchy creation completed', 'success');
+            showResult('create-result', '✅ Test hierarchy created successfully!', 'success');
+        }
+
+        async function testProjectTree() {
+            log('Testing project tree endpoint...');
+
+            try {
+                const response = await fetch('/api/projects?tree=true', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`Project tree retrieved: ${result.total} root projects`, 'success');
+
+                    displayProjectTree(result.projects);
+
+                    if (result.message && result.message.includes('disabled')) {
+                        showResult('tree-result', `⚠️ ${result.message}`, 'info');
+                    } else {
+                        showResult('tree-result', `✅ Project tree retrieved successfully: ${result.total} root projects`, 'success');
+                    }
+
+                    return result;
+                } else {
+                    const errorText = await response.text();
+                    log(`Failed to get project tree: ${response.status} ${errorText}`, 'error');
+                    showResult('tree-result', `❌ Failed to get project tree: ${response.status} ${errorText}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`Project tree error: ${error.message}`, 'error');
+                showResult('tree-result', `❌ Project tree error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testProjectList() {
+            log('Testing regular project list endpoint...');
+
+            try {
+                const response = await fetch('/api/projects', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`Project list retrieved: ${result.total} total projects`, 'success');
+
+                    let projectList = '';
+                    if (result.projects && result.projects.length > 0) {
+                        projectList = result.projects.map(p =>
+                            `<div class="project-item">
+                                <strong>${p.name}</strong>
+                                <span class="project-id">(ID: ${p.id})</span><br>
+                                <span class="project-path">Path: ${p.path}</span><br>
+                                Parent ID: ${p.parent_id || 'None'}
+                            </div>`
+                        ).join('');
+                    } else {
+                        projectList = '<p>No projects found</p>';
+                    }
+
+                    document.getElementById('tree-display').innerHTML = `
+                        <h3>All Projects (Flat List)</h3>
+                        <div class="project-tree">${projectList}</div>
+                    `;
+
+                    return result;
+                } else {
+                    const errorText = await response.text();
+                    log(`Failed to get project list: ${response.status} ${errorText}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`Project list error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        function displayProjectTree(projects) {
+            if (!projects || projects.length === 0) {
+                document.getElementById('tree-display').innerHTML = '<h3>Project Tree</h3><p>No projects found or tree disabled</p>';
+                return;
+            }
+
+            function renderProject(project, level = 0) {
+                const indent = '  '.repeat(level);
+                let html = `
+                    <div class="project-item ${level > 0 ? 'project-child' : ''}" style="margin-left: ${level * 20}px;">
+                        <strong>${project.name}</strong>
+                        <span class="project-id">(ID: ${project.id})</span><br>
+                        <span class="project-path">Path: ${project.path}</span><br>
+                        User: ${project.user_id} | Parent: ${project.parent_id || 'None'} | Designs: ${project.design_count || 0}
+                    </div>
+                `;
+
+                if (project.children && project.children.length > 0) {
+                    project.children.forEach(child => {
+                        html += renderProject(child, level + 1);
+                    });
+                }
+
+                return html;
+            }
+
+            let treeHtml = '<h3>Project Tree (Hierarchical)</h3><div class="project-tree">';
+            projects.forEach(project => {
+                treeHtml += renderProject(project);
+            });
+            treeHtml += '</div>';
+
+            document.getElementById('tree-display').innerHTML = treeHtml;
+        }
+
+        // Auto-check authentication on page load
+        window.addEventListener('load', function() {
+            log('Page loaded - checking authentication...');
+            checkAuth();
+        });
+
+        // Catch any unhandled errors
+        window.addEventListener('error', function(event) {
+            log(`Uncaught error: ${event.error.message}`, 'error');
+        });
+    </script>
+</body>
+</html>
