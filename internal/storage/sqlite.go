@@ -1980,3 +1980,401 @@ func (s *SQLiteStorage) GetOptimizationsByProject(projectID int, userID int64) (
 
 	return optimizations, nil
 }
+
+// Order-related methods
+
+// CreateOrder creates a new order in the database
+func (s *SQLiteStorage) CreateOrder(order *models.Order) error {
+	if order == nil {
+		return models.NewValidationError("order cannot be nil")
+	}
+
+	if err := order.Validate(); err != nil {
+		return err
+	}
+
+	// Marshal items to JSON
+	if err := order.MarshalItems(); err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO orders (title, subtitle, description, user_id, project_id, items, status, notes, due_date, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	now := time.Now()
+	order.CreatedAt = now
+	order.UpdatedAt = now
+
+	result, err := s.db.Exec(query,
+		order.Title,
+		order.Subtitle,
+		order.Description,
+		order.UserID,
+		order.ProjectID,
+		order.Items,
+		order.Status,
+		order.Notes,
+		order.DueDate,
+		order.CreatedAt,
+		order.UpdatedAt,
+	)
+
+	if err != nil {
+		s.logger.Error("Failed to create order", "error", err)
+		return models.NewDatabaseError("failed to create order: "+err.Error(), err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return models.NewDatabaseError("failed to get order ID: "+err.Error(), err)
+	}
+
+	order.ID = int(id)
+
+	s.logger.Info("Order created successfully", "order_id", order.ID, "user_id", order.UserID)
+	return nil
+}
+
+// GetOrder retrieves an order by ID
+func (s *SQLiteStorage) GetOrder(id int, userID int64) (*models.Order, error) {
+	if id <= 0 {
+		return nil, models.NewValidationError("invalid order ID")
+	}
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	query := `
+		SELECT id, title, subtitle, description, user_id, project_id, items, status, notes, due_date, created_at, updated_at
+		FROM orders
+		WHERE id = ? AND user_id = ?
+	`
+
+	var order models.Order
+	err := s.db.QueryRow(query, id, userID).Scan(
+		&order.ID,
+		&order.Title,
+		&order.Subtitle,
+		&order.Description,
+		&order.UserID,
+		&order.ProjectID,
+		&order.Items,
+		&order.Status,
+		&order.Notes,
+		&order.DueDate,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, models.NewNotFoundError("order not found")
+		}
+		s.logger.Error("Failed to get order", "error", err, "order_id", id)
+		return nil, models.NewDatabaseError("failed to retrieve order: "+err.Error(), err)
+	}
+
+	// Unmarshal items
+	if err := order.UnmarshalItems(); err != nil {
+		s.logger.Error("Failed to unmarshal order items", "error", err, "order_id", id)
+		return nil, models.NewDatabaseError("failed to parse order items: "+err.Error(), err)
+	}
+
+	return &order, nil
+}
+
+// GetOrders retrieves orders for a user with pagination
+func (s *SQLiteStorage) GetOrders(userID int64, limit, offset int) ([]models.Order, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	query := `
+		SELECT id, title, subtitle, description, user_id, project_id, items, status, notes, due_date, created_at, updated_at
+		FROM orders
+		WHERE user_id = ?
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := s.db.Query(query, userID, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to get orders", "error", err, "user_id", userID)
+		return nil, models.NewDatabaseError("failed to retrieve orders: "+err.Error(), err)
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.Title,
+			&order.Subtitle,
+			&order.Description,
+			&order.UserID,
+			&order.ProjectID,
+			&order.Items,
+			&order.Status,
+			&order.Notes,
+			&order.DueDate,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		)
+		if err != nil {
+			s.logger.Error("Failed to scan order", "error", err)
+			continue
+		}
+
+		// Unmarshal items
+		if err := order.UnmarshalItems(); err != nil {
+			s.logger.Error("Failed to unmarshal order items", "error", err, "order_id", order.ID)
+			continue
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+// UpdateOrder updates an existing order
+func (s *SQLiteStorage) UpdateOrder(order *models.Order) error {
+	if order == nil {
+		return models.NewValidationError("order cannot be nil")
+	}
+	if order.ID <= 0 {
+		return models.NewValidationError("invalid order ID")
+	}
+
+	if err := order.Validate(); err != nil {
+		return err
+	}
+
+	// Marshal items to JSON
+	if err := order.MarshalItems(); err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE orders
+		SET title = ?, subtitle = ?, description = ?, project_id = ?, items = ?, status = ?, notes = ?, due_date = ?, updated_at = ?
+		WHERE id = ? AND user_id = ?
+	`
+
+	order.UpdatedAt = time.Now()
+
+	result, err := s.db.Exec(query,
+		order.Title,
+		order.Subtitle,
+		order.Description,
+		order.ProjectID,
+		order.Items,
+		order.Status,
+		order.Notes,
+		order.DueDate,
+		order.UpdatedAt,
+		order.ID,
+		order.UserID,
+	)
+
+	if err != nil {
+		s.logger.Error("Failed to update order", "error", err, "order_id", order.ID)
+		return models.NewDatabaseError("failed to update order: "+err.Error(), err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return models.NewDatabaseError("failed to get affected rows: "+err.Error(), err)
+	}
+
+	if rowsAffected == 0 {
+		return models.NewNotFoundError("order not found or access denied")
+	}
+
+	s.logger.Info("Order updated successfully", "order_id", order.ID, "user_id", order.UserID)
+	return nil
+}
+
+// DeleteOrder deletes an order
+func (s *SQLiteStorage) DeleteOrder(id int, userID int64) error {
+	if id <= 0 {
+		return models.NewValidationError("invalid order ID")
+	}
+	if userID == 0 {
+		return models.NewValidationError("user ID is required")
+	}
+
+	query := `DELETE FROM orders WHERE id = ? AND user_id = ?`
+
+	result, err := s.db.Exec(query, id, userID)
+	if err != nil {
+		s.logger.Error("Failed to delete order", "error", err, "order_id", id)
+		return models.NewDatabaseError("failed to delete order: "+err.Error(), err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return models.NewDatabaseError("failed to get affected rows: "+err.Error(), err)
+	}
+
+	if rowsAffected == 0 {
+		return models.NewNotFoundError("order not found or access denied")
+	}
+
+	s.logger.Info("Order deleted successfully", "order_id", id, "user_id", userID)
+	return nil
+}
+
+// CountOrders returns the total number of orders for a user
+func (s *SQLiteStorage) CountOrders(userID int64) (int, error) {
+	if userID == 0 {
+		return 0, models.NewValidationError("user ID is required")
+	}
+
+	query := `SELECT COUNT(*) FROM orders WHERE user_id = ?`
+
+	var count int
+	err := s.db.QueryRow(query, userID).Scan(&count)
+	if err != nil {
+		s.logger.Error("Failed to count orders", "error", err, "user_id", userID)
+		return 0, models.NewDatabaseError("failed to count orders: "+err.Error(), err)
+	}
+
+	return count, nil
+}
+
+// SearchOrders searches orders by title, subtitle, or description
+func (s *SQLiteStorage) SearchOrders(userID int64, searchTerm string, limit, offset int) ([]models.Order, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	searchQuery := `
+		SELECT id, title, subtitle, description, user_id, project_id, items, status, notes, due_date, created_at, updated_at
+		FROM orders
+		WHERE user_id = ? AND (LOWER(title) LIKE ? OR LOWER(subtitle) LIKE ? OR LOWER(description) LIKE ?)
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
+	searchPattern := "%" + strings.ToLower(searchTerm) + "%"
+
+	rows, err := s.db.Query(searchQuery, userID, searchPattern, searchPattern, searchPattern, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to search orders", "error", err, "user_id", userID, "search_term", searchTerm)
+		return nil, models.NewDatabaseError("failed to search orders: "+err.Error(), err)
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.Title,
+			&order.Subtitle,
+			&order.Description,
+			&order.UserID,
+			&order.ProjectID,
+			&order.Items,
+			&order.Status,
+			&order.Notes,
+			&order.DueDate,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		)
+		if err != nil {
+			s.logger.Error("Failed to scan order", "error", err)
+			continue
+		}
+
+		// Unmarshal items
+		if err := order.UnmarshalItems(); err != nil {
+			s.logger.Error("Failed to unmarshal order items", "error", err, "order_id", order.ID)
+			continue
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+// GetOrdersByStatus retrieves orders filtered by status
+func (s *SQLiteStorage) GetOrdersByStatus(userID int64, status models.OrderStatus, limit, offset int) ([]models.Order, error) {
+	if userID == 0 {
+		return nil, models.NewValidationError("user ID is required")
+	}
+
+	if limit <= 0 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	query := `
+		SELECT id, title, subtitle, description, user_id, project_id, items, status, notes, due_date, created_at, updated_at
+		FROM orders
+		WHERE user_id = ? AND status = ?
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := s.db.Query(query, userID, status, limit, offset)
+	if err != nil {
+		s.logger.Error("Failed to get orders by status", "error", err, "user_id", userID, "status", status)
+		return nil, models.NewDatabaseError("failed to retrieve orders by status: "+err.Error(), err)
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.Title,
+			&order.Subtitle,
+			&order.Description,
+			&order.UserID,
+			&order.ProjectID,
+			&order.Items,
+			&order.Status,
+			&order.Notes,
+			&order.DueDate,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		)
+		if err != nil {
+			s.logger.Error("Failed to scan order", "error", err)
+			continue
+		}
+
+		// Unmarshal items
+		if err := order.UnmarshalItems(); err != nil {
+			s.logger.Error("Failed to unmarshal order items", "error", err, "order_id", order.ID)
+			continue
+		}
+
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}

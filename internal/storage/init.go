@@ -323,10 +323,32 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 		);
 
 		CREATE INDEX IF NOT EXISTS idx_glass_sheets_thickness ON glass_sheets(thickness);
+
+		-- Create orders table
+		CREATE TABLE IF NOT EXISTS orders (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			subtitle TEXT DEFAULT '',
+			description TEXT DEFAULT '',
+			user_id INTEGER NOT NULL,
+			project_id INTEGER DEFAULT NULL,
+			items TEXT DEFAULT '[]',
+			status TEXT DEFAULT 'pendiente',
+			notes TEXT DEFAULT '',
+			due_date DATETIME DEFAULT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+		CREATE INDEX IF NOT EXISTS idx_orders_project_id ON orders(project_id);
+		CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+		CREATE INDEX IF NOT EXISTS idx_orders_due_date ON orders(due_date);
+		CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
 	`)
 
 	if err != nil {
-		logger.Warn("Failed to ensure glass_sheets table", "error", err)
+		logger.Warn("Failed to ensure glass_sheets and orders tables", "error", err)
 	}
 
 	return nil

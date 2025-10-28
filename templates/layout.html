@@ -91,6 +91,18 @@
                                 Projects
                             </a>
                         </li>
+                        <li>
+                            <a href="/orders" class="nav-link {{if eq .Page "orders"}}active{{end}}">
+                                <svg width="16" height="16" fill="currentColor" class="inline mr-1">
+                                    <rect x="4" y="8" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <line x1="8" y1="12" x2="12" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                                    <line x1="8" y1="14" x2="10" y2="14" stroke="currentColor" stroke-width="1.5"/>
+                                    <circle cx="14" cy="4" r="2" fill="currentColor"/>
+                                    <path d="M12 4h4M14 2v4" stroke="white" stroke-width="1"/>
+                                </svg>
+                                Pedidos
+                            </a>
+                        </li>
                     </ul>
 
                     <!-- User Menu / Actions -->
@@ -673,6 +685,14 @@
             }
         });
     </script>
+
+    <!-- Core Scripts -->
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/mobile.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <!-- Page-specific scripts -->
+    {{template "scripts" .}}
 
     {{if .CustomJS}}
     <script>

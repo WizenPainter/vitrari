@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Orders - Glass Optimizer</title>
+
+    <!-- Load CSS files -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/orders.css">
+
+    <style>
+        body {
+            background: var(--background-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .debug-header {
+            background: var(--surface-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .debug-info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .debug-controls {
+            background: var(--surface-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .debug-controls button {
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .console-log {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-header">
+        <h1>Orders Debug Page</h1>
+        <div class="debug-info">
+            <strong>Purpose:</strong> Test orders functionality without authentication.
+            This page loads the orders template content and JavaScript to identify issues.
+        </div>
+    </div>
+
+    <div class="debug-controls">
+        <h3>Debug Controls</h3>
+        <button onclick="testNewOrderModal()" class="btn btn-primary">Test New Order Modal</button>
+        <button onclick="testDesignModal()" class="btn btn-secondary">Test Design Selection Modal</button>
+        <button onclick="testCloseModals()" class="btn btn-outline">Close All Modals</button>
+        <button onclick="testOrdersManager()" class="btn btn-secondary">Test Orders Manager</button>
+        <button onclick="clearConsole()" class="btn btn-outline">Clear Console</button>
+
+        <div id="console-output" class="console-log"></div>
+    </div>
+
+    <!-- Orders Page Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="header-content">
+                <h1 data-i18n="orders">Pedidos (Debug)</h1>
+                <button id="new-order-btn" class="btn btn-primary">
+                    <svg width="16" height="16" fill="currentColor" class="mr-2">
+                        <path
+                            d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 4h2v3h3v2H9v3H7V9H4V7h3V4z"
+                        />
+                    </svg>
+                    <span data-i18n="newOrder">Nuevo Pedido</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Orders Grid -->
+        <div class="orders-container">
+            <div id="orders-grid" class="orders-grid">
+                <!-- Debug order card -->
+                <div class="order-card">
+                    <div class="order-header">
+                        <div>
+                            <h3 class="order-title">Pedido de Prueba</h3>
+                            <p class="order-subtitle">Debug Order</p>
+                        </div>
+                        <span class="order-status status-pendiente">Pendiente</span>
+                    </div>
+                    <div class="order-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">5</span>
+                            <span class="stat-label">Items</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">25</span>
+                            <span class="stat-label">Cantidad</span>
+                        </div>
+                    </div>
+                    <div class="order-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 60%;"></div>
+                        </div>
+                        <p class="progress-text">60% completado</p>
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn btn-outline">Ver</button>
+                        <button class="btn btn-outline">Editar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="orders-loading" class="loading-state" style="display: none">
+                <div class="loading-spinner"></div>
+                <p data-i18n="loading">Cargando...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="orders-empty" class="empty-state" style="display: none">
+                <div class="empty-icon">
+                    <svg width="64" height="64" fill="currentColor" opacity="0.5">
+                        <rect x="4" y="8" width="56" height="48" rx="4" stroke="currentColor" stroke-width="2" fill="none" />
+                        <line x1="16" y1="20" x2="48" y2="20" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                </div>
+                <h3>No hay pedidos de prueba.</h3>
+            </div>
+        </div>
+    </main>
+
+    <!-- New/Edit Order Modal -->
+    <div id="order-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="order-modal-title">Nuevo Pedido (Debug)</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="order-form">
+                    <input type="hidden" id="order-id" name="order-id" />
+
+                    <!-- Order Information -->
+                    <div class="form-section">
+                        <h3>Información del Pedido</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="order-title">Título del Pedido</label>
+                                <input
+                                    type="text"
+                                    id="order-title"
+                                    name="title"
+                                    required
+                                    class="form-control"
+                                    placeholder="Ingrese el título del pedido"
+                                />
+                            </div>
+                            <div class="form-group">
+                                <label for="order-subtitle">Subtítulo del Pedido</label>
+                                <input
+                                    type="text"
+                                    id="order-subtitle"
+                                    name="subtitle"
+                                    class="form-control"
+                                    placeholder="Subtítulo (opcional)"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="order-description">Descripción</label>
+                            <textarea
+                                id="order-description"
+                                name="description"
+                                rows="3"
+                                class="form-control"
+                                placeholder="Descripción del pedido"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="order-status">Estado</label>
+                                <select id="order-status" name="status" class="form-control">
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="en_proceso">En Proceso</option>
+                                    <option value="completado">Completado</option>
+                                    <option value="cancelado">Cancelado</option>
+                                    <option value="pausado">Pausado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="order-due-date">Fecha de Entrega</label>
+                                <input
+                                    type="datetime-local"
+                                    id="order-due-date"
+                                    name="due_date"
+                                    class="form-control"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="order-notes">Notas</label>
+                            <textarea
+                                id="order-notes"
+                                name="notes"
+                                rows="2"
+                                class="form-control"
+                                placeholder="Notas adicionales"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Items del Pedido</h3>
+                            <button type="button" id="add-design-btn" class="btn btn-secondary">
+                                <svg width="16" height="16" fill="currentColor" class="mr-1">
+                                    <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 4h2v3h3v2H9v3H7V9H4V7h3V4z" />
+                                </svg>
+                                <span>Agregar Diseño</span>
+                            </button>
+                        </div>
+
+                        <div id="order-items-list" class="order-items-list">
+                            <!-- Debug order item -->
+                            <div class="order-item">
+                                <div class="item-design">
+                                    <div class="design-info">
+                                        <div class="design-name">Diseño Debug 1</div>
+                                        <div class="design-dimensions">100x200mm</div>
+                                    </div>
+                                </div>
+                                <div class="item-quantity">
+                                    <input type="number" class="quantity-input" value="5" min="1">
+                                </div>
+                                <div class="item-priority">
+                                    <select class="priority-select">
+                                        <option value="1">1</option>
+                                        <option value="2" selected>2</option>
+                                        <option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div class="item-actions">
+                                    <button type="button" class="btn-icon delete">🗑</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="no-items-message" class="no-items-message" style="display: none;">
+                            <p>El pedido debe tener al menos un item</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="form-section">
+                        <h3>Resumen del Pedido</h3>
+                        <div class="order-summary">
+                            <div class="summary-item">
+                                <span>Total de Items:</span>
+                                <span id="summary-total-items">1</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>Cantidad Total:</span>
+                                <span id="summary-total-quantity">5</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" id="save-order-btn" class="btn btn-primary">
+                    <span>Guardar Pedido</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Design Selection Modal -->
+    <div id="design-selection-modal" class="modal">
+        <div class="modal-content medium">
+            <div class="modal-header">
+                <h2>Seleccionar Diseños (Debug)</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="design-search">
+                    <input
+                        type="text"
+                        id="design-search-input"
+                        placeholder="Buscar diseños..."
+                        class="form-control"
+                    />
+                </div>
+                <div id="designs-list" class="designs-list">
+                    <!-- Debug design items -->
+                    <div class="design-item">
+                        <div class="design-details">
+                            <h4>Diseño Debug A</h4>
+                            <p>Descripción del diseño de prueba</p>
+                        </div>
+                        <div class="design-dimensions-badge">150x300mm</div>
+                    </div>
+                    <div class="design-item">
+                        <div class="design-details">
+                            <h4>Diseño Debug B</h4>
+                            <p>Otro diseño para pruebas</p>
+                        </div>
+                        <div class="design-dimensions-badge">200x400mm</div>
+                    </div>
+                </div>
+                <div id="designs-loading" class="loading-state" style="display: none">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando diseños...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="button" id="add-selected-designs-btn" class="btn btn-primary">
+                    <span>Agregar Diseños Seleccionados</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Simple i18n fallback for debugging
+        window.i18n = {
+            t: function(key) {
+                const translations = {
+                    'newOrder': 'Nuevo Pedido',
+                    'loading': 'Cargando...',
+                    'orders': 'Pedidos'
+                };
+                return translations[key] || key;
+            }
+        };
+
+        // Simple toast fallback
+        window.toast = {
+            show: function(message, type) {
+                console.log(`TOAST [${type}]: ${message}`);
+                logToConsole(`TOAST [${type}]: ${message}`);
+            }
+        };
+
+        // Debug console logging
+        function logToConsole(message) {
+            const output = document.getElementById('console-output');
+            if (output) {
+                const timestamp = new Date().toLocaleTimeString();
+                output.innerHTML += `[${timestamp}] ${message}<br>`;
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        // Override console.log for debugging
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        const originalConsoleError = console.error;
+
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            logToConsole('LOG: ' + args.join(' '));
+        };
+
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            logToConsole('WARN: ' + args.join(' '));
+        };
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            logToConsole('ERROR: ' + args.join(' '));
+        };
+
+        // Debug controls
+        function testNewOrderModal() {
+            console.log('Testing new order modal...');
+            const modal = document.getElementById('order-modal');
+            if (modal) {
+                modal.classList.add('show');
+                console.log('Modal should be visible now');
+            } else {
+                console.error('Modal not found!');
+            }
+        }
+
+        function testDesignModal() {
+            console.log('Testing design selection modal...');
+            const modal = document.getElementById('design-selection-modal');
+            if (modal) {
+                modal.classList.add('show');
+                console.log('Design modal should be visible now');
+            } else {
+                console.error('Design modal not found!');
+            }
+        }
+
+        function testCloseModals() {
+            console.log('Closing all modals...');
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                modal.classList.remove('show');
+            });
+            document.body.style.overflow = '';
+            console.log(`Closed ${modals.length} modals`);
+        }
+
+        function testOrdersManager() {
+            console.log('Testing OrdersManager initialization...');
+            if (window.OrdersManager) {
+                try {
+                    const manager = new OrdersManager();
+                    console.log('OrdersManager created successfully:', manager);
+                } catch (error) {
+                    console.error('Failed to create OrdersManager:', error);
+                }
+            } else {
+                console.error('OrdersManager class not found');
+            }
+        }
+
+        function clearConsole() {
+            const output = document.getElementById('console-output');
+            if (output) {
+                output.innerHTML = '';
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Debug page loaded');
+            console.log('Available elements:');
+            console.log('- order-modal:', !!document.getElementById('order-modal'));
+            console.log('- design-selection-modal:', !!document.getElementById('design-selection-modal'));
+            console.log('- new-order-btn:', !!document.getElementById('new-order-btn'));
+            console.log('- save-order-btn:', !!document.getElementById('save-order-btn'));
+            console.log('- add-design-btn:', !!document.getElementById('add-design-btn'));
+
+            // Test modal close buttons
+            document.querySelectorAll('.modal-close, [data-dismiss="modal"]').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    console.log('Modal close button clicked');
+                    const modal = e.target.closest('.modal');
+                    if (modal) {
+                        modal.classList.remove('show');
+                        document.body.style.overflow = '';
+                        console.log('Modal closed:', modal.id);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- Load orders.js after our debug setup -->
+    <script src="/static/js/orders.js"></script>
+
+</body>
+</html>

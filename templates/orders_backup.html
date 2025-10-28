@@ -1,0 +1,346 @@
+{{template "layout.html" .}} {{define "content"}}
+<main class="main-content">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 data-i18n="orders">Pedidos</h1>
+            <button id="new-order-btn" class="btn btn-primary">
+                <svg width="16" height="16" fill="currentColor" class="mr-2">
+                    <path
+                        d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 4h2v3h3v2H9v3H7V9H4V7h3V4z"
+                    />
+                </svg>
+                <span data-i18n="newOrder">Nuevo Pedido</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Orders Grid -->
+    <div class="orders-container">
+        <div id="orders-grid" class="orders-grid">
+            <!-- Orders will be loaded here dynamically -->
+        </div>
+
+        <!-- Loading State -->
+        <div id="orders-loading" class="loading-state" style="display: none">
+            <div class="loading-spinner"></div>
+            <p data-i18n="loading">Cargando...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="orders-empty" class="empty-state" style="display: none">
+            <div class="empty-icon">
+                <svg width="64" height="64" fill="currentColor" opacity="0.5">
+                    <rect
+                        x="4"
+                        y="8"
+                        width="56"
+                        height="48"
+                        rx="4"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                    />
+                    <line
+                        x1="16"
+                        y1="20"
+                        x2="48"
+                        y2="20"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    />
+                    <line
+                        x1="16"
+                        y1="28"
+                        x2="40"
+                        y2="28"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    />
+                    <line
+                        x1="16"
+                        y1="36"
+                        x2="44"
+                        y2="36"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    />
+                    <circle cx="52" cy="12" r="8" fill="currentColor" />
+                    <path d="M48 12h8M52 8v8" stroke="white" stroke-width="2" />
+                </svg>
+            </div>
+            <h3 data-i18n="noOrdersYet">
+                No hay pedidos aún. Haz clic en "Nuevo Pedido" para crear tu
+                primer pedido.
+            </h3>
+        </div>
+    </div>
+</main>
+
+<!-- New/Edit Order Modal -->
+<div id="order-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="order-modal-title" data-i18n="newOrder">Nuevo Pedido</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="order-form">
+                <input type="hidden" id="order-id" name="order-id" />
+
+                <!-- Order Information -->
+                <div class="form-section">
+                    <h3>Información del Pedido</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="order-title" data-i18n="orderTitle"
+                                >Título del Pedido</label
+                            >
+                            <input
+                                type="text"
+                                id="order-title"
+                                name="title"
+                                required
+                                data-i18n-placeholder="orderTitlePlaceholder"
+                                placeholder="Ingrese el título del pedido"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label
+                                for="order-subtitle"
+                                data-i18n="orderSubtitle"
+                                >Subtítulo del Pedido</label
+                            >
+                            <input
+                                type="text"
+                                id="order-subtitle"
+                                name="subtitle"
+                                data-i18n-placeholder="orderSubtitlePlaceholder"
+                                placeholder="Ingrese el subtítulo del pedido (opcional)"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label
+                            for="order-description"
+                            data-i18n="orderDescription"
+                            >Descripción del Pedido</label
+                        >
+                        <textarea
+                            id="order-description"
+                            name="description"
+                            rows="3"
+                            data-i18n-placeholder="orderDescriptionPlaceholder"
+                            placeholder="Ingrese la descripción del pedido (opcional)"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="order-status" data-i18n="orderStatus"
+                                >Estado del Pedido</label
+                            >
+                            <select id="order-status" name="status">
+                                <option value="pendiente" data-i18n="pending">
+                                    Pendiente
+                                </option>
+                                <option
+                                    value="en_proceso"
+                                    data-i18n="inProgress"
+                                >
+                                    En Proceso
+                                </option>
+                                <option
+                                    value="completado"
+                                    data-i18n="completed"
+                                >
+                                    Completado
+                                </option>
+                                <option value="cancelado" data-i18n="cancelled">
+                                    Cancelado
+                                </option>
+                                <option value="pausado" data-i18n="onHold">
+                                    Pausado
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="order-due-date" data-i18n="dueDate"
+                                >Fecha de Entrega</label
+                            >
+                            <input
+                                type="datetime-local"
+                                id="order-due-date"
+                                name="due_date"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="order-notes" data-i18n="orderNotes"
+                            >Notas del Pedido</label
+                        >
+                        <textarea
+                            id="order-notes"
+                            name="notes"
+                            rows="2"
+                            data-i18n-placeholder="orderNotesPlaceholder"
+                            placeholder="Ingrese notas adicionales (opcional)"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Order Items -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3 data-i18n="orderItems">Items del Pedido</h3>
+                        <button
+                            type="button"
+                            id="add-design-btn"
+                            class="btn btn-secondary"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                fill="currentColor"
+                                class="mr-1"
+                            >
+                                <path
+                                    d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 4h2v3h3v2H9v3H7V9H4V7h3V4z"
+                                />
+                            </svg>
+                            <span data-i18n="addDesignToOrder"
+                                >Agregar Diseño al Pedido</span
+                            >
+                        </button>
+                    </div>
+
+                    <div id="order-items-list" class="order-items-list">
+                        <!-- Order items will be added here dynamically -->
+                    </div>
+
+                    <div id="no-items-message" class="no-items-message">
+                        <p data-i18n="orderItemsRequired">
+                            El pedido debe tener al menos un item
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="form-section">
+                    <h3 data-i18n="orderSummary">Resumen del Pedido</h3>
+                    <div class="order-summary">
+                        <div class="summary-item">
+                            <span data-i18n="totalItems">Total de Items:</span>
+                            <span id="summary-total-items">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span data-i18n="totalQuantity"
+                                >Cantidad Total:</span
+                            >
+                            <span id="summary-total-quantity">0</span>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                data-dismiss="modal"
+                data-i18n="cancel"
+            >
+                Cancelar
+            </button>
+            <button type="button" id="save-order-btn" class="btn btn-primary">
+                <span data-i18n="saveProject">Guardar Pedido</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Design Selection Modal -->
+<div id="design-selection-modal" class="modal">
+    <div class="modal-content medium">
+        <div class="modal-header">
+            <h2 data-i18n="selectDesigns">Seleccionar Diseños</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="design-search">
+                <input
+                    type="text"
+                    id="design-search-input"
+                    placeholder="Buscar diseños..."
+                    class="form-control"
+                />
+            </div>
+            <div id="designs-list" class="designs-list">
+                <!-- Available designs will be loaded here -->
+            </div>
+            <div
+                id="designs-loading"
+                class="loading-state"
+                style="display: none"
+            >
+                <div class="loading-spinner"></div>
+                <p data-i18n="loadingDesigns">Cargando diseños...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                data-dismiss="modal"
+                data-i18n="cancel"
+            >
+                Cancelar
+            </button>
+            <button
+                type="button"
+                id="add-selected-designs-btn"
+                class="btn btn-primary"
+            >
+                <span data-i18n="addSelectedDesigns"
+                    >Agregar Diseños Seleccionados</span
+                >
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Order Details Modal -->
+<div id="order-details-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="order-details-title">Detalles del Pedido</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="order-details-content">
+                <!-- Order details will be populated here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button
+                type="button"
+                class="btn btn-secondary"
+                data-dismiss="modal"
+                data-i18n="cancel"
+            >
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+{{end}} {{define "scripts"}}
+<script src="/static/js/orders.js"></script>
+<script>
+    // Initialize Orders Manager when page loads
+    document.addEventListener("DOMContentLoaded", function () {
+        window.ordersManager = new OrdersManager();
+    });
+</script>
+{{end}}

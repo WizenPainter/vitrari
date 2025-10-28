@@ -79,13 +79,16 @@ func main() {
 	mux.Handle("/optimizer", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizer)))
 	mux.Handle("/projects", authMiddleware.RequireAuth(http.HandlerFunc(handleProjects)))
 	mux.Handle("/projects/", authMiddleware.RequireAuth(http.HandlerFunc(handleProjectDetail)))
+	mux.Handle("/orders", authMiddleware.RequireAuth(http.HandlerFunc(handleOrders)))
 	mux.Handle("/profile", authMiddleware.RequireAuth(http.HandlerFunc(handleProfile)))
 	mux.HandleFunc("/debug-mobile", handleDebugMobile)
+	mux.HandleFunc("/debug-orders", handleDebugOrders)
 
 	// Route aliases for user-preferred URLs
 	mux.HandleFunc("/dashboard", authMiddleware.OptionalAuth(http.HandlerFunc(handleIndex)).ServeHTTP)
 	mux.Handle("/design", authMiddleware.RequireAuth(http.HandlerFunc(handleDesigner)))
 	mux.Handle("/optimize", authMiddleware.RequireAuth(http.HandlerFunc(handleOptimizer)))
+	mux.Handle("/pedidos", authMiddleware.RequireAuth(http.HandlerFunc(handleOrders)))
 
 	// API routes
 	mux.HandleFunc("/api/health", handleHealth)
@@ -136,6 +139,19 @@ func main() {
 		}
 	})))
 	mux.Handle("/api/projects", authMiddleware.RequireAuth(http.HandlerFunc(projectHandler.HandleProjects)))
+
+	// Order routes (protected)
+	mux.Handle("/api/orders/", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Route to specific order operations
+		if strings.HasPrefix(r.URL.Path, "/api/orders/") && r.URL.Path != "/api/orders/" {
+			handleOrderDetailAPI(w, r, store, logger)
+		} else {
+			handleOrdersAPI(w, r, store, logger)
+		}
+	})))
+	mux.Handle("/api/orders", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleOrdersAPI(w, r, store, logger)
+	})))
 
 	mux.Handle("/api/optimizations", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleOptimizations(w, r, store, logger)
@@ -242,8 +258,26 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleOrders(w http.ResponseWriter, r *http.Request) {
+	data := map[string]interface{}{
+		"Title":   "Pedidos",
+		"Page":    "orders",
+		"PageCSS": "orders",
+		"User":    getUserFromContext(r),
+	}
+
+	if err := templates.ExecuteTemplate(w, "orders.html", data); err != nil {
+		log.Printf("Template error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
 func handleDebugMobile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "debug-mobile.html")
+}
+
+func handleDebugOrders(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "debug-orders.html")
 }
 
 func handleProjectDetail(w http.ResponseWriter, r *http.Request) {
@@ -565,6 +599,196 @@ func handleOptimizations(w http.ResponseWriter, r *http.Request, store storage.S
 		"optimizations": optimizations,
 		"total":         total,
 	})
+}
+
+func handleOrdersAPI(w http.ResponseWriter, r *http.Request, store *storage.SQLiteStorage, logger *slog.Logger) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// Get orders for user
+		orders, err := store.GetOrders(user.ID, 50, 0)
+		if err != nil {
+			logger.Error("Failed to get orders", "error", err, "user_id", user.ID)
+			http.Error(w, "Failed to get orders", http.StatusInternalServerError)
+			return
+		}
+
+		// Populate design details for each order
+		for i := range orders {
+			for j := range orders[i].ItemsList {
+				if design, err := store.GetDesign(orders[i].ItemsList[j].DesignID, user.ID); err == nil {
+					orders[i].ItemsList[j].Design = design
+				}
+			}
+		}
+
+		response := models.OrderResponse{
+			Orders: orders,
+			Total:  len(orders),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+
+	case http.MethodPost:
+		// Create new order
+		var req models.OrderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		order := &models.Order{
+			Title:       req.Title,
+			Subtitle:    req.Subtitle,
+			Description: req.Description,
+			UserID:      user.ID,
+			ItemsList:   req.ItemsList,
+			Status:      models.OrderStatusPending,
+			Notes:       req.Notes,
+			DueDate:     req.DueDate,
+		}
+
+		if err := store.CreateOrder(order); err != nil {
+			logger.Error("Failed to create order", "error", err, "user_id", user.ID)
+			http.Error(w, "Failed to create order", http.StatusInternalServerError)
+			return
+		}
+
+		response := models.OrderResponse{
+			Order:   order,
+			Message: "Order created successfully",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
+func handleOrderDetailAPI(w http.ResponseWriter, r *http.Request, store *storage.SQLiteStorage, logger *slog.Logger) {
+	user := getUserFromContext(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract order ID from URL
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 3 {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		return
+	}
+
+	orderID, err := strconv.Atoi(pathParts[2])
+	if err != nil {
+		http.Error(w, "Invalid order ID", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// Get specific order
+		order, err := store.GetOrder(orderID, user.ID)
+		if err != nil {
+			if err.Error() == "order not found" {
+				http.Error(w, "Order not found", http.StatusNotFound)
+			} else {
+				logger.Error("Failed to get order", "error", err, "order_id", orderID)
+				http.Error(w, "Failed to get order", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// Populate design details
+		for i := range order.ItemsList {
+			if design, err := store.GetDesign(order.ItemsList[i].DesignID, user.ID); err == nil {
+				order.ItemsList[i].Design = design
+				order.ItemsList[i].PopulateWorksFromDesign()
+			}
+		}
+
+		response := models.OrderResponse{
+			Order: order,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+
+	case "PUT":
+		// Update order
+		var req models.OrderRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Get existing order first
+		order, err := store.GetOrder(orderID, user.ID)
+		if err != nil {
+			if err.Error() == "order not found" {
+				http.Error(w, "Order not found", http.StatusNotFound)
+			} else {
+				logger.Error("Failed to get order for update", "error", err, "order_id", orderID)
+				http.Error(w, "Failed to get order", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// Update fields
+		order.Title = req.Title
+		order.Subtitle = req.Subtitle
+		order.Description = req.Description
+		order.ItemsList = req.ItemsList
+		order.Notes = req.Notes
+		order.DueDate = req.DueDate
+
+		if err := store.UpdateOrder(order); err != nil {
+			logger.Error("Failed to update order", "error", err, "order_id", orderID)
+			http.Error(w, "Failed to update order", http.StatusInternalServerError)
+			return
+		}
+
+		response := models.OrderResponse{
+			Order:   order,
+			Message: "Order updated successfully",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+
+	case "DELETE":
+		// Delete order
+		if err := store.DeleteOrder(orderID, user.ID); err != nil {
+			if err.Error() == "order not found or access denied" {
+				http.Error(w, "Order not found", http.StatusNotFound)
+			} else {
+				logger.Error("Failed to delete order", "error", err, "order_id", orderID)
+				http.Error(w, "Failed to delete order", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		response := models.OrderResponse{
+			Message: "Order deleted successfully",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func handleOptimize(w http.ResponseWriter, r *http.Request) {
