@@ -77,10 +77,9 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set auth cookie if remember me is selected
-	if req.RememberMe {
-		h.setAuthCookie(w, authResponse.Token, time.Unix(authResponse.ExpiresAt, 0))
-	}
+	// Always set auth cookie for successful login
+	// RememberMe only affects expiration time (already handled in token generation)
+	h.setAuthCookie(w, authResponse.Token, time.Unix(authResponse.ExpiresAt, 0))
 
 	h.logger.Info("User logged in successfully",
 		"user_id", authResponse.User.ID,

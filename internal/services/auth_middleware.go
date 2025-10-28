@@ -38,7 +38,7 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		user, err := m.authenticateRequest(r)
 		if err != nil {
 			m.logger.Info("Authentication failed", "error", err, "path", r.URL.Path, "ip", getClientIP(r))
-			m.sendUnauthorized(w, "Authentication required")
+			m.sendUnauthorizedResponse(w, r, "Authentication required")
 			return
 		}
 
@@ -68,14 +68,14 @@ func (m *AuthMiddleware) AdminAuth(next http.Handler) http.Handler {
 		user, err := m.authenticateRequest(r)
 		if err != nil {
 			m.logger.Info("Admin authentication failed", "error", err, "path", r.URL.Path, "ip", getClientIP(r))
-			m.sendUnauthorized(w, "Admin authentication required")
+			m.sendUnauthorizedResponse(w, r, "Admin authentication required")
 			return
 		}
 
 		// Check if user has admin privileges (this would be extended based on your role system)
 		if !m.isAdmin(user) {
 			m.logger.Warn("Non-admin user attempted to access admin endpoint", "user_id", user.ID, "email", user.Email, "path", r.URL.Path)
-			m.sendForbidden(w, "Admin privileges required")
+			m.sendForbiddenResponse(w, r, "Admin privileges required")
 			return
 		}
 
@@ -195,24 +195,64 @@ func (m *AuthMiddleware) isAdmin(user *models.User) bool {
 	return strings.HasSuffix(user.Email, "@vitrari.com") || strings.HasSuffix(user.Email, "@admin.com")
 }
 
-func (m *AuthMiddleware) sendUnauthorized(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusUnauthorized)
-	json.NewEncoder(w).Encode(models.ErrorResponse{
-		Error:   "unauthorized",
-		Message: message,
-		Code:    "UNAUTHORIZED",
-	})
+func (m *AuthMiddleware) sendUnauthorizedResponse(w http.ResponseWriter, r *http.Request, message string) {
+	if m.isAPIRequest(r) {
+		// Send JSON response for API requests
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(models.ErrorResponse{
+			Error:   "unauthorized",
+			Message: message,
+			Code:    "UNAUTHORIZED",
+		})
+	} else {
+		// Redirect browser requests to auth page
+		http.Redirect(w, r, "/auth", http.StatusFound)
+	}
 }
 
-func (m *AuthMiddleware) sendForbidden(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
-	json.NewEncoder(w).Encode(models.ErrorResponse{
-		Error:   "forbidden",
-		Message: message,
-		Code:    "FORBIDDEN",
-	})
+func (m *AuthMiddleware) sendForbiddenResponse(w http.ResponseWriter, r *http.Request, message string) {
+	if m.isAPIRequest(r) {
+		// Send JSON response for API requests
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(models.ErrorResponse{
+			Error:   "forbidden",
+			Message: message,
+			Code:    "FORBIDDEN",
+		})
+	} else {
+		// Redirect browser requests to auth page for forbidden access too
+		http.Redirect(w, r, "/auth", http.StatusFound)
+	}
+}
+
+// isAPIRequest determines if the request is an API call or a browser request
+func (m *AuthMiddleware) isAPIRequest(r *http.Request) bool {
+	// Check if path starts with /api
+	if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/api/") {
+		return true
+	}
+
+	// Check Accept header for JSON content type preference
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") && !strings.Contains(accept, "text/html") {
+		return true
+	}
+
+	// Check Content-Type for JSON requests
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		return true
+	}
+
+	// Check X-Requested-With header (commonly used by AJAX requests)
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+		return true
+	}
+
+	// Default to browser request (HTML)
+	return false
 }
 
 func getClientIP(r *http.Request) string {
