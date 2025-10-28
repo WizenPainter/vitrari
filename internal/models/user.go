@@ -78,7 +78,7 @@ func (u *User) GetFullName() string {
 
 // IsAccountLocked checks if the user's account is currently locked
 func (u *User) IsAccountLocked() bool {
-	if u.AccountLockedUntil == nil {
+	if u == nil || u.AccountLockedUntil == nil {
 		return false
 	}
 	return time.Now().Before(*u.AccountLockedUntil)

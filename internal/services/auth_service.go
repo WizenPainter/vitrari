@@ -133,6 +133,12 @@ func (s *AuthService) Login(req *models.UserLoginRequest, ipAddress, userAgent s
 		return nil, ErrInvalidCredentials
 	}
 
+	// Check if user exists
+	if user == nil {
+		s.logger.Info("Login attempt with non-existent email", "email", req.Email, "ip", ipAddress)
+		return nil, ErrInvalidCredentials
+	}
+
 	// Check if account is locked
 	if user.IsAccountLocked() {
 		s.logger.Warn("Login attempt on locked account", "user_id", user.ID, "email", user.Email, "ip", ipAddress)
@@ -264,6 +270,13 @@ func (s *AuthService) RequestPasswordReset(email string) error {
 		return nil // Return success regardless
 	}
 
+	// Check if user exists
+	if user == nil {
+		// Don't reveal if email exists or not for security
+		s.logger.Info("Password reset requested for non-existent email", "email", email)
+		return nil // Return success regardless
+	}
+
 	// Generate reset token
 	resetToken, err := s.generateSecureToken()
 	if err != nil {
@@ -294,6 +307,12 @@ func (s *AuthService) ResetPassword(req *models.UserResetPasswordRequest) error 
 	// Find user by reset token
 	user, err := s.getUserByResetToken(req.Token)
 	if err != nil {
+		s.logger.Info("Invalid reset token used", "token", req.Token[:8]+"...")
+		return ErrInvalidToken
+	}
+
+	// Check if user exists
+	if user == nil {
 		s.logger.Info("Invalid reset token used", "token", req.Token[:8]+"...")
 		return ErrInvalidToken
 	}
