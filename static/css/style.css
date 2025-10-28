@@ -1550,6 +1550,9 @@ select {
 }
 
 .content-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     margin-bottom: 1rem;
 }
 
@@ -1581,6 +1584,73 @@ select {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border);
+}
+
+/* Content Card Menu */
+.content-card-menu {
+    position: relative;
+    z-index: 10;
+}
+
+.menu-trigger {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-trigger:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--shadow);
+    min-width: 160px;
+    z-index: 100;
+    padding: 0.5rem 0;
+}
+
+.dropdown-menu button {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dropdown-menu button:hover {
+    background: var(--bg);
+}
+
+.dropdown-menu button:focus {
+    outline: none;
+    background: var(--bg);
+}
+
+/* Delete button specific styling */
+.dropdown-menu button:hover:last-child {
+    background: var(--danger-surface);
+    color: var(--danger);
 }
 
 .empty-state {

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subproject Loading Test - Glass Optimizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #b3dce3; color: #0c5460; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffecb5; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        input { width: 300px; padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .project-item {
+            margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .subproject-item {
+            margin: 10px 0 10px 30px; padding: 10px; border: 1px solid #28a745; border-radius: 4px;
+            background: #d4edda;
+        }
+        .project-id { font-size: 0.8em; color: #6c757d; }
+        .project-path { font-size: 0.9em; color: #495057; font-family: monospace; }
+        #console { background: #333; color: #fff; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+        .json-output { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>Subproject Loading Test - Glass Optimizer</h1>
+
+    <div class="test-section">
+        <h2>Authentication Check</h2>
+        <button class="btn-primary" onclick="checkAuth()">Check Authentication Status</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Available Parent Projects</h2>
+        <div class="info">Load all projects and identify which ones have children</div>
+        <button class="btn-primary" onclick="loadAllProjects()">Load All Projects</button>
+        <div id="all-projects-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Specific Project</h2>
+        <div class="info">Test a specific project to see if it loads subprojects</div>
+        <input type="number" id="test-project-id" placeholder="Enter project ID" value="17">
+        <button class="btn-success" onclick="testProjectWithSubprojects()">Test Project & Subprojects</button>
+        <div id="specific-project-result"></div>
+        <div id="project-details"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Create Test Hierarchy</h2>
+        <div class="info">Create a test parent-child hierarchy</div>
+        <input type="text" id="parent-name" placeholder="Parent project name" value="Test Parent">
+        <input type="text" id="child-name" placeholder="Child project name" value="Test Child">
+        <button class="btn-info" onclick="createTestHierarchy()">Create Test Hierarchy</button>
+        <div id="hierarchy-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Direct API Test</h2>
+        <div class="info">Direct test of GetProjectsByParent functionality</div>
+        <input type="number" id="parent-project-id" placeholder="Parent project ID" value="17">
+        <button class="btn-primary" onclick="testGetProjectsByParent()">Test GetProjectsByParent API</button>
+        <div id="api-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console"></div>
+        <button class="btn-danger" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let allProjects = [];
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = '#ff6b6b';
+            if (type === 'success') logEntry.style.color = '#51cf66';
+            if (type === 'warning') logEntry.style.color = '#ffd43b';
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+
+        async function checkAuth() {
+            log('Checking authentication status...');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    currentUser = userData.user;
+                    log(`Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    showResult('auth-result', `✅ Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    return true;
+                } else if (response.status === 401) {
+                    log('User not authenticated', 'error');
+                    showResult('auth-result', '❌ Not authenticated. Please login first at <a href="/auth">/auth</a>', 'error');
+                    return false;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`Auth check failed: ${error.message}`, 'error');
+                showResult('auth-result', `❌ Authentication check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function loadAllProjects() {
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            log('Loading all user projects...');
+
+            try {
+                const response = await fetch('/api/projects', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    allProjects = result.projects || [];
+                    log(`Loaded ${allProjects.length} projects total`, 'success');
+
+                    // Identify parent and child projects
+                    const parentProjects = allProjects.filter(p => !p.parent_id);
+                    const childProjects = allProjects.filter(p => p.parent_id);
+
+                    let projectsHtml = '';
+                    if (allProjects.length > 0) {
+                        projectsHtml = `
+                            <div class="info">
+                                <strong>Summary:</strong> ${allProjects.length} total projects<br>
+                                <strong>Parent Projects:</strong> ${parentProjects.length}<br>
+                                <strong>Child Projects:</strong> ${childProjects.length}
+                            </div>
+                        `;
+
+                        // Group children by parent
+                        const projectsByParent = {};
+                        parentProjects.forEach(p => {
+                            projectsByParent[p.id] = {
+                                parent: p,
+                                children: childProjects.filter(c => c.parent_id === p.id)
+                            };
+                        });
+
+                        // Also show orphaned children (children with no parent in the result set)
+                        const orphanedChildren = childProjects.filter(c =>
+                            !parentProjects.find(p => p.id === c.parent_id)
+                        );
+
+                        projectsHtml += '<div style="margin-top: 15px;">';
+
+                        // Show parent projects with their children
+                        Object.values(projectsByParent).forEach(({parent, children}) => {
+                            projectsHtml += `
+                                <div class="project-item">
+                                    <strong>${parent.name}</strong>
+                                    <span class="project-id">(ID: ${parent.id})</span>
+                                    <button class="btn-info" style="float: right; padding: 5px 10px;" onclick="testSpecificProject(${parent.id})">Test</button>
+                                    <br>
+                                    <span class="project-path">Path: ${parent.path}</span><br>
+                                    <small>User: ${parent.user_id} | Children: ${children.length}</small>
+                            `;
+
+                            children.forEach(child => {
+                                projectsHtml += `
+                                    <div class="subproject-item">
+                                        <strong>↳ ${child.name}</strong>
+                                        <span class="project-id">(ID: ${child.id})</span><br>
+                                        <span class="project-path">Path: ${child.path}</span>
+                                    </div>
+                                `;
+                            });
+
+                            projectsHtml += '</div>';
+                        });
+
+                        // Show orphaned children
+                        if (orphanedChildren.length > 0) {
+                            projectsHtml += `
+                                <div class="warning">
+                                    <strong>Orphaned Children (parent not found):</strong>
+                                </div>
+                            `;
+                            orphanedChildren.forEach(child => {
+                                projectsHtml += `
+                                    <div class="project-item">
+                                        <strong>${child.name}</strong>
+                                        <span class="project-id">(ID: ${child.id}, Parent ID: ${child.parent_id})</span><br>
+                                        <span class="project-path">Path: ${child.path}</span>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        projectsHtml += '</div>';
+                    } else {
+                        projectsHtml = '<p>No projects found. Create a project first.</p>';
+                    }
+
+                    document.getElementById('all-projects-result').innerHTML = projectsHtml;
+                    showResult('all-projects-result', '', 'success');
+
+                } else {
+                    const errorText = await response.text();
+                    log(`Failed to load projects: ${response.status} ${errorText}`, 'error');
+                    showResult('all-projects-result', `❌ Failed to load projects: ${response.status} ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`Load projects error: ${error.message}`, 'error');
+                showResult('all-projects-result', `❌ Load projects error: ${error.message}`, 'error');
+            }
+        }
+
+        function testSpecificProject(projectId) {
+            document.getElementById('test-project-id').value = projectId;
+            testProjectWithSubprojects();
+        }
+
+        async function testProjectWithSubprojects() {
+            const projectId = document.getElementById('test-project-id').value;
+
+            if (!projectId) {
+                showResult('specific-project-result', '❌ Please enter a project ID', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            log(`Testing project ID ${projectId} for subproject loading...`);
+
+            try {
+                const response = await fetch(`/api/projects/${projectId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const project = result.project;
+
+                    log(`Project loaded: ${project.name} with ${(project.children || []).length} children`, 'success');
+
+                    let resultHtml = `
+                        ✅ Project API working:<br>
+                        <strong>Name:</strong> ${project.name}<br>
+                        <strong>ID:</strong> ${project.id}<br>
+                        <strong>Path:</strong> ${project.path}<br>
+                        <strong>User ID:</strong> ${project.user_id}<br>
+                        <strong>Children:</strong> ${(project.children || []).length}<br>
+                    `;
+
+                    // Show detailed project data
+                    let detailsHtml = `
+                        <h4>Full Project Data</h4>
+                        <div class="json-output">${formatJSON(project)}</div>
+                    `;
+
+                    if (project.children && project.children.length > 0) {
+                        resultHtml += '<br><strong>Subprojects found:</strong><ul>';
+                        project.children.forEach(child => {
+                            resultHtml += `<li>${child.name} (ID: ${child.id})</li>`;
+                        });
+                        resultHtml += '</ul>';
+
+                        detailsHtml += `
+                            <h4>Subprojects Details</h4>
+                            <div class="json-output">${formatJSON(project.children)}</div>
+                        `;
+                    } else {
+                        resultHtml += '<br><span class="warning">⚠️ No subprojects found</span>';
+                    }
+
+                    showResult('specific-project-result', resultHtml, 'success');
+                    document.getElementById('project-details').innerHTML = detailsHtml;
+
+                } else if (response.status === 404) {
+                    log(`Project ${projectId} not found`, 'error');
+                    showResult('specific-project-result', `❌ Project ${projectId} not found or access denied`, 'error');
+                } else {
+                    const errorText = await response.text();
+                    log(`Failed to load project: ${response.status} ${errorText}`, 'error');
+                    showResult('specific-project-result', `❌ Failed to load project: ${response.status} ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                log(`Project test error: ${error.message}`, 'error');
+                showResult('specific-project-result', `❌ Project test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function createTestHierarchy() {
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            const parentName = document.getElementById('parent-name').value;
+            const childName = document.getElementById('child-name').value;
+
+            if (!parentName || !childName) {
+                showResult('hierarchy-result', '❌ Please enter both parent and child names', 'error');
+                return;
+            }
+
+            log(`Creating test hierarchy: ${parentName} -> ${childName}`);
+
+            try {
+                // Create parent project
+                log('Creating parent project...');
+                const parentResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: parentName,
+                        description: 'Test parent project for hierarchy testing',
+                        designs_list: []
+                    })
+                });
+
+                if (!parentResponse.ok) {
+                    throw new Error(`Failed to create parent: ${parentResponse.status}`);
+                }
+
+                const parentResult = await parentResponse.json();
+                const parentProject = parentResult.project;
+                log(`Parent created: ${parentProject.name} (ID: ${parentProject.id})`, 'success');
+
+                // Create child project
+                log('Creating child project...');
+                const childResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: childName,
+                        description: 'Test child project for hierarchy testing',
+                        parent_id: parentProject.id,
+                        designs_list: []
+                    })
+                });
+
+                if (!childResponse.ok) {
+                    throw new Error(`Failed to create child: ${childResponse.status}`);
+                }
+
+                const childResult = await childResponse.json();
+                const childProject = childResult.project;
+                log(`Child created: ${childProject.name} (ID: ${childProject.id})`, 'success');
+
+                showResult('hierarchy-result', `
+                    ✅ Test hierarchy created successfully!<br>
+                    <strong>Parent:</strong> ${parentProject.name} (ID: ${parentProject.id})<br>
+                    <strong>Child:</strong> ${childProject.name} (ID: ${childProject.id})<br>
+                    <button onclick="testSpecificProject(${parentProject.id})" class="btn-info" style="margin-top: 10px;">
+                        Test Parent Project
+                    </button>
+                `, 'success');
+
+                // Update project ID field to test the new parent
+                document.getElementById('test-project-id').value = parentProject.id;
+
+            } catch (error) {
+                log(`Create hierarchy error: ${error.message}`, 'error');
+                showResult('hierarchy-result', `❌ Create hierarchy error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetProjectsByParent() {
+            const parentId = document.getElementById('parent-project-id').value;
+
+            if (!parentId) {
+                showResult('api-test-result', '❌ Please enter a parent project ID', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            log(`Testing GetProjectsByParent API for parent ID: ${parentId}`);
+
+            try {
+                // This tests the underlying API that should be used by GetProjectsByParent
+                // Since there's no direct endpoint, we'll test by getting the parent and seeing its children
+                const response = await fetch(`/api/projects/${parentId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const project = result.project;
+
+                    let resultHtml = `
+                        ✅ GetProjectsByParent functionality test:<br>
+                        <strong>Parent:</strong> ${project.name} (ID: ${project.id})<br>
+                        <strong>Children found:</strong> ${(project.children || []).length}<br>
+                    `;
+
+                    if (project.children && project.children.length > 0) {
+                        resultHtml += '<br><strong>Child projects:</strong><ul>';
+                        project.children.forEach(child => {
+                            resultHtml += `<li>${child.name} (ID: ${child.id}, Parent: ${child.parent_id})</li>`;
+                        });
+                        resultHtml += '</ul>';
+
+                        resultHtml += `
+                            <br><strong>Raw Children Data:</strong><br>
+                            <div class="json-output">${formatJSON(project.children)}</div>
+                        `;
+                    } else {
+                        resultHtml += '<br><span class="info">ℹ️ This project has no child projects</span>';
+                    }
+
+                    showResult('api-test-result', resultHtml, 'success');
+                    log(`GetProjectsByParent test completed for parent ${parentId}`, 'success');
+
+                } else {
+                    const errorText = await response.text();
+                    log(`API test failed: ${response.status} ${errorText}`, 'error');
+                    showResult('api-test-result', `❌ API test failed: ${response.status} ${errorText}`, 'error');
+                }
+
+            } catch (error) {
+                log(`API test error: ${error.message}`, 'error');
+                showResult('api-test-result', `❌ API test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-check authentication on page load
+        window.addEventListener('load', function() {
+            log('Subproject test page loaded - checking authentication...');
+            checkAuth().then(isAuth => {
+                if (isAuth) {
+                    // Auto-load projects if authenticated
+                    setTimeout(() => {
+                        loadAllProjects();
+                    }, 1000);
+                }
+            });
+        });
+
+        // Monitor for JavaScript errors
+        window.addEventListener('error', function(event) {
+            log(`JS Error: ${event.error.message} at ${event.filename}:${event.lineno}`, 'error');
+        });
+    </script>
+</body>
+</html>

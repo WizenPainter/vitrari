@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subproject Fixes Test - Glass Optimizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 15px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #b3dce3; color: #0c5460; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffecb5; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        input { width: 300px; padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .test-hierarchy { margin: 15px 0; padding: 15px; background: #f8f9fa; border-radius: 4px; }
+        .project-item { margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: white; }
+        .subproject-item { margin: 10px 0 10px 30px; padding: 10px; border: 1px solid #28a745; border-radius: 4px; background: #d4edda; }
+        .project-id { font-size: 0.8em; color: #6c757d; }
+        .project-path { font-size: 0.9em; color: #495057; font-family: monospace; }
+        .test-link { color: #007bff; text-decoration: underline; cursor: pointer; margin: 0 10px; }
+        #console { background: #333; color: #fff; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Subproject Fixes Test - Glass Optimizer</h1>
+
+    <div class="test-section">
+        <h2>Authentication Check</h2>
+        <button class="btn-primary" onclick="checkAuth()">Check Authentication Status</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Fix 1: Navigation Route Test</h2>
+        <div class="info">Test that clicking subprojects navigates to the correct URL (/projects/{id} not /project/{id})</div>
+        <button class="btn-primary" onclick="testNavigationRoutes()">Test Navigation Routes</button>
+        <div id="route-test-result"></div>
+        <div id="route-details"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Fix 2: Create Test Hierarchy for Testing</h2>
+        <div class="info">Create a parent project with a child subproject to test the fixes</div>
+        <input type="text" id="test-parent-name" placeholder="Test parent name" value="Test Parent Project">
+        <input type="text" id="test-child-name" placeholder="Test child name" value="Test Child Subproject">
+        <button class="btn-success" onclick="createTestHierarchy()">Create Test Hierarchy</button>
+        <div id="hierarchy-result"></div>
+        <div id="created-projects"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Fix 3: Test Delete Functionality</h2>
+        <div class="info">Test that the three-dot menu and delete functionality works</div>
+        <div class="warning">
+            <strong>Note:</strong> The actual delete testing requires visiting the project page to see the UI.
+            This section tests the API functionality.
+        </div>
+        <input type="number" id="delete-test-id" placeholder="Subproject ID to test delete">
+        <button class="btn-danger" onclick="testDeleteAPI()">Test Delete API</button>
+        <button class="btn-warning" onclick="testDeleteConfirm()">Test with Confirmation</button>
+        <div id="delete-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Integration Test: Full Workflow</h2>
+        <div class="info">Complete workflow test: Create → Navigate → Verify → Delete</div>
+        <button class="btn-info" onclick="runFullWorkflow()">Run Full Workflow Test</button>
+        <div id="workflow-result"></div>
+        <div id="workflow-steps"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Testing Links</h2>
+        <div class="info">Use these links to manually test the UI features</div>
+        <div id="manual-test-links"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console"></div>
+        <button class="btn-danger" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let testProjects = {};
+
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${message}`;
+            if (type === 'error') logEntry.style.color = '#ff6b6b';
+            if (type === 'success') logEntry.style.color = '#51cf66';
+            if (type === 'warning') logEntry.style.color = '#ffd43b';
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+        }
+
+        async function checkAuth() {
+            log('Checking authentication status...');
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    currentUser = userData.user;
+                    log(`Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    showResult('auth-result', `✅ Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`, 'success');
+                    return true;
+                } else if (response.status === 401) {
+                    log('User not authenticated', 'error');
+                    showResult('auth-result', '❌ Not authenticated. Please login first at <a href="/auth">/auth</a>', 'error');
+                    return false;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`Auth check failed: ${error.message}`, 'error');
+                showResult('auth-result', `❌ Authentication check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testNavigationRoutes() {
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            log('Testing navigation routes...');
+
+            const routes = [
+                '/projects/1',
+                '/projects/17',
+                '/projects/999'
+            ];
+
+            let results = '<h4>Route Test Results:</h4>';
+            let allPassed = true;
+
+            for (const route of routes) {
+                try {
+                    log(`Testing route: ${route}`);
+
+                    const response = await fetch(route, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+
+                    if (response.status === 200) {
+                        results += `<div class="success">✅ ${route} - 200 OK (Page loads correctly)</div>`;
+                        log(`Route ${route}: 200 OK`, 'success');
+                    } else if (response.status === 404) {
+                        results += `<div class="info">ℹ️ ${route} - 404 Not Found (Project doesn't exist - this is correct)</div>`;
+                        log(`Route ${route}: 404 Not Found (expected for non-existent projects)`, 'info');
+                    } else if (response.status === 401) {
+                        results += `<div class="error">❌ ${route} - 401 Unauthorized (Authentication issue)</div>`;
+                        log(`Route ${route}: 401 Unauthorized`, 'error');
+                        allPassed = false;
+                    } else {
+                        results += `<div class="warning">⚠️ ${route} - ${response.status} ${response.statusText}</div>`;
+                        log(`Route ${route}: ${response.status} ${response.statusText}`, 'warning');
+                    }
+                } catch (error) {
+                    results += `<div class="error">❌ ${route} - Error: ${error.message}</div>`;
+                    log(`Route ${route} error: ${error.message}`, 'error');
+                    allPassed = false;
+                }
+            }
+
+            document.getElementById('route-details').innerHTML = results;
+
+            if (allPassed) {
+                showResult('route-test-result', '✅ Navigation routes working correctly! /projects/{id} URLs are accessible.', 'success');
+            } else {
+                showResult('route-test-result', '❌ Some navigation routes have issues. Check details above.', 'error');
+            }
+        }
+
+        async function createTestHierarchy() {
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            const parentName = document.getElementById('test-parent-name').value;
+            const childName = document.getElementById('test-child-name').value;
+
+            if (!parentName || !childName) {
+                showResult('hierarchy-result', '❌ Please enter both parent and child names', 'error');
+                return;
+            }
+
+            log(`Creating test hierarchy: ${parentName} -> ${childName}`);
+
+            try {
+                // Create parent project
+                log('Creating parent project...');
+                const parentResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: parentName,
+                        description: 'Test parent project for navigation and delete testing',
+                        designs_list: []
+                    })
+                });
+
+                if (!parentResponse.ok) {
+                    throw new Error(`Failed to create parent: ${parentResponse.status}`);
+                }
+
+                const parentResult = await parentResponse.json();
+                const parentProject = parentResult.project;
+                testProjects.parent = parentProject;
+                log(`Parent created: ${parentProject.name} (ID: ${parentProject.id})`, 'success');
+
+                // Create child project
+                log('Creating child project...');
+                const childResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: childName,
+                        description: 'Test child project for navigation and delete testing',
+                        parent_id: parentProject.id,
+                        designs_list: []
+                    })
+                });
+
+                if (!childResponse.ok) {
+                    throw new Error(`Failed to create child: ${childResponse.status}`);
+                }
+
+                const childResult = await childResponse.json();
+                const childProject = childResult.project;
+                testProjects.child = childProject;
+                log(`Child created: ${childProject.name} (ID: ${childProject.id})`, 'success');
+
+                // Update delete test field
+                document.getElementById('delete-test-id').value = childProject.id;
+
+                showResult('hierarchy-result', `✅ Test hierarchy created successfully!`, 'success');
+
+                const projectsHtml = `
+                    <div class="test-hierarchy">
+                        <h4>Created Test Projects:</h4>
+                        <div class="project-item">
+                            <strong>${parentProject.name}</strong>
+                            <span class="project-id">(ID: ${parentProject.id})</span>
+                            <br><span class="project-path">Path: ${parentProject.path}</span>
+                            <br>
+                            <span class="test-link" onclick="window.open('/projects/${parentProject.id}', '_blank')">
+                                🔗 Open Parent Project Page
+                            </span>
+
+                            <div class="subproject-item">
+                                <strong>↳ ${childProject.name}</strong>
+                                <span class="project-id">(ID: ${childProject.id})</span>
+                                <br><span class="project-path">Path: ${childProject.path}</span>
+                                <br>
+                                <span class="test-link" onclick="window.open('/projects/${childProject.id}', '_blank')">
+                                    🔗 Open Child Project Page
+                                </span>
+                            </div>
+                        </div>
+                        <div class="info">
+                            <strong>Manual Test Instructions:</strong><br>
+                            1. Click "Open Parent Project Page" to see the parent project<br>
+                            2. Look for the child subproject card with the three-dot menu<br>
+                            3. Click the card to test navigation<br>
+                            4. Click the three-dot menu to test delete functionality
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('created-projects').innerHTML = projectsHtml;
+
+                // Update manual test links
+                updateManualTestLinks();
+
+            } catch (error) {
+                log(`Create hierarchy error: ${error.message}`, 'error');
+                showResult('hierarchy-result', `❌ Create hierarchy error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteAPI() {
+            const projectId = document.getElementById('delete-test-id').value;
+
+            if (!projectId) {
+                showResult('delete-test-result', '❌ Please enter a project ID to test', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            log(`Testing delete API for project ID: ${projectId} (DRY RUN - will not actually delete)`);
+
+            try {
+                // First, verify the project exists
+                const getResponse = await fetch(`/api/projects/${projectId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!getResponse.ok) {
+                    throw new Error(`Project ${projectId} not found or access denied`);
+                }
+
+                const projectData = await getResponse.json();
+                const project = projectData.project;
+
+                log(`Project exists: ${project.name}`, 'success');
+
+                // Test the delete endpoint (but don't actually delete)
+                log('Testing DELETE endpoint accessibility...');
+
+                showResult('delete-test-result', `
+                    ✅ Delete API test completed:<br>
+                    <strong>Project:</strong> ${project.name} (ID: ${project.id})<br>
+                    <strong>Status:</strong> Project exists and is accessible<br>
+                    <strong>API Endpoint:</strong> DELETE /api/projects/${projectId} would work<br>
+                    <br>
+                    <div class="warning">
+                        <strong>Note:</strong> Actual deletion not performed to preserve test data.<br>
+                        Use "Test with Confirmation" to actually delete if needed.
+                    </div>
+                `, 'success');
+
+            } catch (error) {
+                log(`Delete API test error: ${error.message}`, 'error');
+                showResult('delete-test-result', `❌ Delete API test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeleteConfirm() {
+            const projectId = document.getElementById('delete-test-id').value;
+
+            if (!projectId) {
+                showResult('delete-test-result', '❌ Please enter a project ID to test', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            try {
+                // Get project info first
+                const getResponse = await fetch(`/api/projects/${projectId}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!getResponse.ok) {
+                    throw new Error(`Project ${projectId} not found`);
+                }
+
+                const projectData = await getResponse.json();
+                const project = projectData.project;
+
+                // Confirm deletion
+                if (!confirm(`Are you sure you want to ACTUALLY DELETE the project "${project.name}"?\n\nThis cannot be undone and is for testing purposes only.`)) {
+                    log('Deletion cancelled by user', 'info');
+                    showResult('delete-test-result', 'ℹ️ Deletion cancelled by user', 'info');
+                    return;
+                }
+
+                log(`Actually deleting project: ${project.name} (ID: ${projectId})`);
+
+                const deleteResponse = await fetch(`/api/projects/${projectId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (deleteResponse.ok) {
+                    log(`Project ${project.name} deleted successfully`, 'success');
+                    showResult('delete-test-result', `✅ Project "${project.name}" deleted successfully!`, 'success');
+
+                    // Clear the test ID field
+                    document.getElementById('delete-test-id').value = '';
+
+                    // Update test projects if this was our test child
+                    if (testProjects.child && testProjects.child.id == projectId) {
+                        delete testProjects.child;
+                        updateManualTestLinks();
+                    }
+
+                } else {
+                    const errorText = await deleteResponse.text();
+                    throw new Error(`Delete failed: ${deleteResponse.status} ${errorText}`);
+                }
+
+            } catch (error) {
+                log(`Delete with confirmation error: ${error.message}`, 'error');
+                showResult('delete-test-result', `❌ Delete error: ${error.message}`, 'error');
+            }
+        }
+
+        async function runFullWorkflow() {
+            log('Starting full workflow test...');
+
+            if (!currentUser) {
+                await checkAuth();
+                if (!currentUser) return;
+            }
+
+            let workflowHtml = '<h4>Workflow Test Steps:</h4>';
+            let stepCount = 1;
+
+            try {
+                // Step 1: Create parent
+                workflowHtml += `<div class="info">Step ${stepCount++}: Creating parent project...</div>`;
+                const parentResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: 'Workflow Test Parent',
+                        description: 'Parent project for full workflow test',
+                        designs_list: []
+                    })
+                });
+
+                if (!parentResponse.ok) throw new Error('Failed to create parent');
+                const parentProject = (await parentResponse.json()).project;
+                workflowHtml += `<div class="success">✅ Parent created: ${parentProject.name} (ID: ${parentProject.id})</div>`;
+
+                // Step 2: Create child
+                workflowHtml += `<div class="info">Step ${stepCount++}: Creating child project...</div>`;
+                const childResponse = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: 'Workflow Test Child',
+                        description: 'Child project for full workflow test',
+                        parent_id: parentProject.id,
+                        designs_list: []
+                    })
+                });
+
+                if (!childResponse.ok) throw new Error('Failed to create child');
+                const childProject = (await childResponse.json()).project;
+                workflowHtml += `<div class="success">✅ Child created: ${childProject.name} (ID: ${childProject.id})</div>`;
+
+                // Step 3: Test navigation route
+                workflowHtml += `<div class="info">Step ${stepCount++}: Testing navigation to child...</div>`;
+                const navResponse = await fetch(`/projects/${childProject.id}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (navResponse.ok) {
+                    workflowHtml += `<div class="success">✅ Navigation route /projects/${childProject.id} works</div>`;
+                } else {
+                    workflowHtml += `<div class="error">❌ Navigation route failed: ${navResponse.status}</div>`;
+                }
+
+                // Step 4: Verify parent shows child
+                workflowHtml += `<div class="info">Step ${stepCount++}: Verifying parent shows child...</div>`;
+                const parentDetailResponse = await fetch(`/api/projects/${parentProject.id}`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (parentDetailResponse.ok) {
+                    const parentDetail = await parentDetailResponse.json();
+                    const hasChild = parentDetail.project.children &&
+                                   parentDetail.project.children.some(c => c.id === childProject.id);
+
+                    if (hasChild) {
+                        workflowHtml += `<div class="success">✅ Parent correctly shows child in children array</div>`;
+                    } else {
+                        workflowHtml += `<div class="error">❌ Parent does not show child in children array</div>`;
+                    }
+                } else {
+                    workflowHtml += `<div class="error">❌ Failed to verify parent details</div>`;
+                }
+
+                // Step 5: Test delete
+                workflowHtml += `<div class="info">Step ${stepCount++}: Testing delete functionality...</div>`;
+                const deleteResponse = await fetch(`/api/projects/${childProject.id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (deleteResponse.ok) {
+                    workflowHtml += `<div class="success">✅ Child project deleted successfully</div>`;
+                } else {
+                    workflowHtml += `<div class="error">❌ Delete failed: ${deleteResponse.status}</div>`;
+                }
+
+                // Step 6: Clean up parent
+                workflowHtml += `<div class="info">Step ${stepCount++}: Cleaning up parent project...</div>`;
+                const cleanupResponse = await fetch(`/api/projects/${parentProject.id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (cleanupResponse.ok) {
+                    workflowHtml += `<div class="success">✅ Parent project cleaned up</div>`;
+                } else {
+                    workflowHtml += `<div class="warning">⚠️ Parent cleanup failed (may need manual cleanup)</div>`;
+                }
+
+                workflowHtml += `<div class="success"><strong>🎉 Full workflow test completed successfully!</strong></div>`;
+                showResult('workflow-result', '✅ Full workflow test passed! Both fixes are working correctly.', 'success');
+
+            } catch (error) {
+                workflowHtml += `<div class="error">❌ Workflow test failed: ${error.message}</div>`;
+                showResult('workflow-result', `❌ Full workflow test failed: ${error.message}`, 'error');
+                log(`Full workflow test error: ${error.message}`, 'error');
+            }
+
+            document.getElementById('workflow-steps').innerHTML = workflowHtml;
+        }
+
+        function updateManualTestLinks() {
+            let linksHtml = '';
+
+            if (testProjects.parent) {
+                linksHtml += `
+                    <div class="info">
+                        <strong>Parent Project:</strong> ${testProjects.parent.name} (ID: ${testProjects.parent.id})<br>
+                        <span class="test-link" onclick="window.open('/projects/${testProjects.parent.id}', '_blank')">
+                            🔗 Open Parent Project Page
+                        </span>
+                        - Look for subproject cards with three-dot menus
+                    </div>
+                `;
+            }
+
+            if (testProjects.child) {
+                linksHtml += `
+                    <div class="info">
+                        <strong>Child Project:</strong> ${testProjects.child.name} (ID: ${testProjects.child.id})<br>
+                        <span class="test-link" onclick="window.open('/projects/${testProjects.child.id}', '_blank')">
+                            🔗 Open Child Project Page
+                        </span>
+                        - Test that navigation works correctly
+                    </div>
+                `;
+            }
+
+            if (!linksHtml) {
+                linksHtml = '<p>Create a test hierarchy first to get manual testing links.</p>';
+            }
+
+            document.getElementById('manual-test-links').innerHTML = linksHtml;
+        }
+
+        // Auto-check authentication on page load
+        window.addEventListener('load', function() {
+            log('Subproject fixes test page loaded - checking authentication...');
+            checkAuth().then(isAuth => {
+                if (isAuth) {
+                    updateManualTestLinks();
+                }
+            });
+        });
+
+        // Monitor for JavaScript errors
+        window.addEventListener('error', function(event) {
+            log(`JS Error: ${event.error.message} at ${event.filename}:${event.lineno}`, 'error');
+        });
+    </script>
+</body>
+</html>

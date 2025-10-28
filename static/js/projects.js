@@ -46,18 +46,28 @@ class ProjectManager {
   async init() {
     this.setupEventListeners();
 
-    // Wait for DOM elements to be ready before loading data
-    try {
-      await waitForElement("projects-tree");
-      this.loadProjects();
-      this.loadDesigns();
-    } catch (error) {
-      console.error("DOM element not ready:", error);
-      // Fallback to setTimeout approach
-      setTimeout(() => {
+    // Check if projects-tree element exists on this page
+    const projectsTreeExists =
+      document.getElementById("projects-tree") !== null;
+
+    if (projectsTreeExists) {
+      // Wait for DOM elements to be ready before loading data
+      try {
+        await waitForElement("projects-tree");
         this.loadProjects();
         this.loadDesigns();
-      }, 100);
+      } catch (error) {
+        console.error("DOM element not ready:", error);
+        // Fallback to setTimeout approach
+        setTimeout(() => {
+          this.loadProjects();
+          this.loadDesigns();
+        }, 100);
+      }
+    } else {
+      console.log(
+        "projects-tree element not found - skipping project data loading on this page",
+      );
     }
 
     this.handleUrlParameters();
@@ -170,25 +180,12 @@ class ProjectManager {
   async renderProjectsTree() {
     let container = document.getElementById("projects-tree");
 
-    // Add null check for container element with retry mechanism
+    // If the container doesn't exist, this page doesn't need the projects tree
     if (!container) {
-      console.warn("projects-tree element not found in DOM, waiting...");
-      try {
-        container = await waitForElement("projects-tree", 3000);
-        console.log("Successfully found projects-tree element after waiting");
-      } catch (error) {
-        console.error(
-          "Failed to find projects-tree element after 3 seconds:",
-          error,
-        );
-        console.error(
-          "Available elements with 'project' in ID:",
-          Array.from(document.querySelectorAll("[id*='project']")).map(
-            (el) => el.id,
-          ),
-        );
-        return;
-      }
+      console.log(
+        "projects-tree element not found - skipping tree render on this page",
+      );
+      return;
     }
 
     if (!this.projects || this.projects.length === 0) {
@@ -683,6 +680,16 @@ class ProjectManager {
 let projectManager;
 
 function initProjectManager() {
+  // Only initialize ProjectManager on pages that have the projects-tree element
+  const projectsTreeExists = document.getElementById("projects-tree") !== null;
+
+  if (!projectsTreeExists) {
+    console.log(
+      "ProjectManager not initialized - projects-tree element not found on this page",
+    );
+    return;
+  }
+
   try {
     projectManager = new ProjectManager();
     console.log("ProjectManager initialized successfully");
@@ -701,7 +708,10 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initProjectManager);
   // Fallback in case DOMContentLoaded doesn't fire properly
   window.addEventListener("load", () => {
-    if (!projectManager) {
+    // Only try fallback if we should have a ProjectManager on this page
+    const projectsTreeExists =
+      document.getElementById("projects-tree") !== null;
+    if (!projectManager && projectsTreeExists) {
       console.warn(
         "ProjectManager not initialized via DOMContentLoaded, using window.load fallback",
       );

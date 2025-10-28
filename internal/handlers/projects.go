@@ -295,13 +295,15 @@ func (h *ProjectHandler) getProject(w http.ResponseWriter, r *http.Request, id i
 		return
 	}
 
-	// Also get children - Note: GetProjectsByParent needs to be updated to filter by user_id
-	// For now, we'll skip this to avoid security issues
-	// TODO: Update GetProjectsByParent to filter by user_id
-	// children, err := h.storage.(*storage.SQLiteStorage).GetProjectsByParent(&id, user.ID)
-	// if err == nil {
-	//	project.Children = children
-	// }
+	// Also get children (subprojects)
+	children, err := h.storage.(*storage.SQLiteStorage).GetProjectsByParent(&id, user.ID)
+	if err == nil {
+		project.Children = children
+	} else {
+		h.logger.Warn("Failed to load project children", "error", err, "project_id", id, "user_id", user.ID)
+		// Continue without children rather than failing the whole request
+		project.Children = []models.Project{}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

@@ -27,6 +27,7 @@ class ProjectDetailManager {
 
     this.setupEventListeners();
     this.loadProject();
+    this.setupDocumentClickHandler();
   }
 
   setupEventListeners() {
@@ -326,9 +327,26 @@ class ProjectDetailManager {
     container.innerHTML = this.subprojects
       .map(
         (sub) => `
-            <div class="content-card" onclick="window.location.href='/projects/${sub.id}'">
+            <div class="content-card" onclick="projectDetailManager.navigateToSubproject(${sub.id}, event)">
                 <div class="content-card-header">
                     <h4>${this.escapeHtml(sub.name)}</h4>
+                    <div class="content-card-menu">
+                        <button class="menu-trigger" onclick="projectDetailManager.toggleSubprojectMenu(${sub.id}, event)" title="More options">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="8" cy="2" r="1.5"/>
+                                <circle cx="8" cy="8" r="1.5"/>
+                                <circle cx="8" cy="14" r="1.5"/>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu" id="subproject-menu-${sub.id}" style="display: none;">
+                            <button onclick="projectDetailManager.deleteSubproject(${sub.id}, '${this.escapeHtml(sub.name)}', event)">
+                                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5zM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 1.152l.557 10.056A2 2 0 0 0 5.046 16h5.908a2 2 0 0 0 1.993-1.792l.557-10.056a.58.58 0 0 0-.01-1.152H11z"/>
+                                </svg>
+                                Delete Subproject
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 ${sub.description ? `<p class="content-card-description">${this.escapeHtml(sub.description)}</p>` : ""}
                 <div class="content-card-meta">
@@ -339,6 +357,95 @@ class ProjectDetailManager {
         `,
       )
       .join("");
+  }
+
+  navigateToSubproject(subprojectId, event) {
+    // Only navigate if not clicking on the menu
+    if (event && event.target.closest(".content-card-menu")) {
+      return;
+    }
+    window.location.href = `/projects/${subprojectId}`;
+  }
+
+  toggleSubprojectMenu(subprojectId, event) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    // Close all other menus first
+    document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+      if (menu.id !== `subproject-menu-${subprojectId}`) {
+        menu.style.display = "none";
+      }
+    });
+
+    const menu = document.getElementById(`subproject-menu-${subprojectId}`);
+    if (menu) {
+      menu.style.display = menu.style.display === "none" ? "block" : "none";
+    }
+  }
+
+  async deleteSubproject(subprojectId, subprojectName, event) {
+    event.stopPropagation();
+    event.preventDefault();
+
+    // Close the menu
+    document.getElementById(`subproject-menu-${subprojectId}`).style.display =
+      "none";
+
+    // Confirm deletion
+    if (
+      !confirm(
+        `Are you sure you want to delete the subproject "${subprojectName}"?\n\nThis action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${subprojectId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        console.log(`Subproject ${subprojectName} deleted successfully`);
+
+        // Show success message
+        if (window.toast) {
+          window.toast.success(
+            `Subproject "${subprojectName}" deleted successfully`,
+          );
+        }
+
+        // Reload the current project to refresh the subprojects list
+        this.loadProject();
+      } else {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to delete subproject: ${response.status} ${errorText}`,
+        );
+      }
+    } catch (error) {
+      console.error("Failed to delete subproject:", error);
+
+      // Show error message
+      if (window.toast) {
+        window.toast.error(`Failed to delete subproject: ${error.message}`);
+      } else {
+        alert(`Failed to delete subproject: ${error.message}`);
+      }
+    }
+  }
+
+  setupDocumentClickHandler() {
+    // Close dropdown menus when clicking outside
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".content-card-menu")) {
+        document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+          menu.style.display = "none";
+        });
+      }
+    });
   }
 
   renderDesigns() {

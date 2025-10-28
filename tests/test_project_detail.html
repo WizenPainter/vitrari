@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Project Detail Test - Glass Optimizer</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            .test-section {
+                border: 1px solid #ccc;
+                margin: 20px 0;
+                padding: 15px;
+            }
+            .test-result {
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 4px;
+            }
+            .success {
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                color: #155724;
+            }
+            .error {
+                background-color: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+            }
+            .info {
+                background-color: #d1ecf1;
+                border: 1px solid #b3dce3;
+                color: #0c5460;
+            }
+            .warning {
+                background-color: #fff3cd;
+                border: 1px solid #ffecb5;
+                color: #856404;
+            }
+            button {
+                padding: 10px 20px;
+                margin: 5px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .btn-primary {
+                background-color: #007bff;
+                color: white;
+            }
+            .btn-success {
+                background-color: #28a745;
+                color: white;
+            }
+            .btn-danger {
+                background-color: #dc3545;
+                color: white;
+            }
+            .btn-info {
+                background-color: #17a2b8;
+                color: white;
+            }
+            input {
+                width: 300px;
+                padding: 8px;
+                margin: 5px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .project-list {
+                margin: 10px 0;
+            }
+            .project-item {
+                margin: 5px 0;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: #f8f9fa;
+                cursor: pointer;
+            }
+            .project-item:hover {
+                background: #e9ecef;
+            }
+            .project-id {
+                font-size: 0.8em;
+                color: #6c757d;
+            }
+            .project-path {
+                font-size: 0.9em;
+                color: #495057;
+                font-family: monospace;
+            }
+            #console {
+                background: #333;
+                color: #fff;
+                padding: 10px;
+                height: 150px;
+                overflow-y: auto;
+                font-family: monospace;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Project Detail Page Test - Glass Optimizer</h1>
+
+        <div class="test-section">
+            <h2>Authentication Check</h2>
+            <button class="btn-primary" onclick="checkAuth()">
+                Check Authentication Status
+            </button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Available Projects</h2>
+            <div class="info">
+                Select a project to test its detail page functionality
+            </div>
+            <button class="btn-primary" onclick="loadProjects()">
+                Load My Projects
+            </button>
+            <div id="projects-list"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Direct Project Test</h2>
+            <div class="info">Manually test a specific project by ID</div>
+            <input
+                type="number"
+                id="project-id"
+                placeholder="Enter project ID"
+                value="18"
+            />
+            <button class="btn-success" onclick="testProjectDetail()">
+                Test Project Detail
+            </button>
+            <button class="btn-info" onclick="openProjectPage()">
+                Open Project Page
+            </button>
+            <div id="project-test-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>JavaScript Error Detection</h2>
+            <div class="info">
+                Monitor for the projects-tree error and other JavaScript issues
+            </div>
+            <button class="btn-info" onclick="simulateProjectsJs()">
+                Simulate projects.js Loading
+            </button>
+            <div id="js-error-result"></div>
+            <div class="warning">
+                <strong>Expected Result:</strong> No "projects-tree not found"
+                errors should appear.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Console Log</h2>
+            <div id="console"></div>
+            <button class="btn-danger" onclick="clearConsole()">
+                Clear Console
+            </button>
+        </div>
+
+        <script>
+            let currentUser = null;
+            let projects = [];
+
+            function log(message, type = "info") {
+                const console = document.getElementById("console");
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = document.createElement("div");
+                logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> ${message}`;
+                if (type === "error") logEntry.style.color = "#ff6b6b";
+                if (type === "success") logEntry.style.color = "#51cf66";
+                if (type === "warning") logEntry.style.color = "#ffd43b";
+                console.appendChild(logEntry);
+                console.scrollTop = console.scrollHeight;
+            }
+
+            function clearConsole() {
+                document.getElementById("console").innerHTML = "";
+            }
+
+            function showResult(elementId, message, type) {
+                const element = document.getElementById(elementId);
+                element.innerHTML = `<div class="test-result ${type}">${message}</div>`;
+            }
+
+            async function checkAuth() {
+                log("Checking authentication status...");
+
+                try {
+                    const response = await fetch("/api/auth/me", {
+                        method: "GET",
+                        credentials: "include",
+                    });
+
+                    if (response.ok) {
+                        const userData = await response.json();
+                        currentUser = userData.user;
+                        log(
+                            `Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`,
+                            "success",
+                        );
+                        showResult(
+                            "auth-result",
+                            `✅ Authenticated as: ${userData.user.email} (ID: ${userData.user.id})`,
+                            "success",
+                        );
+                        return true;
+                    } else if (response.status === 401) {
+                        log("User not authenticated", "error");
+                        showResult(
+                            "auth-result",
+                            '❌ Not authenticated. Please login first at <a href="/auth">/auth</a>',
+                            "error",
+                        );
+                        return false;
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                } catch (error) {
+                    log(`Auth check failed: ${error.message}`, "error");
+                    showResult(
+                        "auth-result",
+                        `❌ Authentication check failed: ${error.message}`,
+                        "error",
+                    );
+                    return false;
+                }
+            }
+
+            async function loadProjects() {
+                if (!currentUser) {
+                    await checkAuth();
+                    if (!currentUser) return;
+                }
+
+                log("Loading user projects...");
+
+                try {
+                    const response = await fetch("/api/projects", {
+                        method: "GET",
+                        credentials: "include",
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        projects = result.projects || [];
+                        log(`Loaded ${projects.length} projects`, "success");
+
+                        let projectsHtml = "";
+                        if (projects.length > 0) {
+                            projectsHtml = projects
+                                .map(
+                                    (p) => `
+                            <div class="project-item" onclick="selectProject(${p.id})">
+                                <strong>${p.name}</strong>
+                                <span class="project-id">(ID: ${p.id})</span><br>
+                                <span class="project-path">Path: ${p.path}</span><br>
+                                <small>User: ${p.user_id} | Created: ${new Date(p.created_at).toLocaleDateString()}</small>
+                            </div>
+                        `,
+                                )
+                                .join("");
+                        } else {
+                            projectsHtml =
+                                "<p>No projects found. Create a project first.</p>";
+                        }
+
+                        document.getElementById("projects-list").innerHTML = `
+                        <div class="project-list">
+                            <h4>Your Projects (${projects.length})</h4>
+                            ${projectsHtml}
+                        </div>
+                    `;
+                    } else {
+                        const errorText = await response.text();
+                        log(
+                            `Failed to load projects: ${response.status} ${errorText}`,
+                            "error",
+                        );
+                    }
+                } catch (error) {
+                    log(`Load projects error: ${error.message}`, "error");
+                }
+            }
+
+            function selectProject(projectId) {
+                document.getElementById("project-id").value = projectId;
+                log(`Selected project ID: ${projectId}`);
+            }
+
+            async function testProjectDetail() {
+                const projectId = document.getElementById("project-id").value;
+
+                if (!projectId) {
+                    showResult(
+                        "project-test-result",
+                        "❌ Please enter a project ID",
+                        "error",
+                    );
+                    return;
+                }
+
+                if (!currentUser) {
+                    await checkAuth();
+                    if (!currentUser) return;
+                }
+
+                log(`Testing project detail for ID: ${projectId}`);
+
+                try {
+                    // Test project API endpoint
+                    const response = await fetch(`/api/projects/${projectId}`, {
+                        method: "GET",
+                        credentials: "include",
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        log(
+                            `Project detail loaded: ${result.project.name}`,
+                            "success",
+                        );
+
+                        showResult(
+                            "project-test-result",
+                            `
+                        ✅ Project API working:<br>
+                        <strong>Name:</strong> ${result.project.name}<br>
+                        <strong>ID:</strong> ${result.project.id}<br>
+                        <strong>Path:</strong> ${result.project.path}<br>
+                        <strong>User ID:</strong> ${result.project.user_id}<br>
+                        <strong>Designs:</strong> ${result.project.design_count || 0}<br>
+                        <button onclick="openProjectPage()" class="btn-info" style="margin-top: 10px;">
+                            Open Project Page
+                        </button>
+                    `,
+                            "success",
+                        );
+                    } else if (response.status === 404) {
+                        log(`Project ${projectId} not found`, "error");
+                        showResult(
+                            "project-test-result",
+                            `❌ Project ${projectId} not found or access denied`,
+                            "error",
+                        );
+                    } else {
+                        const errorText = await response.text();
+                        log(
+                            `Failed to load project: ${response.status} ${errorText}`,
+                            "error",
+                        );
+                        showResult(
+                            "project-test-result",
+                            `❌ Failed to load project: ${response.status} ${errorText}`,
+                            "error",
+                        );
+                    }
+                } catch (error) {
+                    log(`Project test error: ${error.message}`, "error");
+                    showResult(
+                        "project-test-result",
+                        `❌ Project test error: ${error.message}`,
+                        "error",
+                    );
+                }
+            }
+
+            function openProjectPage() {
+                const projectId = document.getElementById("project-id").value;
+                if (projectId) {
+                    const url = `/project/${projectId}`;
+                    log(`Opening project page: ${url}`);
+                    window.open(url, "_blank");
+                }
+            }
+
+            function simulateProjectsJs() {
+                log("Simulating projects.js behavior...");
+
+                // Test the logic that was causing the error
+                const projectsTreeExists =
+                    document.getElementById("projects-tree") !== null;
+                const availableProjectElements = Array.from(
+                    document.querySelectorAll("[id*='project']"),
+                ).map((el) => el.id);
+
+                log(`projects-tree element exists: ${projectsTreeExists}`);
+                log(
+                    `Elements with 'project' in ID: ${availableProjectElements.join(", ")}`,
+                );
+
+                if (!projectsTreeExists) {
+                    log(
+                        "projects.js should skip initialization - this is correct behavior",
+                        "success",
+                    );
+                    showResult(
+                        "js-error-result",
+                        "✅ projects.js correctly skips initialization when #projects-tree not found",
+                        "success",
+                    );
+                } else {
+                    log(
+                        "projects-tree found - would initialize normally",
+                        "info",
+                    );
+                    showResult(
+                        "js-error-result",
+                        "ℹ️ projects-tree found - projects.js would initialize",
+                        "info",
+                    );
+                }
+            }
+
+            // Auto-check authentication on page load
+            window.addEventListener("load", function () {
+                log("Test page loaded - checking authentication...");
+                checkAuth();
+            });
+
+            // Monitor for JavaScript errors
+            let errorCount = 0;
+            window.addEventListener("error", function (event) {
+                errorCount++;
+                const errorMsg = `JS Error #${errorCount}: ${event.error.message} at ${event.filename}:${event.lineno}`;
+                log(errorMsg, "error");
+
+                // Check for specific errors we fixed
+                if (event.error.message.includes("projects-tree not found")) {
+                    showResult(
+                        "js-error-result",
+                        "❌ projects-tree error still occurring!",
+                        "error",
+                    );
+                } else if (event.error.message.includes("className.includes")) {
+                    showResult(
+                        "js-error-result",
+                        "❌ className.includes error still occurring!",
+                        "error",
+                    );
+                }
+            });
+
+            // Monitor console output
+            const originalConsoleError = console.error;
+            const originalConsoleWarn = console.warn;
+            const originalConsoleLog = console.log;
+
+            console.error = function (...args) {
+                log("Console Error: " + args.join(" "), "error");
+                originalConsoleError.apply(console, args);
+            };
+
+            console.warn = function (...args) {
+                log("Console Warning: " + args.join(" "), "warning");
+                originalConsoleWarn.apply(console, args);
+            };
+
+            console.log = function (...args) {
+                const message = args.join(" ");
+                // Filter out some noisy messages
+                if (
+                    !message.includes("ProjectManager") ||
+                    message.includes("error") ||
+                    message.includes("not found")
+                ) {
+                    log("Console: " + message);
+                }
+                originalConsoleLog.apply(console, args);
+            };
+        </script>
+    </body>
+</html>
