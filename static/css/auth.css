@@ -274,6 +274,8 @@
 .password-toggle {
     position: absolute;
     right: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
     background: none;
     border: none;
     padding: var(--spacing-sm);
@@ -281,6 +283,12 @@
     color: var(--text-secondary);
     border-radius: var(--border-radius-sm);
     transition: all var(--transition-fast);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
 }
 
 .password-toggle:hover {
@@ -290,6 +298,7 @@
 
 .password-toggle .material-icons {
     font-size: 20px;
+    pointer-events: none;
 }
 
 /* Password Strength Indicator */
