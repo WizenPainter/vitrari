@@ -101,7 +101,6 @@
                                 id="order-title"
                                 name="title"
                                 required
-                                class="form-control"
                                 data-i18n-placeholder="orderTitlePlaceholder"
                                 placeholder="Ingrese el título del pedido"
                             />
@@ -116,7 +115,6 @@
                                 type="text"
                                 id="order-subtitle"
                                 name="subtitle"
-                                class="form-control"
                                 data-i18n-placeholder="orderSubtitlePlaceholder"
                                 placeholder="Ingrese el subtítulo del pedido (opcional)"
                             />
@@ -133,7 +131,6 @@
                             id="order-description"
                             name="description"
                             rows="3"
-                            class="form-control"
                             data-i18n-placeholder="orderDescriptionPlaceholder"
                             placeholder="Ingrese la descripción del pedido (opcional)"
                         ></textarea>
@@ -144,11 +141,7 @@
                             <label for="order-status" data-i18n="orderStatus"
                                 >Estado del Pedido</label
                             >
-                            <select
-                                id="order-status"
-                                name="status"
-                                class="form-control"
-                            >
+                            <select id="order-status" name="status">
                                 <option value="pendiente" data-i18n="pending">
                                     Pendiente
                                 </option>
@@ -180,7 +173,6 @@
                                 type="datetime-local"
                                 id="order-due-date"
                                 name="due_date"
-                                class="form-control"
                             />
                         </div>
                     </div>
@@ -193,7 +185,6 @@
                             id="order-notes"
                             name="notes"
                             rows="2"
-                            class="form-control"
                             data-i18n-placeholder="orderNotesPlaceholder"
                             placeholder="Ingrese notas adicionales (opcional)"
                         ></textarea>
@@ -333,16 +324,6 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" id="print-order-btn" class="btn btn-primary">
-                <svg width="16" height="16" fill="currentColor" class="mr-2">
-                    <path
-                        d="M2 7a1 1 0 011-1h10a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1V7z"
-                    />
-                    <path d="M4 3a1 1 0 011-1h6a1 1 0 011 1v3H4V3z" />
-                    <path d="M4 9h8v4H4V9z" />
-                </svg>
-                <span data-i18n="print">Imprimir</span>
-            </button>
             <button
                 type="button"
                 class="btn btn-secondary"

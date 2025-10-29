@@ -118,6 +118,14 @@ class OrdersManager {
     document.getElementById("order-title")?.addEventListener("input", () => {
       this.validateForm();
     });
+
+    // Print button event delegation (since button is in modal)
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#print-order-btn")) {
+        console.log("print");
+        e.preventDefault();
+      }
+    });
   }
 
   async loadOrders() {
@@ -736,6 +744,12 @@ class OrdersManager {
     title.textContent = order.title;
     content.innerHTML = this.renderOrderDetails(order);
 
+    // Store current order for print functionality
+    this.currentPrintOrder = order;
+
+    // Add print button to modal footer if it doesn't exist
+    this.addPrintButtonToModal(modal);
+
     this.showModal(modal);
   }
 
@@ -951,5 +965,66 @@ class OrdersManager {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  addPrintButtonToModal(modal) {
+    const modalFooter = modal.querySelector(".modal-footer");
+    if (!modalFooter) return;
+
+    // Check if print button already exists
+    if (document.getElementById("print-order-btn")) return;
+
+    // Create print button
+    const printButton = document.createElement("button");
+    printButton.type = "button";
+    printButton.id = "print-order-btn";
+    printButton.className = "btn btn-primary";
+    printButton.style.marginRight = "1rem";
+
+    // Create icon
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("width", "16");
+    icon.setAttribute("height", "16");
+    icon.setAttribute("fill", "currentColor");
+    icon.style.marginRight = "0.5rem";
+
+    const path1 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path",
+    );
+    path1.setAttribute(
+      "d",
+      "M2 7a1 1 0 011-1h10a1 1 0 011 1v4a1 1 0 01-1 1H3a1 1 0 01-1-1V7z",
+    );
+    const path2 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path",
+    );
+    path2.setAttribute("d", "M4 3a1 1 0 011-1h6a1 1 0 011 1v3H4V3z");
+    const path3 = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "path",
+    );
+    path3.setAttribute("d", "M4 9h8v4H4V9z");
+
+    icon.appendChild(path1);
+    icon.appendChild(path2);
+    icon.appendChild(path3);
+
+    // Create text span
+    const textSpan = document.createElement("span");
+    textSpan.textContent = "Imprimir";
+
+    // Assemble button
+    printButton.appendChild(icon);
+    printButton.appendChild(textSpan);
+
+    // Add click handler
+    printButton.addEventListener("click", () => {
+      console.log("print");
+    });
+
+    // Insert button at the beginning of modal footer
+    modalFooter.insertBefore(printButton, modalFooter.firstChild);
   }
 }

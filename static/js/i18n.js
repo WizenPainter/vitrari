@@ -46,6 +46,7 @@ const translations = {
     saveDesign: "Save Design",
     loadDesign: "Load Design",
     printDesign: "Print Design",
+    print: "Print",
     clearAll: "Clear All",
 
     // Instructions
@@ -262,6 +263,7 @@ const translations = {
     saveDesign: "Guardar Diseño",
     loadDesign: "Cargar Diseño",
     printDesign: "Imprimir Diseño",
+    print: "Imprimir",
     clearAll: "Limpiar Todo",
 
     // Instrucciones
