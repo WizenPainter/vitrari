@@ -72,6 +72,15 @@ const translations = {
     quantity: "Quantity",
     size: "Size",
     noHolesClipsInDesign: "No holes or clips in design",
+    orderQuantity: "Order Quantity",
+
+    // Print error messages
+    noPrintOrderSelected: "No order selected for printing",
+    loading: "Loading...",
+    designNotFound: "Design Not Found",
+    designDataNotAvailable: "Design data not available",
+    contactSupport: "Please contact support for assistance",
+    printError: "Print error occurred",
 
     // Confirmation messages
     clearAllConfirm: "Clear all holes? This cannot be undone.",
@@ -291,7 +300,16 @@ const translations = {
     edgeClips: "Clips de Borde",
     quantity: "Cantidad",
     size: "Tamaño",
-    noHolesClipsInDesign: "Sin resaques o clips en el diseño",
+    noHolesClipsInDesign: "No hay resaques o clips en el diseño",
+    orderQuantity: "Cantidad del Pedido",
+
+    // Mensajes de error de impresión
+    noPrintOrderSelected: "No hay pedido seleccionado para imprimir",
+    loading: "Cargando...",
+    designNotFound: "Diseño No Encontrado",
+    designDataNotAvailable: "Datos del diseño no disponibles",
+    contactSupport: "Por favor contacte al soporte técnico para asistencia",
+    printError: "Error de impresión ocurrido",
 
     // Mensajes de confirmación
     clearAllConfirm: "¿Limpiar todos los resaques? Esto no se puede deshacer.",

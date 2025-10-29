@@ -1021,10 +1021,579 @@ class OrdersManager {
 
     // Add click handler
     printButton.addEventListener("click", () => {
-      console.log("print");
+      this.printOrder();
     });
 
     // Insert button at the beginning of modal footer
     modalFooter.insertBefore(printButton, modalFooter.firstChild);
+  }
+
+  async printOrder() {
+    const t = window.i18n ? window.i18n.t : (key) => key;
+
+    if (!this.currentPrintOrder) {
+      console.error("No current order selected for printing");
+      alert(t("noPrintOrderSelected") || "No order selected for printing");
+      return;
+    }
+
+    const order = this.currentPrintOrder;
+
+    // Show loading feedback
+    const printBtn = document.getElementById("print-order-btn");
+    if (printBtn) {
+      printBtn.disabled = true;
+      printBtn.innerHTML = `
+        <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+          <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        ${t("loading") || "Loading..."}
+      `;
+    }
+
+    try {
+      // Ensure print container exists
+      let printContainer = document.getElementById("print-template");
+      if (!printContainer) {
+        console.warn("Print template container not found, creating one...");
+        printContainer = document.createElement("div");
+        printContainer.className = "print-template";
+        printContainer.id = "print-template";
+        document.body.appendChild(printContainer);
+      }
+
+      // Clear previous content
+      printContainer.innerHTML = "";
+
+      // Generate print content for each design
+      if (order.items_list && order.items_list.length > 0) {
+        for (let i = 0; i < order.items_list.length; i++) {
+          const item = order.items_list[i];
+          const design = this.designs.find((d) => d.id === item.design_id);
+
+          if (design) {
+            // Try to get detailed design data from API
+            let designData = design;
+            try {
+              const response = await fetch(`/api/designs/${design.id}`);
+              if (response.ok) {
+                const data = await response.json();
+                if (data.design) {
+                  designData = data.design;
+                }
+              }
+            } catch (error) {
+              console.warn(
+                `Failed to load detailed data for design ${design.id}:`,
+                error,
+              );
+            }
+
+            await this.renderDesignToPrint(designData, item, printContainer, t);
+
+            // Add page break between designs except for the last one
+            if (i < order.items_list.length - 1) {
+              const pageBreak = document.createElement("div");
+              pageBreak.style.cssText = "page-break-after: always;";
+              printContainer.appendChild(pageBreak);
+            }
+          } else {
+            this.renderMissingDesignToPrint(item, printContainer, t);
+            if (i < order.items_list.length - 1) {
+              const pageBreak = document.createElement("div");
+              pageBreak.style.cssText = "page-break-after: always;";
+              printContainer.appendChild(pageBreak);
+            }
+          }
+        }
+      } else {
+        const noItemsMsg = document.createElement("p");
+        noItemsMsg.style.cssText =
+          "color: #64748b; font-style: italic; text-align: center; padding: 2rem;";
+        noItemsMsg.textContent = t("noItems");
+        printContainer.appendChild(noItemsMsg);
+      }
+
+      // Reset button state
+      if (printBtn) {
+        printBtn.disabled = false;
+        printBtn.innerHTML = `
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          <span>${t("print")}</span>
+        `;
+      }
+
+      // Small delay to ensure DOM is fully rendered, then trigger print
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    } catch (error) {
+      console.error("Print error:", error);
+      alert(t("printError") || "An error occurred while preparing the print");
+
+      // Reset button state on error
+      if (printBtn) {
+        printBtn.disabled = false;
+        printBtn.innerHTML = `
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+          </svg>
+          <span>${t("print")}</span>
+        `;
+      }
+    }
+  }
+
+  async renderDesignToPrint(design, orderItem, container, t) {
+    // Convert backend design format to frontend format for rendering
+    const holes = this.convertBackendElementsToFrontend(design.elements || {});
+
+    // Generate unique canvas ID for this design
+    const canvasId = `print-canvas-${design.id}-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    // Create design page container
+    const pageDiv = document.createElement("div");
+    pageDiv.innerHTML = `
+      <div class="print-header">
+        <h1>${design.name || t("glassDesignSpec")}</h1>
+        ${design.description ? `<h2>${design.description}</h2>` : ""}
+        <p>${t("orderQuantity")}: ${orderItem.quantity} | ${t("generated")}: ${new Date().toLocaleString()}</p>
+      </div>
+      <div class="print-content">
+        <div class="print-drawing-area">
+          <canvas id="${canvasId}"></canvas>
+        </div>
+        <div class="print-specs-area">
+          ${this.generateSpecsHTML(design, holes, t)}
+        </div>
+      </div>
+    `;
+
+    container.appendChild(pageDiv);
+
+    // Render canvas immediately after DOM insertion
+    setTimeout(() => {
+      this.renderDesignToCanvas(canvasId, design, holes);
+    }, 50);
+  }
+
+  renderMissingDesignToPrint(item, container, t) {
+    const pageDiv = document.createElement("div");
+    pageDiv.innerHTML = `
+      <div class="print-header">
+        <h1>${t("designNotFound") || "Design Not Found"}</h1>
+        <p>Design ID: ${item.design_id} | ${t("quantity")}: ${item.quantity}</p>
+      </div>
+      <div class="print-content">
+        <div class="print-drawing-area" style="display: flex; align-items: center; justify-content: center;">
+          <p style="color: #dc2626; font-style: italic;">${t("designDataNotAvailable") || "Design data not available"}</p>
+        </div>
+        <div class="print-specs-area">
+          <p>${t("contactSupport") || "Please contact support for assistance."}</p>
+        </div>
+      </div>
+    `;
+    container.appendChild(pageDiv);
+  }
+
+  generateSpecsHTML(design, holes, t) {
+    // Collect unique hole specifications (same as designer)
+    const uniqueSpecs = {
+      circles: new Set(),
+      rectangles: new Set(),
+      taladros: new Set(),
+      avellanados: new Set(),
+      clips: new Set(),
+    };
+
+    holes.forEach((hole) => {
+      if (hole.shape === "circle") {
+        uniqueSpecs.circles.add(Math.round(hole.diameter));
+      } else if (hole.shape === "rectangle") {
+        uniqueSpecs.rectangles.add(
+          `${Math.round(hole.width)}×${Math.round(hole.height)}`,
+        );
+      } else if (hole.shape === "taladro") {
+        uniqueSpecs.taladros.add(Math.round(hole.diameter));
+      } else if (hole.shape === "avellanado") {
+        uniqueSpecs.avellanados.add(
+          `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`,
+        );
+      } else if (hole.shape === "clip") {
+        uniqueSpecs.clips.add(
+          `${Math.round(hole.width)}×${Math.round(hole.depth)}`,
+        );
+      }
+    });
+
+    // Count holes by type (same as designer)
+    const circleCounts = {};
+    const rectangleCounts = {};
+    const taladroCounts = {};
+    const avellanadoCounts = {};
+    const clipCounts = {};
+
+    holes.forEach((hole) => {
+      if (hole.shape === "circle") {
+        const d = Math.round(hole.diameter);
+        circleCounts[d] = (circleCounts[d] || 0) + 1;
+      } else if (hole.shape === "rectangle") {
+        const spec = `${Math.round(hole.width)}×${Math.round(hole.height)}`;
+        rectangleCounts[spec] = (rectangleCounts[spec] || 0) + 1;
+      } else if (hole.shape === "taladro") {
+        const d = Math.round(hole.diameter);
+        taladroCounts[d] = (taladroCounts[d] || 0) + 1;
+      } else if (hole.shape === "avellanado") {
+        const spec = `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`;
+        avellanadoCounts[spec] = (avellanadoCounts[spec] || 0) + 1;
+      } else if (hole.shape === "clip") {
+        const spec = `${Math.round(hole.width)}×${Math.round(hole.depth)}`;
+        clipCounts[spec] = (clipCounts[spec] || 0) + 1;
+      }
+    });
+
+    // Generate specifications HTML (identical to designer)
+    let holesSpecHTML = "";
+
+    // Circle holes
+    if (uniqueSpecs.circles.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("circleHoles")}</div>`;
+      Array.from(uniqueSpecs.circles)
+        .sort((a, b) => b - a)
+        .forEach((diameter) => {
+          const count = circleCounts[diameter];
+          holesSpecHTML += `<div class="print-property">`;
+          holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${diameter}mm</span>`;
+          holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+          holesSpecHTML += `</div>`;
+        });
+      holesSpecHTML += "</div>";
+    }
+
+    // Drill holes (taladros)
+    if (uniqueSpecs.taladros.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("drillHoles")}</div>`;
+      Array.from(uniqueSpecs.taladros)
+        .sort((a, b) => b - a)
+        .forEach((diameter) => {
+          const count = taladroCounts[diameter];
+          holesSpecHTML += `<div class="print-property">`;
+          holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${diameter}mm</span>`;
+          holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+          holesSpecHTML += `</div>`;
+        });
+      holesSpecHTML += "</div>";
+    }
+
+    // Countersink holes (avellanados)
+    if (uniqueSpecs.avellanados.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("countersinkHoles")}</div>`;
+      Array.from(uniqueSpecs.avellanados).forEach((spec) => {
+        const count = avellanadoCounts[spec];
+        const [counterDia, holeDia] = spec.split("/");
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("counterDiameter")}: ${counterDia}mm / ${t("holeDiameter")}: ${holeDia}mm</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Rectangle holes
+    if (uniqueSpecs.rectangles.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("rectangleHoles")}</div>`;
+      Array.from(uniqueSpecs.rectangles).forEach((spec) => {
+        const count = rectangleCounts[spec];
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}mm</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Edge clips
+    if (uniqueSpecs.clips.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("edgeClips")}</div>`;
+      Array.from(uniqueSpecs.clips).forEach((spec) => {
+        const count = clipCounts[spec];
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}mm (${t("width")}×${t("depth")})</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    if (holesSpecHTML === "") {
+      holesSpecHTML = `<p style="color: #64748b; font-style: italic;">${t("noHolesClipsInDesign")}</p>`;
+    }
+
+    return `
+      <h3>${t("glassProperties")}</h3>
+      <div class="print-property">
+        <span class="print-property-label">${t("width")}:</span>
+        <span>${design.width}mm</span>
+      </div>
+      <div class="print-property">
+        <span class="print-property-label">${t("height")}:</span>
+        <span>${design.height}mm</span>
+      </div>
+      <div class="print-property">
+        <span class="print-property-label">${t("thickness")}:</span>
+        <span>${design.thickness}mm</span>
+      </div>
+      <div class="print-property">
+        <span class="print-property-label">${t("totalHolesClips")}:</span>
+        <span>${holes.length}</span>
+      </div>
+
+      <h3 style="margin-top: 1.5rem;">${t("worksList")}</h3>
+      ${holesSpecHTML}
+    `;
+  }
+
+  convertBackendElementsToFrontend(elements) {
+    const holes = [];
+
+    if (elements && elements.holes && Array.isArray(elements.holes)) {
+      elements.holes.forEach((hole) => {
+        let frontendHole = {
+          x: hole.center ? hole.center.x : 0,
+          y: hole.center ? hole.center.y : 0,
+        };
+
+        switch (hole.type) {
+          case "circular":
+            frontendHole.shape = "circle";
+            frontendHole.diameter = hole.radius ? hole.radius * 2 : 10;
+            break;
+          case "rectangular":
+          case "square":
+            frontendHole.shape = "rectangle";
+            frontendHole.width = hole.width || 10;
+            frontendHole.height = hole.height || 10;
+            break;
+          default:
+            frontendHole.shape = "circle";
+            frontendHole.diameter = hole.radius ? hole.radius * 2 : 10;
+        }
+
+        holes.push(frontendHole);
+      });
+    }
+
+    return holes;
+  }
+
+  renderDesignToCanvas(canvasId, design, holes) {
+    console.log(`Attempting to render canvas: ${canvasId}`);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+      console.error(
+        `Canvas with id ${canvasId} not found. Available canvases:`,
+        Array.from(document.querySelectorAll("canvas")).map((c) => c.id),
+      );
+      return;
+    }
+    console.log(
+      `Canvas found: ${canvasId}, dimensions: ${canvas.width}x${canvas.height}`,
+    );
+
+    // Ensure design has valid dimensions
+    const designWidth = design.width || 100;
+    const designHeight = design.height || 100;
+
+    // Set up canvas with proper scale and padding (same as designer)
+    const scale = 2; // 2 pixels per mm
+    const printPadding = 100;
+    canvas.width = designWidth * scale + printPadding * 2;
+    canvas.height = designHeight * scale + printPadding * 2;
+
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const offsetX = printPadding;
+    const offsetY = printPadding;
+
+    // Draw grid (same as designer)
+    this.drawGridOnCanvas(
+      ctx,
+      { width: designWidth, height: designHeight },
+      scale,
+      offsetX,
+      offsetY,
+    );
+
+    // Draw glass piece (same as designer)
+    this.drawGlassOnCanvas(
+      ctx,
+      { width: designWidth, height: designHeight },
+      scale,
+      offsetX,
+      offsetY,
+    );
+
+    // Draw holes (same as designer)
+    holes.forEach((hole) => {
+      this.drawHoleOnCanvas(ctx, hole, scale, offsetX, offsetY);
+    });
+
+    // Draw dimension lines for glass (same as designer)
+    this.drawGlassDimensionsOnCanvas(
+      ctx,
+      { width: designWidth, height: designHeight },
+      scale,
+      offsetX,
+      offsetY,
+      canvas.height,
+    );
+  }
+
+  drawGridOnCanvas(ctx, design, scale, offsetX, offsetY) {
+    const gridSize = 10 * scale; // 10mm grid
+    ctx.strokeStyle = "#e5e5e5";
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([]);
+
+    // Vertical lines
+    for (let x = 0; x <= design.width * scale; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(offsetX + x, offsetY);
+      ctx.lineTo(offsetX + x, offsetY + design.height * scale);
+      ctx.stroke();
+    }
+
+    // Horizontal lines
+    for (let y = 0; y <= design.height * scale; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(offsetX, offsetY + y);
+      ctx.lineTo(offsetX + design.width * scale, offsetY + y);
+      ctx.stroke();
+    }
+  }
+
+  drawGlassOnCanvas(ctx, design, scale, offsetX, offsetY) {
+    ctx.strokeStyle = "#2563eb";
+    ctx.lineWidth = 2;
+    ctx.fillStyle = "rgba(37, 99, 235, 0.1)";
+    ctx.setLineDash([]);
+
+    ctx.fillRect(offsetX, offsetY, design.width * scale, design.height * scale);
+    ctx.strokeRect(
+      offsetX,
+      offsetY,
+      design.width * scale,
+      design.height * scale,
+    );
+  }
+
+  drawHoleOnCanvas(ctx, hole, scale, offsetX, offsetY) {
+    const x = offsetX + hole.x * scale;
+    const y = offsetY + hole.y * scale;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#dc2626";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+
+    if (hole.shape === "circle") {
+      const radius = (hole.diameter / 2) * scale;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+    } else if (hole.shape === "rectangle") {
+      const width = hole.width * scale;
+      const height = hole.height * scale;
+      ctx.fillRect(x - width / 2, y - height / 2, width, height);
+      ctx.strokeRect(x - width / 2, y - height / 2, width, height);
+    }
+  }
+
+  drawGlassDimensionsOnCanvas(
+    ctx,
+    design,
+    scale,
+    offsetX,
+    offsetY,
+    canvasHeight,
+  ) {
+    ctx.strokeStyle = "#374151";
+    ctx.fillStyle = "#374151";
+    ctx.lineWidth = 1;
+    ctx.font = "12px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Width dimension (bottom)
+    const bottomY = canvasHeight - 30;
+    ctx.beginPath();
+    ctx.moveTo(offsetX, bottomY);
+    ctx.lineTo(offsetX + design.width * scale, bottomY);
+    ctx.stroke();
+
+    // Width dimension arrows
+    ctx.beginPath();
+    ctx.moveTo(offsetX - 5, bottomY - 3);
+    ctx.lineTo(offsetX, bottomY);
+    ctx.lineTo(offsetX - 5, bottomY + 3);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(offsetX + design.width * scale + 5, bottomY - 3);
+    ctx.lineTo(offsetX + design.width * scale, bottomY);
+    ctx.lineTo(offsetX + design.width * scale + 5, bottomY + 3);
+    ctx.stroke();
+
+    // Width dimension text
+    ctx.fillText(
+      `${design.width}mm`,
+      offsetX + (design.width * scale) / 2,
+      bottomY + 15,
+    );
+
+    // Height dimension (right)
+    const rightX = offsetX + design.width * scale + 30;
+    ctx.beginPath();
+    ctx.moveTo(rightX, offsetY);
+    ctx.lineTo(rightX, offsetY + design.height * scale);
+    ctx.stroke();
+
+    // Height dimension arrows
+    ctx.beginPath();
+    ctx.moveTo(rightX - 3, offsetY - 5);
+    ctx.lineTo(rightX, offsetY);
+    ctx.lineTo(rightX + 3, offsetY - 5);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(rightX - 3, offsetY + design.height * scale + 5);
+    ctx.lineTo(rightX, offsetY + design.height * scale);
+    ctx.lineTo(rightX + 3, offsetY + design.height * scale + 5);
+    ctx.stroke();
+
+    // Height dimension text
+    ctx.save();
+    ctx.translate(rightX + 15, offsetY + (design.height * scale) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`${design.height}mm`, 0, 0);
+    ctx.restore();
   }
 }

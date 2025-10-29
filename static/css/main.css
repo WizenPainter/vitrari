@@ -1692,3 +1692,112 @@ a:hover {
         border: var(--border-width-thin) solid var(--border-color);
     }
 }
+
+/* Print Template Styles (from designer) */
+@media print {
+    .print-template {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        padding: 1rem;
+        box-sizing: border-box;
+        background: white;
+        z-index: 9999;
+    }
+
+    .print-header {
+        border-bottom: 2px solid #000;
+        padding-bottom: 0.4rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .print-header h1 {
+        font-size: 1.1rem;
+        margin: 0 0 0.2rem 0;
+
+    .print-header h2 {
+        font-size: 0.9rem;
+        margin: 0.2rem 0 0.4rem 0;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    }
+
+    .print-header p {
+        font-size: 0.7rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .print-content {
+        display: grid;
+        grid-template-columns: 75% 23%;
+        gap: 2%;
+        height: calc(100vh - 4rem);
+        align-items: stretch;
+    }
+
+    .print-drawing-area {
+        display: block;
+        height: 100%;
+        padding: 0.5rem;
+        overflow-y: auto;
+        border: 1px solid #000;
+        background: white;
+    }
+
+    .print-specs-area {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 5rem);
+        overflow-y: auto;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .print-specs-area h3 {
+        font-size: 0.85rem;
+        margin: 0 0 0.4rem 0;
+        border-bottom: 1px solid #000;
+        padding-bottom: 0.2rem;
+    }
+
+    .print-property {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.2rem 0;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+
+    .print-property-label {
+        font-weight: 600;
+    }
+
+    .print-hole-spec {
+        margin-bottom: 0.4rem;
+        padding: 0.35rem;
+        border: 1px solid #000;
+        border-radius: 4px;
+    }
+
+    .print-hole-type {
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+        font-size: 0.8rem;
+    }
+}
+
+.print-template {
+    display: none;
+}
+
+    .print-header h2 {
+        font-size: 0.9rem;
+        margin: 0.2rem 0 0.4rem 0;
+        font-weight: 500;

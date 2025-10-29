@@ -1,41 +1,41 @@
-time=2025-10-29T15:17:51.381-06:00 level=INFO msg="Existing database detected, running migrations"
-time=2025-10-29T15:17:51.382-06:00 level=INFO msg="Ensuring all required tables and indexes exist"
-time=2025-10-29T15:17:51.382-06:00 level=INFO msg="Database initialized successfully"
-2025/10/29 15:17:51 Starting Vitrari server on port 9995
-2025/10/29 15:17:51 Open http://localhost:9995 in your browser
-time=2025-10-29T15:20:00.089-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="limit=100" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.089-06:00 level=INFO msg="HTTP Request" method=GET path=/api/optimizations query="limit=50" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.089-06:00 level=INFO msg="HTTP Request" method=GET path=/api/sheets query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.092-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=2.551666ms user_id=0
-time=2025-10-29T15:20:00.092-06:00 level=INFO msg="HTTP Response" method=GET path=/api/optimizations status=200 duration=2.57475ms user_id=0
-time=2025-10-29T15:20:00.092-06:00 level=INFO msg="HTTP Response" method=GET path=/api/sheets status=200 duration=2.841708ms user_id=0
-time=2025-10-29T15:20:00.569-06:00 level=INFO msg="HTTP Request" method=GET path=/orders query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.579-06:00 level=INFO msg="HTTP Response" method=GET path=/orders status=200 duration=9.754875ms user_id=0
-time=2025-10-29T15:20:00.619-06:00 level=INFO msg="HTTP Request" method=GET path=/.well-known/appspecific/com.chrome.devtools.json query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.619-06:00 level=INFO msg="HTTP Response" method=GET path=/.well-known/appspecific/com.chrome.devtools.json status=404 duration=367.333µs user_id=0
-time=2025-10-29T15:20:00.631-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/i18n.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.632-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/main.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.632-06:00 level=INFO msg="HTTP Request" method=GET path=/static/css/main.css query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:00.646-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/main.js status=200 duration=14.069375ms user_id=0
-time=2025-10-29T15:20:00.646-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/i18n.js status=200 duration=14.7625ms user_id=0
-time=2025-10-29T15:20:00.646-06:00 level=INFO msg="HTTP Response" method=GET path=/static/css/main.css status=200 duration=13.924167ms user_id=0
-time=2025-10-29T15:20:01.101-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/mobile.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.101-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/orders.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.101-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/app.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.101-06:00 level=INFO msg="HTTP Request" method=GET path=/static/assets/logo.png query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.103-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/orders.js status=200 duration=1.165208ms user_id=0
-time=2025-10-29T15:20:01.103-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/app.js status=200 duration=1.947875ms user_id=0
-time=2025-10-29T15:20:01.103-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/mobile.js status=200 duration=2.095125ms user_id=0
-time=2025-10-29T15:20:01.122-06:00 level=INFO msg="HTTP Response" method=GET path=/static/assets/logo.png status=200 duration=20.921917ms user_id=0
-time=2025-10-29T15:20:01.155-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="limit=100" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.156-06:00 level=INFO msg="HTTP Request" method=GET path=/api/sheets query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.156-06:00 level=INFO msg="HTTP Response" method=GET path=/api/sheets status=200 duration=534.125µs user_id=0
-time=2025-10-29T15:20:01.157-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=2.383625ms user_id=0
-time=2025-10-29T15:20:01.160-06:00 level=INFO msg="HTTP Request" method=GET path=/api/orders query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.162-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.162-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=683.25µs user_id=0
-time=2025-10-29T15:20:01.163-06:00 level=INFO msg="HTTP Response" method=GET path=/api/orders status=200 duration=2.938125ms user_id=0
-time=2025-10-29T15:20:01.163-06:00 level=INFO msg="HTTP Request" method=GET path=/favicon.ico query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.260-06:00 level=INFO msg="HTTP Response" method=GET path=/favicon.ico status=200 duration=97.391333ms user_id=0
-time=2025-10-29T15:20:01.540-06:00 level=INFO msg="HTTP Request" method=GET path=/static/assets/favicon.svg query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
-time=2025-10-29T15:20:01.541-06:00 level=INFO msg="HTTP Response" method=GET path=/static/assets/favicon.svg status=404 duration=1.017583ms user_id=0
+time=2025-10-29T15:50:17.893-06:00 level=INFO msg="Existing database detected, running migrations"
+time=2025-10-29T15:50:17.893-06:00 level=INFO msg="Ensuring all required tables and indexes exist"
+time=2025-10-29T15:50:17.893-06:00 level=INFO msg="Database initialized successfully"
+2025/10/29 15:50:17 Starting Vitrari server on port 9995
+2025/10/29 15:50:17 Open http://localhost:9995 in your browser
+time=2025-10-29T15:55:19.357-06:00 level=INFO msg="HTTP Request" method=GET path=/api/optimizations query="limit=50" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.355-06:00 level=INFO msg="HTTP Request" method=GET path=/api/sheets query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.357-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="limit=100" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.369-06:00 level=INFO msg="HTTP Response" method=GET path=/api/sheets status=200 duration=14.186166ms user_id=0
+time=2025-10-29T15:55:19.370-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=13.137ms user_id=0
+time=2025-10-29T15:55:19.370-06:00 level=INFO msg="HTTP Response" method=GET path=/api/optimizations status=200 duration=13.50175ms user_id=0
+time=2025-10-29T15:55:19.878-06:00 level=INFO msg="HTTP Request" method=GET path=/orders query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.886-06:00 level=INFO msg="HTTP Response" method=GET path=/orders status=200 duration=8.44225ms user_id=0
+time=2025-10-29T15:55:19.927-06:00 level=INFO msg="HTTP Request" method=GET path=/.well-known/appspecific/com.chrome.devtools.json query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.928-06:00 level=INFO msg="HTTP Response" method=GET path=/.well-known/appspecific/com.chrome.devtools.json status=404 duration=563.416µs user_id=0
+time=2025-10-29T15:55:19.956-06:00 level=INFO msg="HTTP Request" method=GET path=/static/css/main.css query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.957-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/i18n.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.962-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/main.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:19.969-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/main.js status=200 duration=7.305708ms user_id=0
+time=2025-10-29T15:55:19.969-06:00 level=INFO msg="HTTP Response" method=GET path=/static/css/main.css status=200 duration=12.907833ms user_id=0
+time=2025-10-29T15:55:19.970-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/i18n.js status=200 duration=12.998458ms user_id=0
+time=2025-10-29T15:55:20.410-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/mobile.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.411-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/app.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.411-06:00 level=INFO msg="HTTP Request" method=GET path=/static/js/orders.js query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.411-06:00 level=INFO msg="HTTP Request" method=GET path=/static/assets/logo.png query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.411-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/app.js status=200 duration=482.042µs user_id=0
+time=2025-10-29T15:55:20.412-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/orders.js status=200 duration=669.75µs user_id=0
+time=2025-10-29T15:55:20.412-06:00 level=INFO msg="HTTP Response" method=GET path=/static/js/mobile.js status=200 duration=1.541208ms user_id=0
+time=2025-10-29T15:55:20.415-06:00 level=INFO msg="HTTP Response" method=GET path=/static/assets/logo.png status=200 duration=4.043708ms user_id=0
+time=2025-10-29T15:55:20.464-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="limit=100" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.465-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=836.083µs user_id=0
+time=2025-10-29T15:55:20.465-06:00 level=INFO msg="HTTP Request" method=GET path=/api/designs query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.466-06:00 level=INFO msg="HTTP Response" method=GET path=/api/designs status=200 duration=545.833µs user_id=0
+time=2025-10-29T15:55:20.466-06:00 level=INFO msg="HTTP Request" method=GET path=/api/sheets query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.467-06:00 level=INFO msg="HTTP Response" method=GET path=/api/sheets status=200 duration=610.875µs user_id=0
+time=2025-10-29T15:55:20.467-06:00 level=INFO msg="HTTP Request" method=GET path=/api/orders query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.467-06:00 level=INFO msg="HTTP Request" method=GET path=/favicon.ico query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.469-06:00 level=INFO msg="HTTP Response" method=GET path=/api/orders status=200 duration=1.827083ms user_id=0
+time=2025-10-29T15:55:20.547-06:00 level=INFO msg="HTTP Response" method=GET path=/favicon.ico status=200 duration=80.35525ms user_id=0
+time=2025-10-29T15:55:20.722-06:00 level=INFO msg="HTTP Request" method=GET path=/static/assets/favicon.svg query="" ip=[::1] user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" user_id=0
+time=2025-10-29T15:55:20.722-06:00 level=INFO msg="HTTP Response" method=GET path=/static/assets/favicon.svg status=404 duration=149.209µs user_id=0
