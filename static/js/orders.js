@@ -1325,11 +1325,15 @@ class OrdersManager {
 
     // Draw holes (same as designer)
     holes.forEach((hole) => {
+      // Add design height to hole for coordinate conversion
+      hole.designHeight = designHeight;
       this.drawHoleOnCanvas(ctx, hole, scale, offsetX, offsetY);
     });
 
     // Draw dimension lines for each hole (same as designer)
     holes.forEach((hole) => {
+      // Add design height to hole for coordinate conversion
+      hole.designHeight = designHeight;
       this.drawDimensionLines(
         ctx,
         hole,
@@ -1391,7 +1395,8 @@ class OrdersManager {
 
   drawHoleOnCanvas(ctx, hole, scale, offsetX, offsetY) {
     const x = offsetX + hole.x * scale;
-    const y = offsetY + hole.y * scale;
+    // Flip Y coordinate to match glass manufacturing standards (0,0 at bottom-left)
+    const y = offsetY + (hole.designHeight - hole.y) * scale;
 
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = "#dc2626";
@@ -1497,7 +1502,7 @@ class OrdersManager {
       holeY = hole.y;
     }
 
-    // Calculate distances to each edge
+    // Calculate distances to each edge (using glass coordinate system)
     const distToLeft = holeX;
     const distToRight = glass.width - holeX;
     const distToBottom = holeY;
@@ -1518,7 +1523,8 @@ class OrdersManager {
     // Horizontal dimension line
     const yOffsetPx = 30; // Offset from the hole center in pixels
     const holeCanvasX = offsetX + holeX * scale;
-    const holeCanvasY = offsetY + holeY * scale;
+    // Flip Y coordinate for canvas drawing
+    const holeCanvasY = offsetY + (glass.height - holeY) * scale;
     const edgeCanvasX = offsetX + xEdgePos * scale;
 
     // Draw dotted line from edge to hole
@@ -1552,7 +1558,8 @@ class OrdersManager {
 
     ctx.setLineDash([5, 5]);
     const xOffsetPx = 30; // Offset from the hole center in pixels
-    const edgeCanvasY = offsetY + yEdgePos * scale;
+    // Flip Y coordinate for canvas drawing
+    const edgeCanvasY = offsetY + (glass.height - yEdgePos) * scale;
 
     // Draw dotted line from edge to hole
     ctx.beginPath();
@@ -1594,7 +1601,7 @@ class OrdersManager {
     };
 
     holes.forEach((hole) => {
-      // Calculate edge distances for this hole
+      // Calculate edge distances for this hole (using glass coordinate system)
       let holeX = hole.x;
       let holeY = hole.y;
 
