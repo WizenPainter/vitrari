@@ -820,6 +820,7 @@ textarea::placeholder {
         border-bottom: 2px solid #000;
         padding-bottom: 0.4rem;
         margin-bottom: 1rem;
+        position: relative;
     }
 
     .print-header h1 {

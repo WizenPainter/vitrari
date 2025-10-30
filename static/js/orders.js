@@ -1068,8 +1068,12 @@ class OrdersManager {
 
       // Generate print content for each design
       if (order.items_list && order.items_list.length > 0) {
+        console.log(`Processing ${order.items_list.length} designs in order`);
         for (let i = 0; i < order.items_list.length; i++) {
           const item = order.items_list[i];
+          console.log(
+            `Processing design ${i + 1}: ID=${item.design_id}, quantity=${item.quantity}`,
+          );
           const design = this.designs.find((d) => d.id === item.design_id);
 
           if (design) {
@@ -1090,20 +1094,47 @@ class OrdersManager {
               );
             }
 
-            await this.renderDesignToPrint(designData, item, printContainer, t);
+            // Print the design according to its quantity
+            for (let qty = 1; qty <= item.quantity; qty++) {
+              await this.renderDesignToPrint(
+                designData,
+                item,
+                printContainer,
+                t,
+                qty, // current copy number
+                item.quantity, // total copies
+              );
 
-            // Add page break between designs except for the last one
-            if (i < order.items_list.length - 1) {
-              const pageBreak = document.createElement("div");
-              pageBreak.style.cssText = "page-break-after: always;";
-              printContainer.appendChild(pageBreak);
+              // Add page break after each copy except the very last one
+              const isLastDesign = i === order.items_list.length - 1;
+              const isLastCopy = qty === item.quantity;
+
+              if (!(isLastDesign && isLastCopy)) {
+                const pageBreak = document.createElement("div");
+                pageBreak.style.cssText = "page-break-after: always;";
+                printContainer.appendChild(pageBreak);
+              }
             }
           } else {
-            this.renderMissingDesignToPrint(item, printContainer, t);
-            if (i < order.items_list.length - 1) {
-              const pageBreak = document.createElement("div");
-              pageBreak.style.cssText = "page-break-after: always;";
-              printContainer.appendChild(pageBreak);
+            // Print missing design placeholder according to its quantity
+            for (let qty = 1; qty <= item.quantity; qty++) {
+              this.renderMissingDesignToPrint(
+                item,
+                printContainer,
+                t,
+                qty,
+                item.quantity,
+              );
+
+              // Add page break after each copy except the very last one
+              const isLastDesign = i === order.items_list.length - 1;
+              const isLastCopy = qty === item.quantity;
+
+              if (!(isLastDesign && isLastCopy)) {
+                const pageBreak = document.createElement("div");
+                pageBreak.style.cssText = "page-break-after: always;";
+                printContainer.appendChild(pageBreak);
+              }
             }
           }
         }
@@ -1149,7 +1180,14 @@ class OrdersManager {
     }
   }
 
-  async renderDesignToPrint(design, orderItem, container, t) {
+  async renderDesignToPrint(
+    design,
+    orderItem,
+    container,
+    t,
+    currentCopy = 1,
+    totalCopies = 1,
+  ) {
     // Convert backend design format to frontend format for rendering
     const holes = this.convertBackendElementsToFrontend(design.elements || {});
 
@@ -1162,15 +1200,41 @@ class OrdersManager {
     const pageDiv = document.createElement("div");
     pageDiv.innerHTML = `
       <div class="print-header">
-        <h1>${design.name || t("glassDesignSpec")}</h1>
-        ${design.description ? `<h2>${design.description}</h2>` : ""}
-        <p>${t("orderQuantity")}: ${orderItem.quantity} | ${t("generated")}: ${new Date().toLocaleString()}</p>
+        <h1>${this.currentPrintOrder.title || t("order")}</h1>
+        ${this.currentPrintOrder.subtitle ? `<h2>${this.currentPrintOrder.subtitle}</h2>` : ""}
+        <p style="position: absolute; top: 0; right: 0; font-size: 0.7rem; color: #64748b;">${t("generated")}: ${new Date().toLocaleString()}</p>
       </div>
       <div class="print-content">
         <div class="print-drawing-area">
           <canvas id="${canvasId}"></canvas>
         </div>
         <div class="print-specs-area">
+          <h3>${design.name || t("glassDesignSpec")}</h3>
+          ${design.description ? `<p style="font-style: italic; margin-bottom: 1rem;">${design.description}</p>` : ""}
+
+          <h3>${t("glassProperties")}</h3>
+          <div class="print-property">
+            <span class="print-property-label">${t("width")}:</span>
+            <span>${design.width}mm</span>
+          </div>
+          <div class="print-property">
+            <span class="print-property-label">${t("height")}:</span>
+            <span>${design.height}mm</span>
+          </div>
+          <div class="print-property">
+            <span class="print-property-label">${t("thickness")}:</span>
+            <span>${design.thickness}mm</span>
+          </div>
+          <div class="print-property">
+            <span class="print-property-label">${t("totalHolesClips")}:</span>
+            <span>${holes.length}</span>
+          </div>
+          <div class="print-property">
+            <span class="print-property-label">${t("orderQuantity")}:</span>
+            <span style="font-weight: bold; color: #dc2626;">${totalCopies}</span>
+          </div>
+
+          <h3 style="margin-top: 1.5rem;">${t("worksList")}</h3>
           ${this.generateHoleSpecsWithDimensions(holes, design, t)}
         </div>
       </div>
@@ -1184,19 +1248,33 @@ class OrdersManager {
     }, 50);
   }
 
-  renderMissingDesignToPrint(item, container, t) {
+  renderMissingDesignToPrint(
+    item,
+    container,
+    t,
+    currentCopy = 1,
+    totalCopies = 1,
+  ) {
     const pageDiv = document.createElement("div");
     pageDiv.innerHTML = `
       <div class="print-header">
-        <h1>${t("designNotFound") || "Design Not Found"}</h1>
-        <p>Design ID: ${item.design_id} | ${t("quantity")}: ${item.quantity}</p>
+        <h1>${this.currentPrintOrder.title || t("order")}</h1>
+        ${this.currentPrintOrder.subtitle ? `<h2>${this.currentPrintOrder.subtitle}</h2>` : ""}
+        <p style="position: absolute; top: 0; right: 0; font-size: 0.7rem; color: #64748b;">${t("generated")}: ${new Date().toLocaleString()}</p>
       </div>
       <div class="print-content">
         <div class="print-drawing-area" style="display: flex; align-items: center; justify-content: center;">
           <p style="color: #dc2626; font-style: italic;">${t("designDataNotAvailable") || "Design data not available"}</p>
         </div>
         <div class="print-specs-area">
-          <p>${t("contactSupport") || "Please contact support for assistance."}</p>
+          <h3>${t("designNotFound") || "Design Not Found"}</h3>
+          <p>Design ID: ${item.design_id}</p>
+
+          <div class="print-property">
+            <span class="print-property-label">${t("orderQuantity")}:</span>
+            <span style="font-weight: bold; color: #dc2626;">${totalCopies}</span>
+          </div>
+          <p style="margin-top: 1rem;">${t("contactSupport") || "Please contact support for assistance."}</p>
         </div>
       </div>
     `;

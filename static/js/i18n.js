@@ -73,6 +73,8 @@ const translations = {
     size: "Size",
     noHolesClipsInDesign: "No holes or clips in design",
     orderQuantity: "Order Quantity",
+    copyNumber: "Copy",
+    order: "Order",
 
     // Print error messages
     noPrintOrderSelected: "No order selected for printing",
@@ -302,6 +304,8 @@ const translations = {
     size: "Tamaño",
     noHolesClipsInDesign: "No hay resaques o clips en el diseño",
     orderQuantity: "Cantidad del Pedido",
+    copyNumber: "Copia",
+    order: "Pedido",
 
     // Mensajes de error de impresión
     noPrintOrderSelected: "No hay pedido seleccionado para imprimir",
