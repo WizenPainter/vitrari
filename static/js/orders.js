@@ -1448,10 +1448,11 @@ class OrdersManager {
     ctx.stroke();
 
     // Width dimension text
+    ctx.font = "16px Arial, sans-serif";
     ctx.fillText(
       `${design.width}mm`,
       offsetX + (design.width * scale) / 2,
-      bottomY + 15,
+      bottomY + 20,
     );
 
     // Height dimension (right)
@@ -1474,12 +1475,15 @@ class OrdersManager {
     ctx.lineTo(rightX + 3, offsetY + design.height * scale + 5);
     ctx.stroke();
 
-    // Height dimension text
-    ctx.save();
-    ctx.translate(rightX + 15, offsetY + (design.height * scale) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(`${design.height}mm`, 0, 0);
-    ctx.restore();
+    // Height dimension text (horizontal, not rotated)
+    ctx.font = "16px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      `${design.height}mm`,
+      rightX + 25,
+      offsetY + (design.height * scale) / 2,
+    );
   }
 
   drawDimensionLines(ctx, hole, glass, scale, offsetX, offsetY) {
@@ -1534,12 +1538,12 @@ class OrdersManager {
 
     // Draw measurement text
     ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 12px -apple-system, sans-serif";
+    ctx.font = "bold 16px -apple-system, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(
       Math.round(xDistance) + "mm",
       (edgeCanvasX + holeCanvasX) / 2,
-      holeCanvasY - yOffsetPx - 10,
+      holeCanvasY - yOffsetPx - 15,
     );
 
     // Draw dimension line for Y axis (vertical)
@@ -1565,16 +1569,15 @@ class OrdersManager {
     ctx.lineTo(holeCanvasX + xOffsetPx + 5, holeCanvasY);
     ctx.stroke();
 
-    // Draw measurement text (rotated)
-    ctx.save();
-    ctx.translate(
-      holeCanvasX + xOffsetPx + 15,
-      (edgeCanvasY + holeCanvasY) / 2,
-    );
-    ctx.rotate(-Math.PI / 2);
+    // Draw measurement text (horizontal, not rotated)
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 16px -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(Math.round(yDistance) + "mm", 0, 0);
-    ctx.restore();
+    ctx.fillText(
+      Math.round(yDistance) + "mm",
+      holeCanvasX + xOffsetPx + 25,
+      (edgeCanvasY + holeCanvasY) / 2 + 5,
+    );
 
     // Reset line dash
     ctx.setLineDash([]);
