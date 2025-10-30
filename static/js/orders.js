@@ -1171,7 +1171,7 @@ class OrdersManager {
           <canvas id="${canvasId}"></canvas>
         </div>
         <div class="print-specs-area">
-          ${this.generateSpecsHTML(design, holes, t)}
+          ${this.generateHoleSpecsWithDimensions(holes, design, t)}
         </div>
       </div>
     `;
@@ -1204,138 +1204,11 @@ class OrdersManager {
   }
 
   generateSpecsHTML(design, holes, t) {
-    // Collect unique hole specifications (same as designer)
-    const uniqueSpecs = {
-      circles: new Set(),
-      rectangles: new Set(),
-      taladros: new Set(),
-      avellanados: new Set(),
-      clips: new Set(),
-    };
-
-    holes.forEach((hole) => {
-      if (hole.shape === "circle") {
-        uniqueSpecs.circles.add(Math.round(hole.diameter));
-      } else if (hole.shape === "rectangle") {
-        uniqueSpecs.rectangles.add(
-          `${Math.round(hole.width)}×${Math.round(hole.height)}`,
-        );
-      } else if (hole.shape === "taladro") {
-        uniqueSpecs.taladros.add(Math.round(hole.diameter));
-      } else if (hole.shape === "avellanado") {
-        uniqueSpecs.avellanados.add(
-          `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`,
-        );
-      } else if (hole.shape === "clip") {
-        uniqueSpecs.clips.add(
-          `${Math.round(hole.width)}×${Math.round(hole.depth)}`,
-        );
-      }
-    });
-
-    // Count holes by type (same as designer)
-    const circleCounts = {};
-    const rectangleCounts = {};
-    const taladroCounts = {};
-    const avellanadoCounts = {};
-    const clipCounts = {};
-
-    holes.forEach((hole) => {
-      if (hole.shape === "circle") {
-        const d = Math.round(hole.diameter);
-        circleCounts[d] = (circleCounts[d] || 0) + 1;
-      } else if (hole.shape === "rectangle") {
-        const spec = `${Math.round(hole.width)}×${Math.round(hole.height)}`;
-        rectangleCounts[spec] = (rectangleCounts[spec] || 0) + 1;
-      } else if (hole.shape === "taladro") {
-        const d = Math.round(hole.diameter);
-        taladroCounts[d] = (taladroCounts[d] || 0) + 1;
-      } else if (hole.shape === "avellanado") {
-        const spec = `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}`;
-        avellanadoCounts[spec] = (avellanadoCounts[spec] || 0) + 1;
-      } else if (hole.shape === "clip") {
-        const spec = `${Math.round(hole.width)}×${Math.round(hole.depth)}`;
-        clipCounts[spec] = (clipCounts[spec] || 0) + 1;
-      }
-    });
-
-    // Generate specifications HTML (identical to designer)
-    let holesSpecHTML = "";
-
-    // Circle holes
-    if (uniqueSpecs.circles.size > 0) {
-      holesSpecHTML += '<div class="print-hole-spec">';
-      holesSpecHTML += `<div class="print-hole-type">${t("circleHoles")}</div>`;
-      Array.from(uniqueSpecs.circles)
-        .sort((a, b) => b - a)
-        .forEach((diameter) => {
-          const count = circleCounts[diameter];
-          holesSpecHTML += `<div class="print-property">`;
-          holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${diameter}mm</span>`;
-          holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
-          holesSpecHTML += `</div>`;
-        });
-      holesSpecHTML += "</div>";
-    }
-
-    // Drill holes (taladros)
-    if (uniqueSpecs.taladros.size > 0) {
-      holesSpecHTML += '<div class="print-hole-spec">';
-      holesSpecHTML += `<div class="print-hole-type">${t("drillHoles")}</div>`;
-      Array.from(uniqueSpecs.taladros)
-        .sort((a, b) => b - a)
-        .forEach((diameter) => {
-          const count = taladroCounts[diameter];
-          holesSpecHTML += `<div class="print-property">`;
-          holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${diameter}mm</span>`;
-          holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
-          holesSpecHTML += `</div>`;
-        });
-      holesSpecHTML += "</div>";
-    }
-
-    // Countersink holes (avellanados)
-    if (uniqueSpecs.avellanados.size > 0) {
-      holesSpecHTML += '<div class="print-hole-spec">';
-      holesSpecHTML += `<div class="print-hole-type">${t("countersinkHoles")}</div>`;
-      Array.from(uniqueSpecs.avellanados).forEach((spec) => {
-        const count = avellanadoCounts[spec];
-        const [counterDia, holeDia] = spec.split("/");
-        holesSpecHTML += `<div class="print-property">`;
-        holesSpecHTML += `<span class="print-property-label">${t("counterDiameter")}: ${counterDia}mm / ${t("holeDiameter")}: ${holeDia}mm</span>`;
-        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
-        holesSpecHTML += `</div>`;
-      });
-      holesSpecHTML += "</div>";
-    }
-
-    // Rectangle holes
-    if (uniqueSpecs.rectangles.size > 0) {
-      holesSpecHTML += '<div class="print-hole-spec">';
-      holesSpecHTML += `<div class="print-hole-type">${t("rectangleHoles")}</div>`;
-      Array.from(uniqueSpecs.rectangles).forEach((spec) => {
-        const count = rectangleCounts[spec];
-        holesSpecHTML += `<div class="print-property">`;
-        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}mm</span>`;
-        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
-        holesSpecHTML += `</div>`;
-      });
-      holesSpecHTML += "</div>";
-    }
-
-    // Edge clips
-    if (uniqueSpecs.clips.size > 0) {
-      holesSpecHTML += '<div class="print-hole-spec">';
-      holesSpecHTML += `<div class="print-hole-type">${t("edgeClips")}</div>`;
-      Array.from(uniqueSpecs.clips).forEach((spec) => {
-        const count = clipCounts[spec];
-        holesSpecHTML += `<div class="print-property">`;
-        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}mm (${t("width")}×${t("depth")})</span>`;
-        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
-        holesSpecHTML += `</div>`;
-      });
-      holesSpecHTML += "</div>";
-    }
+    const holesSpecHTML = this.generateHoleSpecsWithDimensions(
+      holes,
+      design,
+      t,
+    );
 
     if (holesSpecHTML === "") {
       holesSpecHTML = `<p style="color: #64748b; font-style: italic;">${t("noHolesClipsInDesign")}</p>`;
@@ -1453,6 +1326,18 @@ class OrdersManager {
     // Draw holes (same as designer)
     holes.forEach((hole) => {
       this.drawHoleOnCanvas(ctx, hole, scale, offsetX, offsetY);
+    });
+
+    // Draw dimension lines for each hole (same as designer)
+    holes.forEach((hole) => {
+      this.drawDimensionLines(
+        ctx,
+        hole,
+        { width: designWidth, height: designHeight },
+        scale,
+        offsetX,
+        offsetY,
+      );
     });
 
     // Draw dimension lines for glass (same as designer)
@@ -1595,5 +1480,230 @@ class OrdersManager {
     ctx.rotate(-Math.PI / 2);
     ctx.fillText(`${design.height}mm`, 0, 0);
     ctx.restore();
+  }
+
+  drawDimensionLines(ctx, hole, glass, scale, offsetX, offsetY) {
+    // Get the hole center position
+    let holeX = hole.x;
+    let holeY = hole.y;
+
+    // For rectangles, use center
+    if (hole.shape === "rectangle") {
+      holeX = hole.x;
+      holeY = hole.y;
+    }
+
+    // Calculate distances to each edge
+    const distToLeft = holeX;
+    const distToRight = glass.width - holeX;
+    const distToBottom = holeY;
+    const distToTop = glass.height - holeY;
+
+    // Determine nearest edges
+    const useLeftEdge = distToLeft <= distToRight;
+    const useBottomEdge = distToBottom <= distToTop;
+
+    // Draw dimension line for X axis (horizontal)
+    const xDistance = useLeftEdge ? distToLeft : distToRight;
+    const xEdgePos = useLeftEdge ? 0 : glass.width;
+
+    ctx.strokeStyle = "#64748b";
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1;
+
+    // Horizontal dimension line
+    const yOffsetPx = 30; // Offset from the hole center in pixels
+    const holeCanvasX = offsetX + holeX * scale;
+    const holeCanvasY = offsetY + holeY * scale;
+    const edgeCanvasX = offsetX + xEdgePos * scale;
+
+    // Draw dotted line from edge to hole
+    ctx.beginPath();
+    ctx.moveTo(edgeCanvasX, holeCanvasY - yOffsetPx);
+    ctx.lineTo(holeCanvasX, holeCanvasY - yOffsetPx);
+    ctx.stroke();
+
+    // Draw small vertical ticks at ends
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(edgeCanvasX, holeCanvasY - yOffsetPx - 5);
+    ctx.lineTo(edgeCanvasX, holeCanvasY - yOffsetPx + 5);
+    ctx.moveTo(holeCanvasX, holeCanvasY - yOffsetPx - 5);
+    ctx.lineTo(holeCanvasX, holeCanvasY - yOffsetPx + 5);
+    ctx.stroke();
+
+    // Draw measurement text
+    ctx.fillStyle = "#0f172a";
+    ctx.font = "bold 12px -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      Math.round(xDistance) + "mm",
+      (edgeCanvasX + holeCanvasX) / 2,
+      holeCanvasY - yOffsetPx - 10,
+    );
+
+    // Draw dimension line for Y axis (vertical)
+    const yDistance = useBottomEdge ? distToBottom : distToTop;
+    const yEdgePos = useBottomEdge ? 0 : glass.height;
+
+    ctx.setLineDash([5, 5]);
+    const xOffsetPx = 30; // Offset from the hole center in pixels
+    const edgeCanvasY = offsetY + yEdgePos * scale;
+
+    // Draw dotted line from edge to hole
+    ctx.beginPath();
+    ctx.moveTo(holeCanvasX + xOffsetPx, edgeCanvasY);
+    ctx.lineTo(holeCanvasX + xOffsetPx, holeCanvasY);
+    ctx.stroke();
+
+    // Draw small horizontal ticks at ends
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(holeCanvasX + xOffsetPx - 5, edgeCanvasY);
+    ctx.lineTo(holeCanvasX + xOffsetPx + 5, edgeCanvasY);
+    ctx.moveTo(holeCanvasX + xOffsetPx - 5, holeCanvasY);
+    ctx.lineTo(holeCanvasX + xOffsetPx + 5, holeCanvasY);
+    ctx.stroke();
+
+    // Draw measurement text (rotated)
+    ctx.save();
+    ctx.translate(
+      holeCanvasX + xOffsetPx + 15,
+      (edgeCanvasY + holeCanvasY) / 2,
+    );
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText(Math.round(yDistance) + "mm", 0, 0);
+    ctx.restore();
+
+    // Reset line dash
+    ctx.setLineDash([]);
+  }
+
+  generateHoleSpecsWithDimensions(holes, glass, t) {
+    // Collect unique hole specifications with edge distances
+    const uniqueSpecs = {
+      circles: new Map(),
+      rectangles: new Map(),
+      taladros: new Map(),
+      avellanados: new Map(),
+      clips: new Map(),
+    };
+
+    holes.forEach((hole) => {
+      // Calculate edge distances for this hole
+      let holeX = hole.x;
+      let holeY = hole.y;
+
+      if (hole.shape === "rectangle") {
+        holeX = hole.x;
+        holeY = hole.y;
+      }
+
+      const distToLeft = holeX;
+      const distToRight = glass.width - holeX;
+      const distToBottom = holeY;
+      const distToTop = glass.height - holeY;
+
+      const nearestXEdge = distToLeft <= distToRight ? distToLeft : distToRight;
+      const nearestYEdge = distToBottom <= distToTop ? distToBottom : distToTop;
+
+      const edgeInfo = `(${Math.round(nearestXEdge)}×${Math.round(nearestYEdge)}mm from edges)`;
+
+      if (hole.shape === "circle") {
+        const diameter = Math.round(hole.diameter);
+        const key = `${diameter}mm ${edgeInfo}`;
+        uniqueSpecs.circles.set(key, (uniqueSpecs.circles.get(key) || 0) + 1);
+      } else if (hole.shape === "rectangle") {
+        const spec = `${Math.round(hole.width)}×${Math.round(hole.height)}mm ${edgeInfo}`;
+        uniqueSpecs.rectangles.set(
+          spec,
+          (uniqueSpecs.rectangles.get(spec) || 0) + 1,
+        );
+      } else if (hole.shape === "taladro") {
+        const diameter = Math.round(hole.diameter);
+        const key = `${diameter}mm ${edgeInfo}`;
+        uniqueSpecs.taladros.set(key, (uniqueSpecs.taladros.get(key) || 0) + 1);
+      } else if (hole.shape === "avellanado") {
+        const spec = `${Math.round(hole.diameter)}/${Math.round(hole.holeDiameter)}mm ${edgeInfo}`;
+        uniqueSpecs.avellanados.set(
+          spec,
+          (uniqueSpecs.avellanados.get(spec) || 0) + 1,
+        );
+      } else if (hole.shape === "clip") {
+        const spec = `${Math.round(hole.width)}×${Math.round(hole.depth)}mm ${edgeInfo}`;
+        uniqueSpecs.clips.set(spec, (uniqueSpecs.clips.get(spec) || 0) + 1);
+      }
+    });
+
+    // Generate specifications HTML
+    let holesSpecHTML = "";
+
+    // Circle holes
+    if (uniqueSpecs.circles.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("circleHoles")}</div>`;
+      Array.from(uniqueSpecs.circles.entries()).forEach(([spec, count]) => {
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${spec}</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Drill holes (taladros)
+    if (uniqueSpecs.taladros.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("drillHoles")}</div>`;
+      Array.from(uniqueSpecs.taladros.entries()).forEach(([spec, count]) => {
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("diameter")}: ${spec}</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Countersink holes (avellanados)
+    if (uniqueSpecs.avellanados.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("countersinkHoles")}</div>`;
+      Array.from(uniqueSpecs.avellanados.entries()).forEach(([spec, count]) => {
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("counterDiameter")}/${t("holeDiameter")}: ${spec}</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Rectangle holes
+    if (uniqueSpecs.rectangles.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("rectangleHoles")}</div>`;
+      Array.from(uniqueSpecs.rectangles.entries()).forEach(([spec, count]) => {
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    // Edge clips
+    if (uniqueSpecs.clips.size > 0) {
+      holesSpecHTML += '<div class="print-hole-spec">';
+      holesSpecHTML += `<div class="print-hole-type">${t("edgeClips")}</div>`;
+      Array.from(uniqueSpecs.clips.entries()).forEach(([spec, count]) => {
+        holesSpecHTML += `<div class="print-property">`;
+        holesSpecHTML += `<span class="print-property-label">${t("size")}: ${spec}</span>`;
+        holesSpecHTML += `<span>${t("quantity")}: ${count}</span>`;
+        holesSpecHTML += `</div>`;
+      });
+      holesSpecHTML += "</div>";
+    }
+
+    return holesSpecHTML;
   }
 }
