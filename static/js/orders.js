@@ -119,13 +119,7 @@ class OrdersManager {
       this.validateForm();
     });
 
-    // Print button event delegation (since button is in modal)
-    document.addEventListener("click", (e) => {
-      if (e.target.closest("#print-order-btn")) {
-        console.log("print");
-        e.preventDefault();
-      }
-    });
+    // Print button event delegation removed - handled directly in addPrintButtonToModal
   }
 
   async loadOrders() {
@@ -971,8 +965,11 @@ class OrdersManager {
     const modalFooter = modal.querySelector(".modal-footer");
     if (!modalFooter) return;
 
-    // Check if print button already exists
-    if (document.getElementById("print-order-btn")) return;
+    // Remove any existing print button first
+    const existingPrintBtn = document.getElementById("print-order-btn");
+    if (existingPrintBtn) {
+      existingPrintBtn.remove();
+    }
 
     // Create print button
     const printButton = document.createElement("button");
@@ -1053,7 +1050,7 @@ class OrdersManager {
     }
 
     try {
-      // Ensure print container exists
+      // Ensure print container exists and is completely clean
       let printContainer = document.getElementById("print-template");
       if (!printContainer) {
         console.warn("Print template container not found, creating one...");
@@ -1063,81 +1060,169 @@ class OrdersManager {
         document.body.appendChild(printContainer);
       }
 
-      // Clear previous content
+      // Completely clear previous content and reset
       printContainer.innerHTML = "";
+      printContainer.style.display = "none"; // Hide during preparation
+
+      // Remove any stray print pages that might exist elsewhere
+      const strayPages = document.querySelectorAll(".print-page");
+      strayPages.forEach((page) => {
+        if (!printContainer.contains(page)) {
+          page.remove();
+        }
+      });
+
+      // Debug: Show complete order structure
+      console.log("=== COMPLETE ORDER DEBUG INFO ===");
+      console.log("Full order object:", order);
+      console.log("Order.items_list:", order.items_list);
+      console.log("Order.items_list type:", typeof order.items_list);
+      console.log("Order.items_list length:", order.items_list?.length);
+      console.log("Available designs count:", this.designs?.length);
+      console.log("Available designs:", this.designs);
+      console.log("====================================");
 
       // Generate print content for each design
       if (order.items_list && order.items_list.length > 0) {
         console.log(`Processing ${order.items_list.length} designs in order`);
+
+        // Track total expected pages
+        const totalExpectedPages = order.items_list.reduce(
+          (sum, item) => sum + item.quantity,
+          0,
+        );
+        console.log(`📊 Total expected pages: ${totalExpectedPages}`);
+
         for (let i = 0; i < order.items_list.length; i++) {
-          const item = order.items_list[i];
-          console.log(
-            `Processing design ${i + 1}: ID=${item.design_id}, quantity=${item.quantity}`,
-          );
-          const design = this.designs.find((d) => d.id === item.design_id);
+          try {
+            const item = order.items_list[i];
+            console.log(
+              `Processing design ${i + 1}: ID=${item.design_id}, quantity=${item.quantity}`,
+            );
+            console.log(
+              "Looking for design with ID:",
+              item.design_id,
+              typeof item.design_id,
+            );
+            console.log(
+              "Available design IDs and types:",
+              this.designs.map((d) => `${d.id} (${typeof d.id})`),
+            );
 
-          if (design) {
-            // Try to get detailed design data from API
-            let designData = design;
-            try {
-              const response = await fetch(`/api/designs/${design.id}`);
-              if (response.ok) {
-                const data = await response.json();
-                if (data.design) {
-                  designData = data.design;
+            // Try both exact match and type-converted match
+            let design = this.designs.find((d) => d.id === item.design_id);
+            if (!design) {
+              console.log("Exact match failed, trying type conversion...");
+              design = this.designs.find((d) => d.id == item.design_id); // loose equality
+            }
+            if (!design) {
+              console.log(
+                "Loose match failed, trying string/number conversion...",
+              );
+              design = this.designs.find(
+                (d) => String(d.id) === String(item.design_id),
+              );
+            }
+
+            console.log("Found design:", design);
+
+            if (design) {
+              console.log(`✓ Found design ${design.id}: ${design.name}`);
+              // Try to get detailed design data from API
+              let designData = design;
+              try {
+                console.log(`Fetching detailed data for design ${design.id}`);
+                const response = await fetch(`/api/designs/${design.id}`);
+                if (response.ok) {
+                  const data = await response.json();
+                  if (data.design) {
+                    designData = data.design;
+                    console.log(`✓ Got detailed data for design ${design.id}`);
+                  } else {
+                    console.log(
+                      `⚠ No detailed data in response for design ${design.id}`,
+                    );
+                  }
+                } else {
+                  console.log(
+                    `⚠ API response not ok for design ${design.id}:`,
+                    response.status,
+                  );
                 }
+              } catch (error) {
+                console.warn(
+                  `Failed to load detailed data for design ${design.id}:`,
+                  error,
+                );
               }
-            } catch (error) {
-              console.warn(
-                `Failed to load detailed data for design ${design.id}:`,
-                error,
+
+              // Print the design according to its quantity
+              console.log(
+                `Printing design ${design.id} with quantity ${item.quantity}`,
               );
-            }
+              for (let qty = 1; qty <= item.quantity; qty++) {
+                console.log(
+                  `📄 About to render page: Design ${design.id}, Copy ${qty}/${item.quantity}`,
+                );
+                console.log(
+                  `📊 Current container has ${printContainer.children.length} pages before rendering`,
+                );
 
-            // Print the design according to its quantity
-            for (let qty = 1; qty <= item.quantity; qty++) {
-              await this.renderDesignToPrint(
-                designData,
-                item,
-                printContainer,
-                t,
-                qty, // current copy number
-                item.quantity, // total copies
+                await this.renderDesignToPrint(
+                  designData,
+                  item,
+                  printContainer,
+                  t,
+                  qty, // current copy number
+                  item.quantity, // total copies
+                );
+
+                console.log(
+                  `✅ After rendering: Container now has ${printContainer.children.length} pages`,
+                );
+              }
+              console.log(`✓ Completed printing design ${design.id}`);
+            } else {
+              console.error(
+                `❌ Design not found for item with design_id: ${item.design_id}`,
               );
+              console.log(
+                "Available design IDs:",
+                this.designs.map((d) => d.id),
+              );
+              // Print missing design placeholder according to its quantity
+              for (let qty = 1; qty <= item.quantity; qty++) {
+                console.log(
+                  `Rendering missing design placeholder for ID ${item.design_id}, copy ${qty}`,
+                );
+                this.renderMissingDesignToPrint(
+                  item,
+                  printContainer,
+                  t,
+                  qty,
+                  item.quantity,
+                );
 
-              // Add page break after each copy except the very last one
-              const isLastDesign = i === order.items_list.length - 1;
-              const isLastCopy = qty === item.quantity;
+                // Add page break after each copy except the very last one
+                const isLastDesign = i === order.items_list.length - 1;
+                const isLastCopy = qty === item.quantity;
 
-              if (!(isLastDesign && isLastCopy)) {
-                const pageBreak = document.createElement("div");
-                pageBreak.style.cssText = "page-break-after: always;";
-                printContainer.appendChild(pageBreak);
+                // Page breaks are handled by the page containers
               }
             }
-          } else {
-            // Print missing design placeholder according to its quantity
-            for (let qty = 1; qty <= item.quantity; qty++) {
-              this.renderMissingDesignToPrint(
-                item,
-                printContainer,
-                t,
-                qty,
-                item.quantity,
-              );
-
-              // Add page break after each copy except the very last one
-              const isLastDesign = i === order.items_list.length - 1;
-              const isLastCopy = qty === item.quantity;
-
-              if (!(isLastDesign && isLastCopy)) {
-                const pageBreak = document.createElement("div");
-                pageBreak.style.cssText = "page-break-after: always;";
-                printContainer.appendChild(pageBreak);
-              }
-            }
+          } catch (error) {
+            console.error(`❌ Error processing design ${i + 1}:`, error);
+            console.error("Error details:", {
+              designIndex: i,
+              item: order.items_list[i],
+              error: error.message,
+              stack: error.stack,
+            });
+            // Continue with the next design instead of breaking the whole loop
+            continue;
           }
         }
+        console.log("✓ Completed processing all designs in order");
       } else {
         const noItemsMsg = document.createElement("p");
         noItemsMsg.style.cssText =
@@ -1158,10 +1243,109 @@ class OrdersManager {
         `;
       }
 
-      // Small delay to ensure DOM is fully rendered, then trigger print
-      setTimeout(() => {
-        window.print();
-      }, 300);
+      // Debug: Show what's actually in the print container
+      console.log("=== PRINT CONTAINER DEBUG ===");
+      console.log(
+        "Print container children count:",
+        printContainer.children.length,
+      );
+      console.log(
+        "Print container HTML length:",
+        printContainer.innerHTML.length,
+      );
+      console.log(
+        "Print container children count:",
+        printContainer.children.length,
+      );
+      console.log(
+        "Print container HTML length:",
+        printContainer.innerHTML.length,
+      );
+
+      // Count actual design pages
+      const printPages = printContainer.querySelectorAll(".print-page");
+      console.log("Total print pages found:", printPages.length);
+      printPages.forEach((page, index) => {
+        const title = page.querySelector("h1")?.textContent;
+        const designName = page.querySelector(
+          ".print-specs-area h3",
+        )?.textContent;
+        console.log(`Page ${index + 1}: ${title} - ${designName}`);
+      });
+
+      // Count canvases
+      const canvases = printContainer.querySelectorAll("canvas");
+      console.log("Total canvases found:", canvases.length);
+
+      console.log("==============================");
+
+      // Show print container for printing
+      printContainer.style.display = "block";
+
+      // Final validation - check for duplicate pages
+      const pageDebugHeaders = Array.from(printPages).map(
+        (page) =>
+          page.querySelector('div[style*="background: #dc2626"]')
+            ?.textContent || "No debug header",
+      );
+      console.log("🔍 All page debug headers:", pageDebugHeaders);
+
+      // Show visual feedback about pages
+      const pageCount = printPages.length;
+      const confirmMessage =
+        `Ready to print ${pageCount} page${pageCount > 1 ? "s" : ""}:\n` +
+        Array.from(printPages)
+          .map((page, i) => {
+            const title = page.querySelector("h1")?.textContent || "Unknown";
+            const designName =
+              page.querySelector(".print-specs-area h3")?.textContent ||
+              "Unknown Design";
+            const debugHeader =
+              page.querySelector('div[style*="background: #dc2626"]')
+                ?.textContent || "No debug";
+            return `Page ${i + 1}: ${title} - ${designName} (${debugHeader})`;
+          })
+          .join("\n") +
+        "\n\nProceed with printing?";
+
+      if (confirm(confirmMessage)) {
+        // Force hide all modals and overlays before printing
+        const modal = document.getElementById("order-details-modal");
+        if (modal) {
+          modal.style.display = "none";
+          modal.style.visibility = "hidden";
+          modal.style.opacity = "0";
+          modal.style.zIndex = "-1000";
+        }
+
+        // Hide any modal backdrops
+        const backdrops = document.querySelectorAll(
+          ".modal-backdrop, .overlay, [class*='modal']",
+        );
+        backdrops.forEach((backdrop) => {
+          backdrop.style.display = "none";
+          backdrop.style.visibility = "hidden";
+          backdrop.style.zIndex = "-1000";
+        });
+
+        // Small delay to ensure DOM is fully rendered, then trigger print
+        setTimeout(() => {
+          console.log(`🖨️ Triggering print for ${pageCount} pages`);
+          window.print();
+        }, 500);
+      } else {
+        // Reset button if user cancels
+        if (printBtn) {
+          printBtn.disabled = false;
+          printBtn.innerHTML = `
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+            </svg>
+            <span>${t("print")}</span>
+          `;
+        }
+      }
     } catch (error) {
       console.error("Print error:", error);
       alert(t("printError") || "An error occurred while preparing the print");
@@ -1188,17 +1372,56 @@ class OrdersManager {
     currentCopy = 1,
     totalCopies = 1,
   ) {
+    console.log(
+      `🎨 renderDesignToPrint START: design ${design.id}, copy ${currentCopy}/${totalCopies}`,
+    );
+    console.log(
+      `🎨 Container has ${container.children.length} children at start`,
+    );
+
+    // Safeguard: Check if this exact page already exists to prevent duplicates
+    const existingPageId = `page-${design.id}-${currentCopy}`;
+    const existingPage = container.querySelector(
+      `[data-page-id="${existingPageId}"]`,
+    );
+    if (existingPage) {
+      console.warn(
+        `⚠️ Page ${existingPageId} already exists, skipping duplicate`,
+      );
+      return;
+    }
+
     // Convert backend design format to frontend format for rendering
     const holes = this.convertBackendElementsToFrontend(design.elements || {});
+    console.log(`   Converted ${holes.length} holes from backend format`);
 
     // Generate unique canvas ID for this design
     const canvasId = `print-canvas-${design.id}-${Date.now()}-${Math.random()
       .toString(36)
       .substr(2, 9)}`;
+    console.log(`   Generated canvas ID: ${canvasId}`);
 
-    // Create design page container
+    // Determine if this is the first page and calculate proper page number
+    const isFirstPage = container.children.length === 0;
+    const pageNumber = container.children.length + 1;
+    console.log(`   Is first page: ${isFirstPage}, Page number: ${pageNumber}`);
+
+    // Create design page container with proper page break styling
     const pageDiv = document.createElement("div");
+    pageDiv.className = "print-page";
+    pageDiv.setAttribute("data-page-id", existingPageId);
+
+    // Add CSS classes for page breaks instead of inline styles
+    if (isFirstPage) {
+      pageDiv.classList.add("print-page-first");
+    } else {
+      pageDiv.classList.add("print-page-break");
+    }
+
     pageDiv.innerHTML = `
+      <div style="background: #dc2626; color: white; padding: 4px 8px; text-align: center; font-weight: bold; margin-bottom: 10px;">
+        DEBUG PAGE ${pageNumber} - Design ${design.id} Copy ${currentCopy}/${totalCopies}
+      </div>
       <div class="print-header">
         <h1>${this.currentPrintOrder.title || t("order")}</h1>
         ${this.currentPrintOrder.subtitle ? `<h2>${this.currentPrintOrder.subtitle}</h2>` : ""}
@@ -1240,12 +1463,23 @@ class OrdersManager {
       </div>
     `;
 
+    console.log(`   Appending page div to container for design ${design.id}`);
     container.appendChild(pageDiv);
+    console.log(
+      `📊 After appendChild: Container now has ${container.children.length} children`,
+    );
 
     // Render canvas immediately after DOM insertion
     setTimeout(() => {
+      console.log(
+        `   ⏰ Timeout triggered - attempting to render canvas ${canvasId}`,
+      );
       this.renderDesignToCanvas(canvasId, design, holes);
     }, 50);
+
+    console.log(
+      `✅ renderDesignToPrint END: design ${design.id}, copy ${currentCopy} - Container has ${container.children.length} total pages`,
+    );
   }
 
   renderMissingDesignToPrint(
@@ -1256,6 +1490,26 @@ class OrdersManager {
     totalCopies = 1,
   ) {
     const pageDiv = document.createElement("div");
+    pageDiv.className = "print-page";
+    // Force page breaks with fixed pixel height for reliable printing
+    pageDiv.style.cssText = `
+      page-break-before: always !important;
+      page-break-after: auto !important;
+      page-break-inside: avoid !important;
+      break-before: page !important;
+      break-after: auto !important;
+      break-inside: avoid !important;
+      min-height: 1056px !important;
+      height: 1056px !important;
+      display: block !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 1rem !important;
+      box-sizing: border-box !important;
+      position: relative !important;
+      overflow: hidden !important;
+    `;
+
     pageDiv.innerHTML = `
       <div class="print-header">
         <h1>${this.currentPrintOrder.title || t("order")}</h1>
@@ -1350,17 +1604,26 @@ class OrdersManager {
   }
 
   renderDesignToCanvas(canvasId, design, holes) {
-    console.log(`Attempting to render canvas: ${canvasId}`);
+    console.log(`🖼️ renderDesignToCanvas called for: ${canvasId}`);
+    console.log(
+      `   Design: ${design.name} (${design.width}x${design.height}mm)`,
+    );
+    console.log(`   Holes to render: ${holes.length}`);
+
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
       console.error(
-        `Canvas with id ${canvasId} not found. Available canvases:`,
+        `❌ Canvas with id ${canvasId} not found. Available canvases:`,
         Array.from(document.querySelectorAll("canvas")).map((c) => c.id),
+      );
+      console.error(
+        `   Print container contents:`,
+        document.getElementById("print-template")?.innerHTML?.substring(0, 500),
       );
       return;
     }
     console.log(
-      `Canvas found: ${canvasId}, dimensions: ${canvas.width}x${canvas.height}`,
+      `✅ Canvas found: ${canvasId}, initial dimensions: ${canvas.width}x${canvas.height}`,
     );
 
     // Ensure design has valid dimensions
@@ -1431,6 +1694,8 @@ class OrdersManager {
       offsetY,
       canvas.height,
     );
+
+    console.log(`✅ Canvas rendering completed for ${canvasId}`);
   }
 
   drawGridOnCanvas(ctx, design, scale, offsetX, offsetY) {

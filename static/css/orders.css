@@ -784,6 +784,20 @@ textarea::placeholder {
 
 /* Print Styles */
 @media print {
+    /* Reset everything for print */
+    * {
+        box-sizing: border-box !important;
+    }
+
+    html,
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
     /* Hide all UI elements during print */
     .sidebar,
     .app-header,
@@ -795,24 +809,31 @@ textarea::placeholder {
     .orders-content,
     .pagination,
     .mobile-sidebar-toggle,
-    .mobile-close-btn {
+    .mobile-close-btn,
+    #order-details-modal,
+    .modal-overlay,
+    .overlay,
+    .order-modal,
+    [class*="modal"],
+    [id*="modal"] {
         display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        z-index: -1 !important;
     }
 
     /* Show only the print template */
     .print-template {
         display: block !important;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        margin: 0;
-        padding: 1rem;
-        box-sizing: border-box;
-        background: white;
-        z-index: 9999;
-        overflow: visible;
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        background: white !important;
+        z-index: auto !important;
+        overflow: visible !important;
     }
 
     /* Print header styles */
@@ -847,7 +868,7 @@ textarea::placeholder {
         display: grid;
         grid-template-columns: 75% 23%;
         grid-gap: 2%;
-        height: calc(100vh - 5rem);
+        height: 9in;
         page-break-inside: avoid;
     }
 
@@ -906,19 +927,183 @@ textarea::placeholder {
         color: #1f2937;
     }
 
-    /* Page settings */
+    /* Page settings - force proper page dimensions */
     @page {
-        margin: 0.5in;
-        size: letter;
+        margin: 0.5in !important;
+        size: letter !important;
+        orphans: 1 !important;
+        widows: 1 !important;
     }
 
-    /* Page break settings */
+    /* Print page containers - use proper print dimensions */
+    .print-page {
+        display: block !important;
+        width: 100% !important;
+        height: 10in !important;
+        max-height: 10in !important;
+        min-height: 10in !important;
+        margin: 0 !important;
+        padding: 0.5in !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        background: white !important;
+        page-break-inside: avoid !important;
+        overflow: hidden !important;
+    }
+
+    /* First page should not have page break before */
+    .print-page-first {
+        page-break-before: auto !important;
+        break-before: auto !important;
+    }
+
+    /* Subsequent pages should have page break before */
+    .print-page-break {
+        page-break-before: always !important;
+        break-before: page !important;
+    }
+
+    /* No page break after any page to prevent empty pages */
+    .print-page {
+        page-break-after: auto !important;
+        break-after: auto !important;
+    }
+
+    /* Force hide any overlays or modals */
+    .modal,
+    .modal-backdrop,
+    .overlay,
+    [class*="modal"],
+    [id*="modal"] {
+        display: none !important;
+        visibility: hidden !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+        z-index: -1000 !important;
+    }
+
+    /* Ensure only print content is visible */
+    body > *:not(.print-template) {
+        display: none !important;
+    }
+
+    body > .print-template {
+        display: block !important;
+    }
+
+    /* Page break settings for content */
     .print-content {
-        page-break-inside: avoid;
+        page-break-inside: avoid !important;
+        height: 9in !important;
+        display: grid;
+        grid-template-columns: 75% 23%;
+        gap: 2%;
+        max-height: 9in !important;
     }
 
     /* Ensure good contrast for printing */
     body {
         background: white !important;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Make sure all content is visible */
+    .print-template * {
+        visibility: visible !important;
+    }
+
+    .print-template canvas {
+        display: block !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Force all print pages to be visible and properly sized */
+    .print-page {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        width: 100% !important;
+        background: white !important;
+    }
+
+    /* Ensure print template is visible */
+    .print-template {
+        visibility: visible !important;
+        opacity: 1 !important;
+        display: block !important;
+        position: static !important;
+    }
+
+    /* Force canvas visibility */
+    .print-template canvas {
+        visibility: visible !important;
+        opacity: 1 !important;
+        display: block !important;
+        width: auto !important;
+        height: auto !important;
+        max-width: 100% !important;
+        max-height: none !important;
+    }
+
+    /* Debug: Make pages easily identifiable */
+    .print-page:nth-child(1) {
+        border-left: 5px solid #dc2626;
+    }
+    .print-page:nth-child(2) {
+        border-left: 5px solid #16a34a;
+    }
+    .print-page:nth-child(3) {
+        border-left: 5px solid #2563eb;
+    }
+    .print-page:nth-child(4) {
+        border-left: 5px solid #ca8a04;
+    }
+
+    /* Prevent any automatic page breaks within content */
+    .print-drawing-area,
+    .print-specs-area,
+    .print-header {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Remove any unwanted page breaks */
+    .print-template br,
+    .print-template div[style*="page-break"] {
+        display: none !important;
+    }
+
+    /* Prevent overflow and extra pages */
+    .print-template * {
+        max-width: 100% !important;
+        overflow: hidden !important;
+    }
+
+    /* Ensure content fits within page boundaries */
+    .print-drawing-area {
+        max-height: 7in !important;
+        overflow: hidden !important;
+    }
+
+    .print-specs-area {
+        max-height: 7in !important;
+        overflow: hidden !important;
+    }
+
+    /* Force exact page dimensions to prevent browser page break calculation errors */
+    @page {
+        margin: 0.5in !important;
+        size: 8.5in 11in !important;
+        orphans: 1 !important;
+        widows: 1 !important;
+    }
+
+    /* Prevent any automatic page breaks within the print container */
+    .print-template {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 }
