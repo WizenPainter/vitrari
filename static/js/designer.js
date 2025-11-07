@@ -819,18 +819,18 @@ class GlassDesigner {
 
     // Draw dimension lines for each hole
     this.holes.forEach((hole) => {
-      this.drawDimensionLines(ctx, hole);
+      this.drawDimensionLines(ctx, hole, true);
     });
 
     // Draw glass dimensions (pass target canvas height)
-    this.drawDimensionsOnCanvas(ctx, targetCanvas.height);
+    this.drawDimensionsOnCanvas(ctx, targetCanvas.height, true);
 
     // Restore original values
     this.offsetX = originalOffsetX;
     this.offsetY = originalOffsetY;
   }
 
-  drawDimensionLines(ctx, hole) {
+  drawDimensionLines(ctx, hole, forPrint = false) {
     // Get the hole center position
     let holeX = hole.x;
     let holeY = hole.y;
@@ -912,15 +912,26 @@ class GlassDesigner {
     ctx.lineTo(holeCanvasPos.x + xOffset + 5, holeCanvasPos.y);
     ctx.stroke();
 
-    // Draw measurement text (rotated)
+    // Draw measurement text (rotated for screen, horizontal for print)
     ctx.save();
-    ctx.translate(
-      holeCanvasPos.x + xOffset + 15,
-      (edgeYCanvasPos.y + holeCanvasPos.y) / 2,
-    );
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = "center";
-    ctx.fillText(Math.round(yDistance) + "mm", 0, 0);
+    if (forPrint) {
+      // For print: display text horizontally
+      ctx.textAlign = "center";
+      ctx.fillText(
+        Math.round(yDistance) + "mm",
+        holeCanvasPos.x + xOffset + 15,
+        (edgeYCanvasPos.y + holeCanvasPos.y) / 2 + 4,
+      );
+    } else {
+      // For screen: display text rotated 90 degrees
+      ctx.translate(
+        holeCanvasPos.x + xOffset + 15,
+        (edgeYCanvasPos.y + holeCanvasPos.y) / 2,
+      );
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.fillText(Math.round(yDistance) + "mm", 0, 0);
+    }
     ctx.restore();
 
     // Reset line dash
@@ -1264,7 +1275,7 @@ class GlassDesigner {
     }
   }
 
-  drawDimensionsOnCanvas(ctx, canvasHeight) {
+  drawDimensionsOnCanvas(ctx, canvasHeight, forPrint = false) {
     // Use provided canvas height or fallback to this.canvas.height
     const targetHeight = canvasHeight || this.canvas.height;
 
@@ -1283,12 +1294,23 @@ class GlassDesigner {
 
     // Height dimension (left side)
     ctx.save();
-    ctx.translate(
-      this.offsetX - 30,
-      this.offsetY + (this.glass.height * this.scale) / 2,
-    );
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(this.glass.height + "mm", 0, 0);
+    if (forPrint) {
+      // For print: display text horizontally
+      ctx.textAlign = "center";
+      ctx.fillText(
+        this.glass.height + "mm",
+        this.offsetX - 30,
+        this.offsetY + (this.glass.height * this.scale) / 2 + 4,
+      );
+    } else {
+      // For screen: display text rotated 90 degrees
+      ctx.translate(
+        this.offsetX - 30,
+        this.offsetY + (this.glass.height * this.scale) / 2,
+      );
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(this.glass.height + "mm", 0, 0);
+    }
     ctx.restore();
 
     // Thickness (top)
