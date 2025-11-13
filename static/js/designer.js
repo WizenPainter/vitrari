@@ -30,6 +30,9 @@ class GlassDesigner {
     // Current tool
     this.currentTool = "select"; // 'select', 'rectangle', 'circle', 'hole'
 
+    // Track measurement label positions to prevent overlaps
+    this.measurementLabels = [];
+
     // Mouse state
     this.isDragging = false;
     this.dragStartX = 0;
@@ -778,6 +781,9 @@ class GlassDesigner {
   }
 
   renderForPrint(targetCanvas) {
+    // Clear measurement labels for fresh collision detection
+    this.measurementLabels = [];
+
     // Calculate required padding for dimension lines
     // Dimension lines extend 30 canvas pixels from holes plus text space
     const dimensionPadding = 80; // Extra padding for dimension lines and text
@@ -879,15 +885,44 @@ class GlassDesigner {
     ctx.lineTo(holeCanvasPos.x, holeCanvasPos.y - yOffset + 5);
     ctx.stroke();
 
-    // Draw measurement text
+    // Draw measurement text with collision detection
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 12px -apple-system, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(
-      Math.round(xDistance) + "mm",
-      (edgeCanvasPos.x + holeCanvasPos.x) / 2,
-      holeCanvasPos.y - yOffset - 10,
-    );
+
+    const textX = (edgeCanvasPos.x + holeCanvasPos.x) / 2;
+    let textY = holeCanvasPos.y - yOffset - 10;
+
+    // Check for collision with existing labels and adjust position
+    const labelWidth = ctx.measureText(Math.round(xDistance) + "mm").width + 10;
+    const labelHeight = 16;
+    const labelRect = {
+      x: textX - labelWidth / 2,
+      y: textY - labelHeight / 2,
+      width: labelWidth,
+      height: labelHeight
+    };
+
+    // Find overlapping labels and stack vertically
+    let stackOffset = 0;
+    for (const existingLabel of this.measurementLabels) {
+      if (this.rectsOverlap(labelRect, existingLabel)) {
+        stackOffset += labelHeight + 2; // Add spacing between stacked labels
+      }
+    }
+
+    // Apply stacking offset
+    textY -= stackOffset;
+
+    // Store this label position for future collision detection
+    this.measurementLabels.push({
+      x: textX - labelWidth / 2,
+      y: textY - labelHeight / 2,
+      width: labelWidth,
+      height: labelHeight
+    });
+
+    ctx.fillText(Math.round(xDistance) + "mm", textX, textY);
 
     // Draw dimension line for Y axis (vertical)
     const yDistance = useBottomEdge ? distToBottom : distToTop;
@@ -912,16 +947,45 @@ class GlassDesigner {
     ctx.lineTo(holeCanvasPos.x + xOffset + 5, holeCanvasPos.y);
     ctx.stroke();
 
-    // Draw measurement text (rotated for screen, horizontal for print)
+    // Draw measurement text (rotated for screen, horizontal for print) with collision detection
     ctx.save();
+    let verticalTextX = holeCanvasPos.x + xOffset + 15;
+    let verticalTextY = (edgeYCanvasPos.y + holeCanvasPos.y) / 2 + 4;
+
     if (forPrint) {
-      // For print: display text horizontally
+      // For print: display text horizontally with collision detection
       ctx.textAlign = "center";
-      ctx.fillText(
-        Math.round(yDistance) + "mm",
-        holeCanvasPos.x + xOffset + 15,
-        (edgeYCanvasPos.y + holeCanvasPos.y) / 2 + 4,
-      );
+
+      // Check for collision with existing labels
+      const verticalLabelWidth = ctx.measureText(Math.round(yDistance) + "mm").width + 10;
+      const verticalLabelHeight = 16;
+      const verticalLabelRect = {
+        x: verticalTextX - verticalLabelWidth / 2,
+        y: verticalTextY - verticalLabelHeight / 2,
+        width: verticalLabelWidth,
+        height: verticalLabelHeight
+      };
+
+      // Find overlapping labels and stack horizontally
+      let horizontalStackOffset = 0;
+      for (const existingLabel of this.measurementLabels) {
+        if (this.rectsOverlap(verticalLabelRect, existingLabel)) {
+          horizontalStackOffset += verticalLabelWidth + 5; // Add spacing between stacked labels
+        }
+      }
+
+      // Apply horizontal stacking offset
+      verticalTextX += horizontalStackOffset;
+
+      // Store this label position
+      this.measurementLabels.push({
+        x: verticalTextX - verticalLabelWidth / 2,
+        y: verticalTextY - verticalLabelHeight / 2,
+        width: verticalLabelWidth,
+        height: verticalLabelHeight
+      });
+
+      ctx.fillText(Math.round(yDistance) + "mm", verticalTextX, verticalTextY);
     } else {
       // For screen: display text rotated 90 degrees
       ctx.translate(
@@ -936,6 +1000,14 @@ class GlassDesigner {
 
     // Reset line dash
     ctx.setLineDash([]);
+  }
+
+  // Helper function to check if two rectangles overlap
+  rectsOverlap(rect1, rect2) {
+    return !(rect1.x + rect1.width < rect2.x ||
+             rect2.x + rect2.width < rect1.x ||
+             rect1.y + rect1.height < rect2.y ||
+             rect2.y + rect2.height < rect1.y);
   }
 
   drawGridOnCanvas(ctx) {
