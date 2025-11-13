@@ -1191,59 +1191,102 @@ class MobileEnhancements {
       });
     }
 
-    // Add swipe gesture support
-    // Swipe gestures on header only
+    // Add enhanced swipe gesture support for closing sidebar
     let startY = 0;
     let currentY = 0;
     let isDragging = false;
+    let startScrollTop = 0;
+    let dragOffset = 0;
 
-    if (sidebarHeader) {
-      sidebarHeader.addEventListener(
-        "touchstart",
-        (e) => {
-          startY = e.touches[0].clientY;
+    // Add swipe gesture to the entire sidebar
+    sidebar.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!isExpanded) return;
+
+        startY = e.touches[0].clientY;
+        startScrollTop = sidebar.scrollTop;
+        isDragging = false; // Will be set to true in touchmove if conditions are met
+        dragOffset = 0;
+      },
+      { passive: true },
+    );
+
+    sidebar.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!isExpanded) return;
+
+        currentY = e.touches[0].clientY;
+        const deltaY = currentY - startY;
+
+        // Only allow swipe down when:
+        // 1. User is swiping down (deltaY > 0)
+        // 2. Sidebar is scrolled to the top (scrollTop === 0)
+        // 3. OR user started on the header
+        const isAtTop = sidebar.scrollTop === 0;
+        const isSwipingDown = deltaY > 0;
+        const startedOnHeader = e.target.closest("h3") || e.target.closest(".mobile-sidebar-header");
+
+        if (isSwipingDown && (isAtTop || startedOnHeader)) {
           isDragging = true;
-        },
-        { passive: true },
-      );
+          dragOffset = deltaY;
 
-      sidebarHeader.addEventListener(
-        "touchmove",
-        (e) => {
-          if (!isDragging) return;
+          // Add visual feedback - gradually move sidebar down
+          if (dragOffset > 0 && dragOffset < 200) {
+            sidebar.style.transform = `translateY(${dragOffset}px)`;
+            sidebar.style.transition = "none";
 
-          currentY = e.touches[0].clientY;
-          const deltaY = startY - currentY;
-
-          // Swipe down to close when expanded
-          if (deltaY < -50 && isExpanded) {
-            e.preventDefault();
-            toggleSidebar();
-            isDragging = false;
+            // Add semi-transparent overlay effect
+            const overlayOpacity = Math.max(0, 1 - dragOffset / 200);
+            overlay.style.opacity = overlayOpacity.toString();
           }
-        },
-        { passive: false },
-      );
 
-      sidebarHeader.addEventListener("touchend", () => {
+          // Prevent scrolling when dragging to close
+          if (dragOffset > 10) {
+            e.preventDefault();
+          }
+        }
+      },
+      { passive: false },
+    );
+
+    sidebar.addEventListener(
+      "touchend",
+      (e) => {
+        if (!isExpanded || !isDragging) {
+          isDragging = false;
+          dragOffset = 0;
+          return;
+        }
+
+        // Reset transform
+        sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease";
+
+        // Close sidebar if dragged down more than 80px
+        if (dragOffset > 80) {
+          console.log("Swipe down detected, closing sidebar");
+          toggleSidebar();
+        } else {
+          // Snap back to original position
+          sidebar.style.transform = "translateY(0)";
+          overlay.style.opacity = "1";
+        }
+
         isDragging = false;
-      });
-    }
+        dragOffset = 0;
+      },
+      { passive: true },
+    );
 
-    // Prevent sidebar content from closing the menu when scrolling
+    // Prevent sidebar content from closing the menu when clicking buttons
+    // But allow touch events for scrolling
     const sidebarContent = sidebar.querySelectorAll(
       ".tool-list, .properties, .holes-list, .canvas-info",
     );
     sidebarContent.forEach((element) => {
-      element.addEventListener(
-        "touchstart",
-        (e) => {
-          e.stopPropagation();
-        },
-        { passive: true },
-      );
-
       element.addEventListener("click", (e) => {
+        // Prevent click from closing sidebar when clicking on content
         e.stopPropagation();
       });
     });
