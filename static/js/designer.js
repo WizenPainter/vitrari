@@ -25,7 +25,7 @@ class GlassDesigner {
 
     // Paint areas - array of painted rectangles
     this.paintAreas = [];
-    this.paintColor = "#8B4513"; // Default brown color
+    this.paintColor = "#FFFFFF"; // Default white color
 
     // Holes array - each hole has {x, y, diameter, shape}
     this.holes = [];
@@ -1159,6 +1159,59 @@ class GlassDesigner {
   getTranslatedGlassType(t) {
     const typeKey = `glassType${this.glass.type.charAt(0).toUpperCase() + this.glass.type.slice(1)}`;
     return t(typeKey) || this.glass.type;
+  }
+
+  // Populate glass type dropdown with translated options
+  populateGlassTypeDropdown(t) {
+    const select = document.getElementById("glass-type");
+    if (!select) return;
+
+    // Clear existing options
+    select.innerHTML = "";
+
+    const glassTypes = [
+      { value: "clear", key: "glassTypeClear" },
+      { value: "mirror", key: "glassTypeMirror" },
+      { value: "gray", key: "glassTypeGray" },
+      { value: "tinted", key: "glassTypeTinted" },
+      { value: "frosted", key: "glassTypeFrosted" }
+    ];
+
+    glassTypes.forEach(type => {
+      const option = document.createElement("option");
+      option.value = type.value;
+      option.textContent = t(type.key);
+      if (this.glass.type === type.value) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+  }
+
+  // Populate paint color dropdown with translated options
+  populatePaintColorDropdown(t) {
+    const select = document.getElementById("paint-color");
+    if (!select) return;
+
+    // Clear existing options
+    select.innerHTML = "";
+
+    const paintColors = [
+      { value: "#FFFFFF", key: "colorWhite" },
+      { value: "#000000", key: "colorBlack" },
+      { value: "#6B7280", key: "colorGray" },
+      { value: "#F1F5F9", key: "colorFrosted" }
+    ];
+
+    paintColors.forEach(color => {
+      const option = document.createElement("option");
+      option.value = color.value;
+      option.textContent = t(color.key);
+      if (this.paintColor === color.value) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
   }
 
   // Utility function to convert hex color to rgba
@@ -2524,6 +2577,10 @@ let designer = null;
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("design-canvas")) {
     designer = new GlassDesigner("design-canvas");
+
+    // Populate dropdowns with current language
+    designer.populateGlassTypeDropdown(window.t || ((key) => key));
+    designer.populatePaintColorDropdown(window.t || ((key) => key));
 
     // Setup tool buttons
     document.querySelectorAll(".tool-btn").forEach((btn) => {

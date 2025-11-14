@@ -161,8 +161,8 @@
                                  "
                              />
                          </label>
-                         <label>
-                             <span data-i18n="glassType">Glass Type</span>:
+                          <label>
+                              <span data-i18n="glassType">Glass Type</span>:
                               <select
                                   id="glass-type"
                                   style="
@@ -173,11 +173,7 @@
                                       margin-top: 0.25rem;
                                   "
                               >
-                                  <option value="clear" selected>Clear</option>
-                                  <option value="mirror">Mirror</option>
-                                  <option value="gray">Gray</option>
-                                  <option value="tinted">Tinted</option>
-                                  <option value="frosted">Frosted</option>
+                                  <!-- Options will be populated by JavaScript -->
                               </select>
                           </label>
                           <label style="display: block; margin-top: 1rem;">
@@ -209,27 +205,21 @@
                       <div id="paint-section">
                           <h3 data-i18n="paintOptions">Paint Options</h3>
                           <div class="paint-controls">
-                              <label style="display: block; margin-bottom: 0.5rem;">
-                                  <span style="font-size: 0.875rem; color: #374151;">Paint Color:</span>
-                                  <select
-                                      id="paint-color"
-                                      style="
-                                          width: 100%;
-                                          padding: 0.5rem;
-                                          border: 1px solid #cbd5e1;
-                                          border-radius: 4px;
-                                          margin-top: 0.25rem;
-                                      "
-                                  >
-                                      <option value="#8B4513" selected>Brown</option>
-                                      <option value="#000000">Black</option>
-                                      <option value="#FFFFFF">White</option>
-                                      <option value="#FF0000">Red</option>
-                                      <option value="#00FF00">Green</option>
-                                      <option value="#0000FF">Blue</option>
-                                      <option value="#FFFF00">Yellow</option>
-                                  </select>
-                              </label>
+                               <label style="display: block; margin-bottom: 0.5rem;">
+                                   <span style="font-size: 0.875rem; color: #374151;" data-i18n="paintColor">Paint Color</span>:
+                                   <select
+                                       id="paint-color"
+                                       style="
+                                           width: 100%;
+                                           padding: 0.5rem;
+                                           border: 1px solid #cbd5e1;
+                                           border-radius: 4px;
+                                           margin-top: 0.25rem;
+                                       "
+                                   >
+                                       <!-- Options will be populated by JavaScript -->
+                                   </select>
+                               </label>
                               <button
                                   id="btn-paint-whole"
                                   class="btn btn-outline"

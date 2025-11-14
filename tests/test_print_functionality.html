@@ -28,14 +28,21 @@
                     type: 'mirror',
                     cpb: true
                 };
-                this.holes = [
-                    { type: 'drill', x: 100, y: 100, diameter: 10 },
-                    { type: 'circle', x: 200, y: 200, diameter: 20 }
-                ];
-                this.paintAreas = [
-                    { x: 50, y: 50, width: 100, height: 100, isWholeGlass: false },
-                    { isWholeGlass: true }
-                ];
+                this.paintColor = '#FFFFFF';
+            }
+
+            populateGlassTypeDropdown(t) {
+                const select = document.getElementById('glass-type');
+                if (select) {
+                    select.innerHTML = '<option value="mirror">Espejo</option>';
+                }
+            }
+
+            populatePaintColorDropdown(t) {
+                const select = document.getElementById('paint-color');
+                if (select) {
+                    select.innerHTML = '<option value="#FFFFFF">Blanco</option>';
+                }
             }
 
             getPaintAreasHTML(t) {
@@ -150,6 +157,45 @@
             }
         }
 
+        function testDropdownTranslations() {
+            addResult('Testing dropdown translations...', 'info');
+
+            // Test English translations
+            setLanguage('en');
+            const glassTypeSelect = document.getElementById('glass-type');
+            const paintColorSelect = document.getElementById('paint-color');
+
+            if (glassTypeSelect && paintColorSelect) {
+                // Check if options are populated
+                if (glassTypeSelect.options.length > 0 && paintColorSelect.options.length > 0) {
+                    addResult('Dropdowns are populated with options', 'success');
+
+                    // Check first option text
+                    const firstGlassOption = glassTypeSelect.options[0].textContent;
+                    const firstPaintOption = paintColorSelect.options[0].textContent;
+
+                    if (firstGlassOption && firstPaintOption) {
+                        addResult(`English options loaded: Glass="${firstGlassOption}", Paint="${firstPaintOption}"`, 'success');
+                    }
+                } else {
+                    addResult('Dropdowns are not populated', 'error');
+                }
+            } else {
+                addResult('Dropdown elements not found', 'error');
+            }
+
+            // Test Spanish translations
+            setLanguage('es');
+            setTimeout(() => {
+                const firstGlassOptionEs = glassTypeSelect.options[0].textContent;
+                const firstPaintOptionEs = paintColorSelect.options[0].textContent;
+
+                if (firstGlassOptionEs && firstPaintOptionEs) {
+                    addResult(`Spanish options loaded: Glass="${firstGlassOptionEs}", Paint="${firstPaintOptionEs}"`, 'success');
+                }
+            }, 100);
+        }
+
         // Run tests when page loads
         window.addEventListener('load', function() {
             setTimeout(() => {
@@ -157,6 +203,7 @@
                 testPrintTemplate();
                 testGlassTypeDisplay();
                 testCPBFunctionality();
+                testDropdownTranslations();
                 addResult('All tests completed!', 'info');
             }, 1000);
         });

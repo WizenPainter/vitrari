@@ -46,6 +46,11 @@ const translations = {
     noPaintAreas: "No painted areas yet.",
     paintArea: "Paint Area",
     paintAreas: "Paint Areas",
+    paintColor: "Paint Color",
+    colorWhite: "White",
+    colorBlack: "Black",
+    colorGray: "Gray",
+    colorFrosted: "Frosted",
     taladroLabel: "Drill Hole",
     edgeClipLabel: "Edge Clip",
     circleHoleLabel: "Circle Hole",
@@ -292,6 +297,11 @@ const translations = {
     noPaintAreas: "No hay áreas pintadas aún.",
     paintArea: "Área de Pintura",
     paintAreas: "Áreas de Pintura",
+    paintColor: "Color de Pintura",
+    colorWhite: "Blanco",
+    colorBlack: "Negro",
+    colorGray: "Gris",
+    colorFrosted: "Frotado",
     taladroLabel: "Taladro",
     edgeClipLabel: "Clip de Borde",
     circleHoleLabel: "Resaque Circular",
@@ -536,10 +546,12 @@ function setLanguage(lang) {
   // Update all translations
   updatePageLanguage();
 
-  // Trigger re-render of holes list if designer exists
-  if (window.designer) {
-    window.designer.renderHolesList();
-  }
+   // Trigger re-render of holes list and update dropdowns if designer exists
+   if (window.designer) {
+     window.designer.renderHolesList();
+     window.designer.populateGlassTypeDropdown(t);
+     window.designer.populatePaintColorDropdown(t);
+   }
 }
 
 // Update all text on page
