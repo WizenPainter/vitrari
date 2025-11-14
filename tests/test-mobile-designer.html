@@ -646,10 +646,32 @@ Touch: ${"ontouchstart" in window ? "YES" : "NO"}
                     } else {
                         console.log("Header not found");
                     }
-                },
-            };
+                 },
+                 testHeaderDragClose: function () {
+                     const sidebar = document.querySelector(".sidebar");
+                     if (!sidebar) {
+                         console.log("Sidebar not found");
+                         return;
+                     }
 
-            console.log("Mobile designer test page loaded");
+                     if (!sidebar.classList.contains("mobile-expanded")) {
+                         console.log("Opening sidebar first...");
+                         this.expandToolbar();
+                         setTimeout(() => {
+                             this.testHeaderDragClose();
+                         }, 500);
+                         return;
+                     }
+
+                     console.log("Testing header drag down to close functionality...");
+                     console.log("Touch and drag down on the header area (where it says 'Herramientas')");
+                     console.log("Drag down about 40px to close the sidebar (lower threshold for header)");
+                     console.log("Release before 40px to cancel the gesture");
+                     console.log("Check browser console for 'Header touch started/drag detected/close triggered' messages");
+                 },
+             };
+
+             console.log("Mobile designer test page loaded");
             console.log("Use testMobileDesigner object for testing");
             console.log(
                 "📱 On mobile: Tap 🔧 button (bottom-right) to open tools menu",
@@ -669,11 +691,14 @@ Touch: ${"ontouchstart" in window ? "YES" : "NO"}
                 "  testMobileDesigner.testHeaderClick() - Test header click",
             );
             console.log(
-                '  testMobileDesigner.toggleTool("drill") - Select specific tool',
-            );
-            console.log(
-                "  testMobileDesigner.isMobile() - Check if in mobile mode",
-            );
+                 '  testMobileDesigner.toggleTool("drill") - Select specific tool',
+               );
+               console.log(
+                 "  testMobileDesigner.isMobile() - Check if in mobile mode",
+               );
+               console.log(
+                 "  testMobileDesigner.testHeaderDragClose() - Test header drag to close",
+               );
         </script>
     </body>
 </html>

@@ -1223,12 +1223,16 @@ class MobileEnhancements {
         // Only allow swipe down when:
         // 1. User is swiping down (deltaY > 0)
         // 2. Sidebar is scrolled to the top (scrollTop === 0)
-        // 3. OR user started on the header
+        // 3. OR user started on the header (more permissive for header gestures)
         const isAtTop = sidebar.scrollTop === 0;
         const isSwipingDown = deltaY > 0;
         const startedOnHeader = e.target.closest("h3") || e.target.closest(".mobile-sidebar-header");
 
+        // Allow swipe from header area regardless of scroll position, or from top
         if (isSwipingDown && (isAtTop || startedOnHeader)) {
+          if (startedOnHeader) {
+            console.log("Header swipe detected, allowing gesture");
+          }
           isDragging = true;
           dragOffset = deltaY;
 
@@ -1263,8 +1267,8 @@ class MobileEnhancements {
         // Reset transform
         sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease";
 
-        // Close sidebar if dragged down more than 80px
-        if (dragOffset > 80) {
+        // Close sidebar if dragged down more than 60px (lower threshold for better responsiveness)
+        if (dragOffset > 60) {
           console.log("Swipe down detected, closing sidebar");
           toggleSidebar();
         } else {
@@ -1278,6 +1282,74 @@ class MobileEnhancements {
       },
       { passive: true },
     );
+
+    // Enhanced swipe gesture - more permissive for header area
+
+    // Add specific header drag detection for better responsiveness
+    const headerElement = sidebar.querySelector('.mobile-sidebar-header');
+    if (headerElement) {
+      let headerTouchStartY = 0;
+      let headerIsDragging = false;
+
+      headerElement.addEventListener("touchstart", (e) => {
+        if (!isExpanded) return;
+        headerTouchStartY = e.touches[0].clientY;
+        headerIsDragging = false;
+        console.log("Header touch started");
+      }, { passive: true });
+
+      headerElement.addEventListener("touchmove", (e) => {
+        if (!isExpanded) return;
+
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - headerTouchStartY;
+
+        // Detect downward drag on header
+        if (deltaY > 20) { // Lower threshold for header
+          headerIsDragging = true;
+          console.log("Header drag detected, deltaY:", deltaY);
+
+          // Override the main swipe logic for header drags
+          isDragging = true;
+          dragOffset = deltaY;
+
+          // Provide visual feedback
+          if (dragOffset > 0 && dragOffset < 150) {
+            sidebar.style.transform = `translateY(${dragOffset}px)`;
+            sidebar.style.transition = "none";
+
+            const overlayOpacity = Math.max(0.3, 1 - dragOffset / 150);
+            overlay.style.opacity = overlayOpacity.toString();
+          }
+
+          // Prevent default scrolling
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      headerElement.addEventListener("touchend", (e) => {
+        if (!isExpanded || !headerIsDragging) return;
+
+        console.log("Header touch end, dragOffset:", dragOffset);
+
+        // Reset transform
+        sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease";
+
+        // Close if dragged enough
+        if (dragOffset > 40) { // Even lower threshold for header
+          console.log("Header drag close triggered");
+          toggleSidebar();
+        } else {
+          // Snap back
+          sidebar.style.transform = "translateY(0)";
+          overlay.style.opacity = "1";
+        }
+
+        headerIsDragging = false;
+        isDragging = false;
+        dragOffset = 0;
+      }, { passive: true });
+    }
 
     // Prevent sidebar content from closing the menu when clicking buttons
     // But allow touch events for scrolling
