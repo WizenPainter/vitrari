@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Functionality Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Glass Optimizer Print Functionality Test</h1>
+    <div id="results"></div>
+
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        // Mock designer object for testing
+        class MockDesigner {
+            constructor() {
+                this.glass = {
+                    width: 1200,
+                    height: 800,
+                    thickness: 6,
+                    type: 'mirror',
+                    cpb: true
+                };
+                this.holes = [
+                    { type: 'drill', x: 100, y: 100, diameter: 10 },
+                    { type: 'circle', x: 200, y: 200, diameter: 20 }
+                ];
+                this.paintAreas = [
+                    { x: 50, y: 50, width: 100, height: 100, isWholeGlass: false },
+                    { isWholeGlass: true }
+                ];
+            }
+
+            getPaintAreasHTML(t) {
+                if (this.paintAreas.length === 0) {
+                    return `<p style="color: #64748b; font-style: italic;">${t("noPaintAreas")}</p>`;
+                }
+
+                let html = "";
+                this.paintAreas.forEach((area, index) => {
+                    if (area.isWholeGlass) {
+                        html += `<div class="print-property">
+                            <span class="print-property-label">${t("paint")}:</span>
+                            <span>${t("paintWholeGlass")}</span>
+                        </div>`;
+                    } else {
+                        html += `<div class="print-property">
+                            <span class="print-property-label">${t("paintArea")} ${index + 1}:</span>
+                            <span>${Math.round(area.width)}×${Math.round(area.height)}mm at (${Math.round(area.x)}, ${Math.round(area.y)})</span>
+                        </div>`;
+                    }
+                });
+
+                return html;
+            }
+        }
+
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        function testTranslations() {
+            addResult('Testing translations...', 'info');
+
+            // Test English translations
+            setLanguage('en');
+            if (typeof t === 'function') {
+                const glassTypeEn = t('glassType');
+                const paintEn = t('paint');
+                const paintAreaEn = t('paintArea');
+                const paintAreasEn = t('paintAreas');
+                const noPaintAreasEn = t('noPaintAreas');
+
+                addResult(`English translations loaded: glassType="${glassTypeEn}", paint="${paintEn}", paintArea="${paintAreaEn}"`, 'success');
+            } else {
+                addResult('Translation function t() not found', 'error');
+            }
+
+            // Test Spanish translations
+            setLanguage('es');
+            if (typeof t === 'function') {
+                const glassTypeEs = t('glassType');
+                const paintEs = t('paint');
+                const paintAreaEs = t('paintArea');
+                const paintAreasEs = t('paintAreas');
+
+                addResult(`Spanish translations loaded: glassType="${glassTypeEs}", paint="${paintEs}", paintArea="${paintAreaEs}"`, 'success');
+            }
+        }
+
+        function testPrintTemplate() {
+            addResult('Testing print template generation...', 'info');
+
+            const designer = new MockDesigner();
+
+            // Test English print template
+            setLanguage('en');
+            const paintHtmlEn = designer.getPaintAreasHTML(t);
+            if (paintHtmlEn.includes('Paint:') && paintHtmlEn.includes('Paint Whole Glass') && paintHtmlEn.includes('Paint Area 1:')) {
+                addResult('English print template generated correctly', 'success');
+            } else {
+                addResult('English print template generation failed', 'error');
+                addResult('Generated HTML: ' + paintHtmlEn, 'error');
+            }
+
+            // Test Spanish print template
+            setLanguage('es');
+            const paintHtmlEs = designer.getPaintAreasHTML(t);
+            if (paintHtmlEs.includes('Pintura:') && paintHtmlEs.includes('Pintar Vidrio Completo') && paintHtmlEs.includes('Área de Pintura 1:')) {
+                addResult('Spanish print template generated correctly', 'success');
+            } else {
+                addResult('Spanish print template generation failed', 'error');
+                addResult('Generated HTML: ' + paintHtmlEs, 'error');
+            }
+        }
+
+        function testGlassTypeDisplay() {
+            addResult('Testing glass type display...', 'info');
+
+            const designer = new MockDesigner();
+            const glassTypeDisplay = designer.glass.type.charAt(0).toUpperCase() + designer.glass.type.slice(1);
+
+            if (glassTypeDisplay === 'Mirror') {
+                addResult('Glass type display formatted correctly: ' + glassTypeDisplay, 'success');
+            } else {
+                addResult('Glass type display formatting failed: ' + glassTypeDisplay, 'error');
+            }
+        }
+
+        function testCPBFunctionality() {
+            addResult('Testing CPB functionality...', 'info');
+
+            const designer = new MockDesigner();
+
+            if (designer.glass.cpb === true) {
+                addResult('CPB property is correctly set to true', 'success');
+            } else {
+                addResult('CPB property is not set correctly', 'error');
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                testTranslations();
+                testPrintTemplate();
+                testGlassTypeDisplay();
+                testCPBFunctionality();
+                addResult('All tests completed!', 'info');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

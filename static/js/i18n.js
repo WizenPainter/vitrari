@@ -18,16 +18,34 @@ const translations = {
     rectangleHole: "Rectangle Hole",
     avellanado: "Countersink",
     edgeClip: "Edge Clip",
+    paint: "Paint",
 
     // Glass Properties
     glassProperties: "Glass Properties",
     width: "Width",
     height: "Height",
     thickness: "Thickness",
+    glassType: "Glass Type",
+    glassTypeClear: "Clear",
+    glassTypeMirror: "Mirror",
+    glassTypeGray: "Gray",
+    glassTypeTinted: "Tinted",
+    glassTypeFrosted: "Frosted",
+    cpb: "CPB (Canto Pulido)",
+    yes: "Yes",
 
     // Holes List
     holesList: "Holes List",
     noHoles: "No holes yet. Click on canvas to add.",
+
+    // Paint
+    paintOptions: "Paint Options",
+    paintWholeGlass: "Paint Whole Glass",
+    clearPaint: "Clear Paint",
+    paintInstructions: "Select Paint tool and click/drag to paint areas",
+    noPaintAreas: "No painted areas yet.",
+    paintArea: "Paint Area",
+    paintAreas: "Paint Areas",
     taladroLabel: "Drill Hole",
     edgeClipLabel: "Edge Clip",
     circleHoleLabel: "Circle Hole",
@@ -246,16 +264,34 @@ const translations = {
     rectangleHole: "Resaque Rectangular",
     avellanado: "Avellanado",
     edgeClip: "Clip de Borde",
+    paint: "Pintura",
 
     // Propiedades del Vidrio
     glassProperties: "Propiedades del Vidrio",
     width: "Ancho",
     height: "Alto",
     thickness: "Espesor",
+    glassType: "Tipo de Vidrio",
+    glassTypeClear: "Claro",
+    glassTypeMirror: "Espejo",
+    glassTypeGray: "Gris",
+    glassTypeTinted: "Tintado",
+    glassTypeFrosted: "Frotado",
+    cpb: "CPB (Canto Pulido)",
+    yes: "Sí",
 
     // Lista de Resaques
     holesList: "Lista de Resaques",
     noHoles: "Sin resaques aún. Haz clic en el lienzo para agregar.",
+
+    // Pintura
+    paintOptions: "Opciones de Pintura",
+    paintWholeGlass: "Pintar Vidrio Completo",
+    clearPaint: "Limpiar Pintura",
+    paintInstructions: "Selecciona herramienta Pintura y haz clic/arrastra para pintar áreas",
+    noPaintAreas: "No hay áreas pintadas aún.",
+    paintArea: "Área de Pintura",
+    paintAreas: "Áreas de Pintura",
     taladroLabel: "Taladro",
     edgeClipLabel: "Clip de Borde",
     circleHoleLabel: "Resaque Circular",

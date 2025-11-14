@@ -19,7 +19,13 @@ class GlassDesigner {
       width: 1200,
       height: 800,
       thickness: 6,
+      type: "clear", // clear, mirror, gray, tinted, frosted
+      cpb: false, // Canto Pulido (polished edge)
     };
+
+    // Paint areas - array of painted rectangles
+    this.paintAreas = [];
+    this.paintColor = "#8B4513"; // Default brown color
 
     // Holes array - each hole has {x, y, diameter, shape}
     this.holes = [];
@@ -265,12 +271,23 @@ class GlassDesigner {
       this.selectedHoleIndex = this.holes.length - 1;
       this.updatePropertiesPanel();
       this.render();
-    } else if (this.currentTool === "select" && clickedHoleIndex < 0) {
-      // Clicked on empty space with select tool - deselect
-      this.selectedHoleIndex = -1;
-      this.render();
-      this.updatePropertiesPanel();
-    }
+     } else if (this.currentTool === "paint") {
+       // Start painting - create a new paint area
+       this.isPainting = true;
+       this.paintStartX = glassCoords.x;
+       this.paintStartY = glassCoords.y;
+       this.currentPaintArea = {
+         x: glassCoords.x,
+         y: glassCoords.y,
+         width: 0,
+         height: 0,
+       };
+     } else if (this.currentTool === "select" && clickedHoleIndex < 0) {
+       // Clicked on empty space with select tool - deselect
+       this.selectedHoleIndex = -1;
+       this.render();
+       this.updatePropertiesPanel();
+     }
   }
 
   onMouseMove(e) {
@@ -323,14 +340,27 @@ class GlassDesigner {
         hole.y = clampedCenterY - hole.height / 2;
       }
 
-      this.render();
-      this.updatePropertiesPanel();
-    }
+       this.render();
+       this.updatePropertiesPanel();
+     } else if (this.isPainting && this.currentPaintArea) {
+       // Update paint area dimensions while dragging
+       const width = Math.abs(glassCoords.x - this.paintStartX);
+       const height = Math.abs(glassCoords.y - this.paintStartY);
 
-    // Update cursor
+       this.currentPaintArea.x = Math.min(this.paintStartX, glassCoords.x);
+       this.currentPaintArea.y = Math.min(this.paintStartY, glassCoords.y);
+       this.currentPaintArea.width = width;
+       this.currentPaintArea.height = height;
+
+       this.render();
+     }
+
+     // Update cursor
     if (this.currentTool === "select") {
       const holeIndex = this.findHoleAtPoint(glassCoords.x, glassCoords.y);
       this.canvas.style.cursor = holeIndex >= 0 ? "move" : "default";
+    } else if (this.currentTool === "paint") {
+      this.canvas.style.cursor = "crosshair";
     } else {
       this.canvas.style.cursor = "crosshair";
     }
@@ -338,6 +368,18 @@ class GlassDesigner {
 
   onMouseUp(e) {
     this.isDragging = false;
+
+    // Finish painting if we were painting
+    if (this.isPainting && this.currentPaintArea) {
+      // Only add the paint area if it has meaningful dimensions
+      if (this.currentPaintArea.width > 5 && this.currentPaintArea.height > 5) {
+        this.paintAreas.push(this.currentPaintArea);
+        this.updatePaintAreasList();
+      }
+      this.currentPaintArea = null;
+      this.isPainting = false;
+      this.render();
+    }
   }
 
   findHoleAtPoint(x, y) {
@@ -430,6 +472,15 @@ class GlassDesigner {
     // Don't deselect holes when changing tools - let users keep editing
     // this.selectedHoleIndex = -1;
     this.render();
+
+    // Update cursor based on tool
+    if (tool === "select") {
+      this.canvas.style.cursor = "default";
+    } else if (tool === "paint") {
+      this.canvas.style.cursor = "crosshair";
+    } else {
+      this.canvas.style.cursor = "crosshair";
+    }
 
     // Update tool button states
     document.querySelectorAll(".tool-btn").forEach((btn) => {
@@ -746,9 +797,20 @@ class GlassDesigner {
         hole.height = height;
       }
 
-      this.render();
-    }
-  }
+       this.render();
+     } else if (this.isPainting && this.currentPaintArea) {
+       // Update paint area dimensions while dragging
+       const width = Math.abs(glassCoords.x - this.paintStartX);
+       const height = Math.abs(glassCoords.y - this.paintStartY);
+
+       this.currentPaintArea.x = Math.min(this.paintStartX, glassCoords.x);
+       this.currentPaintArea.y = Math.min(this.paintStartY, glassCoords.y);
+       this.currentPaintArea.width = width;
+       this.currentPaintArea.height = height;
+
+       this.render();
+     }
+   }
 
   render() {
     const ctx = this.ctx;
@@ -1010,6 +1072,127 @@ class GlassDesigner {
              rect2.y + rect2.height < rect1.y);
   }
 
+  // Paint whole glass
+  paintWholeGlass() {
+    this.paintAreas = [{
+      x: 0,
+      y: 0,
+      width: this.glass.width,
+      height: this.glass.height,
+      isWholeGlass: true
+    }];
+    this.updatePaintAreasList();
+    this.render();
+  }
+
+  // Clear all paint
+  clearPaint() {
+    this.paintAreas = [];
+    this.updatePaintAreasList();
+    this.render();
+  }
+
+  // Update the paint areas list in the UI
+  updatePaintAreasList() {
+    const listElement = document.getElementById("paint-areas-list");
+    if (!listElement) return;
+
+    if (this.paintAreas.length === 0) {
+      listElement.innerHTML = `
+        <p style="color: #64748b; font-size: 0.875rem; font-style: italic;">
+          No painted areas yet.
+        </p>
+      `;
+      return;
+    }
+
+    let html = "";
+    this.paintAreas.forEach((area, index) => {
+      if (area.isWholeGlass) {
+        html += `
+          <div class="paint-area-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">
+            <span>Whole Glass</span>
+            <button class="btn btn-sm btn-outline" onclick="designer.removePaintArea(${index})">Remove</button>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="paint-area-item" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">
+            <span>Area ${index + 1}: ${Math.round(area.width)}×${Math.round(area.height)}mm</span>
+            <button class="btn btn-sm btn-outline" onclick="designer.removePaintArea(${index})">Remove</button>
+          </div>
+        `;
+      }
+    });
+
+    listElement.innerHTML = html;
+  }
+
+  // Remove a specific paint area
+  removePaintArea(index) {
+    if (index >= 0 && index < this.paintAreas.length) {
+      this.paintAreas.splice(index, 1);
+      this.updatePaintAreasList();
+      this.render();
+    }
+  }
+
+  // Update glass type
+  updateGlassType(glassType) {
+    this.glass.type = glassType;
+    this.render();
+  }
+
+  // Update paint color
+  updatePaintColor(color) {
+    this.paintColor = color;
+    this.render();
+  }
+
+  // Update CPB (Canto Pulido)
+  updateCPB(cpb) {
+    this.glass.cpb = cpb;
+    this.render();
+  }
+
+  // Get translated glass type name
+  getTranslatedGlassType(t) {
+    const typeKey = `glassType${this.glass.type.charAt(0).toUpperCase() + this.glass.type.slice(1)}`;
+    return t(typeKey) || this.glass.type;
+  }
+
+  // Utility function to convert hex color to rgba
+  hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  // Generate HTML for paint areas in print template
+  getPaintAreasHTML(t) {
+    if (this.paintAreas.length === 0) {
+      return `<p style="color: #64748b; font-style: italic;">${t("noPaintAreas")}</p>`;
+    }
+
+    let html = "";
+    this.paintAreas.forEach((area, index) => {
+      if (area.isWholeGlass) {
+        html += `<div class="print-property">
+            <span class="print-property-label">${t("paint")}:</span>
+            <span>${t("paintWholeGlass")}</span>
+        </div>`;
+      } else {
+        html += `<div class="print-property">
+            <span class="print-property-label">${t("paintArea")} ${index + 1}:</span>
+            <span>${Math.round(area.width)}×${Math.round(area.height)}mm at (${Math.round(area.x)}, ${Math.round(area.y)})</span>
+        </div>`;
+      }
+    });
+
+    return html;
+  }
+
   drawGridOnCanvas(ctx) {
     const gridSize = 100; // 100mm grid
 
@@ -1036,7 +1219,27 @@ class GlassDesigner {
   }
 
   drawGlassOnCanvas(ctx) {
-    ctx.fillStyle = "#e0f2fe";
+    // Draw glass with different appearances based on type (for print)
+    let glassFillStyle;
+
+    if (this.glass.type === "mirror") {
+      // Mirror effect for print - darker silver
+      glassFillStyle = "#cbd5e1";
+    } else if (this.glass.type === "gray") {
+      // Gray glass for print - dark gray
+      glassFillStyle = "#4b5563";
+    } else if (this.glass.type === "tinted") {
+      // Tinted glass for print - light blue-gray
+      glassFillStyle = "#bfdbfe";
+    } else if (this.glass.type === "frosted") {
+      // Frosted glass for print - light gray with texture
+      glassFillStyle = "#f1f5f9";
+    } else {
+      // Clear glass (default) for print
+      glassFillStyle = "#e0f2fe";
+    }
+
+    ctx.fillStyle = glassFillStyle;
     ctx.strokeStyle = "#2563eb";
     ctx.lineWidth = 2;
 
@@ -1047,13 +1250,39 @@ class GlassDesigner {
       this.glass.height * this.scale,
     );
 
-    ctx.strokeRect(
-      this.offsetX,
-      this.offsetY,
-      this.glass.width * this.scale,
-      this.glass.height * this.scale,
-    );
-  }
+     ctx.strokeRect(
+       this.offsetX,
+       this.offsetY,
+       this.glass.width * this.scale,
+       this.glass.height * this.scale,
+     );
+
+     // Draw paint areas for print
+     this.drawPaintAreasOnCanvas(ctx);
+   }
+
+   drawPaintAreasOnCanvas(ctx) {
+     if (this.paintAreas.length === 0) return;
+
+     ctx.save();
+
+      // Draw paint areas with darker color for print
+      const printColor = this.hexToRgba(this.paintColor, 0.8);
+      ctx.fillStyle = printColor;
+      ctx.strokeStyle = this.hexToRgba(this.paintColor, 1.0);
+     ctx.lineWidth = 1;
+
+     this.paintAreas.forEach((area) => {
+       const canvasPos = this.glassToCanvas(area.x, area.y);
+       const canvasWidth = area.width * this.scale;
+       const canvasHeight = area.height * this.scale;
+
+       ctx.fillRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+       ctx.strokeRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+     });
+
+     ctx.restore();
+   }
 
   drawHoleOnCanvas(ctx, hole, isPreview, isSelected) {
     const canvasPos = this.glassToCanvas(hole.x, hole.y);
@@ -1387,10 +1616,19 @@ class GlassDesigner {
 
     // Thickness (top)
     ctx.fillText(
-      "Thickness: " + this.glass.thickness + "mm",
+      "Espesor: " + this.glass.thickness + "mm",
       this.offsetX + (this.glass.width * this.scale) / 2,
       this.offsetY - 20,
     );
+
+    // CPB indicator for print
+    if (this.glass.cpb) {
+      ctx.fillText(
+        "CPB",
+        this.offsetX + (this.glass.width * this.scale) - 30,
+        this.offsetY - 20,
+      );
+    }
   }
 
   drawGrid() {
@@ -1457,18 +1695,73 @@ class GlassDesigner {
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 3;
 
-    // Draw glass with gradient
-    const glassGradient = ctx.createLinearGradient(
-      this.offsetX,
-      this.offsetY,
-      this.offsetX + glassWidth,
-      this.offsetY + glassHeight,
-    );
-    glassGradient.addColorStop(0, "#dbeafe");
-    glassGradient.addColorStop(0.5, "#bfdbfe");
-    glassGradient.addColorStop(1, "#93c5fd");
+    // Draw glass with different appearances based on type
+    let glassFillStyle;
 
-    ctx.fillStyle = glassGradient;
+    if (this.glass.type === "mirror") {
+      // Mirror effect - silver/reflective
+      const mirrorGradient = ctx.createLinearGradient(
+        this.offsetX,
+        this.offsetY,
+        this.offsetX + glassWidth,
+        this.offsetY + glassHeight,
+      );
+      mirrorGradient.addColorStop(0, "#f8fafc");
+      mirrorGradient.addColorStop(0.3, "#e2e8f0");
+      mirrorGradient.addColorStop(0.7, "#cbd5e1");
+      mirrorGradient.addColorStop(1, "#94a3b8");
+      glassFillStyle = mirrorGradient;
+    } else if (this.glass.type === "gray") {
+      // Gray glass - dark gray
+      const grayGradient = ctx.createLinearGradient(
+        this.offsetX,
+        this.offsetY,
+        this.offsetX + glassWidth,
+        this.offsetY + glassHeight,
+      );
+      grayGradient.addColorStop(0, "#6b7280");
+      grayGradient.addColorStop(0.5, "#4b5563");
+      grayGradient.addColorStop(1, "#374151");
+      glassFillStyle = grayGradient;
+    } else if (this.glass.type === "tinted") {
+      // Tinted glass - light blue-gray
+      const tintedGradient = ctx.createLinearGradient(
+        this.offsetX,
+        this.offsetY,
+        this.offsetX + glassWidth,
+        this.offsetY + glassHeight,
+      );
+      tintedGradient.addColorStop(0, "#dbeafe");
+      tintedGradient.addColorStop(0.5, "#bfdbfe");
+      tintedGradient.addColorStop(1, "#93c5fd");
+      glassFillStyle = tintedGradient;
+    } else if (this.glass.type === "frosted") {
+      // Frosted glass - light gray with subtle texture
+      const frostedGradient = ctx.createLinearGradient(
+        this.offsetX,
+        this.offsetY,
+        this.offsetX + glassWidth,
+        this.offsetY + glassHeight,
+      );
+      frostedGradient.addColorStop(0, "#f8fafc");
+      frostedGradient.addColorStop(0.5, "#f1f5f9");
+      frostedGradient.addColorStop(1, "#e2e8f0");
+      glassFillStyle = frostedGradient;
+    } else {
+      // Clear glass (default)
+      const glassGradient = ctx.createLinearGradient(
+        this.offsetX,
+        this.offsetY,
+        this.offsetX + glassWidth,
+        this.offsetY + glassHeight,
+      );
+      glassGradient.addColorStop(0, "#dbeafe");
+      glassGradient.addColorStop(0.5, "#bfdbfe");
+      glassGradient.addColorStop(1, "#93c5fd");
+      glassFillStyle = glassGradient;
+    }
+
+    ctx.fillStyle = glassFillStyle;
     ctx.fillRect(this.offsetX, this.offsetY, glassWidth, glassHeight);
 
     // Reset shadow
@@ -1500,6 +1793,68 @@ class GlassDesigner {
       glassWidth - 4,
       glassHeight - 4,
     );
+
+    // Draw paint areas
+    this.drawPaintAreas(ctx);
+  }
+
+  drawPaintAreas(ctx) {
+    if (this.paintAreas.length === 0 && !this.currentPaintArea) return;
+
+    ctx.save();
+
+    // Draw existing paint areas
+    this.paintAreas.forEach((area) => {
+      const canvasPos = this.glassToCanvas(area.x, area.y);
+      const canvasWidth = area.width * this.scale;
+      const canvasHeight = area.height * this.scale;
+
+      // Use completely opaque paint for whole glass, semi-transparent for areas
+      if (area.isWholeGlass) {
+        ctx.fillStyle = this.hexToRgba(this.paintColor, 1.0); // Completely opaque for whole glass
+        ctx.strokeStyle = this.hexToRgba(this.paintColor, 1.0);
+      } else {
+        ctx.fillStyle = this.hexToRgba(this.paintColor, 0.7); // Semi-transparent for areas
+        ctx.strokeStyle = this.hexToRgba(this.paintColor, 0.8);
+      }
+      ctx.lineWidth = 2;
+
+      ctx.fillRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+
+      // Only draw stroke for non-whole-glass areas
+      if (!area.isWholeGlass) {
+        ctx.strokeRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+      }
+
+      // Add paint texture pattern (darker version of selected color)
+      const textureColor = this.hexToRgba(this.paintColor, 0.3);
+      ctx.fillStyle = textureColor;
+      for (let x = 0; x < canvasWidth; x += 8) {
+        for (let y = 0; y < canvasHeight; y += 8) {
+          if ((x + y) % 16 === 0) {
+            ctx.fillRect(canvasPos.x + x, canvasPos.y + y, 4, 4);
+          }
+        }
+      }
+    });
+
+    // Draw current paint area being created (more transparent)
+    if (this.currentPaintArea && this.currentPaintArea.width > 0 && this.currentPaintArea.height > 0) {
+      ctx.fillStyle = this.hexToRgba(this.paintColor, 0.4); // More transparent for current area
+      ctx.strokeStyle = "rgba(101, 67, 33, 0.6)";
+      ctx.setLineDash([5, 5]); // Dashed line for current area
+
+      const canvasPos = this.glassToCanvas(this.currentPaintArea.x, this.currentPaintArea.y);
+      const canvasWidth = this.currentPaintArea.width * this.scale;
+      const canvasHeight = this.currentPaintArea.height * this.scale;
+
+      ctx.fillRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+      ctx.strokeRect(canvasPos.x, canvasPos.y, canvasWidth, canvasHeight);
+
+      ctx.setLineDash([]); // Reset line dash
+    }
+
+    ctx.restore();
   }
 
   drawHoles() {
@@ -1798,6 +2153,15 @@ class GlassDesigner {
       20,
     );
 
+    // CPB indicator
+    if (this.glass.cpb) {
+      ctx.fillText(
+        "CPB",
+        this.offsetX + (this.glass.width * this.scale) - 30,
+        20,
+      );
+    }
+
     // Reset shadow
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
@@ -1991,20 +2355,31 @@ class GlassDesigner {
                         <span class="print-property-label">${t("height")}:</span>
                         <span>${this.glass.height}mm</span>
                     </div>
-                    <div class="print-property">
-                        <span class="print-property-label">${t("thickness")}:</span>
-                        <span>${this.glass.thickness}mm</span>
-                    </div>
-                    <div class="print-property">
-                        <span class="print-property-label">${t("totalHolesClips")}:</span>
-                        <span>${this.holes.length}</span>
-                    </div>
+                     <div class="print-property">
+                         <span class="print-property-label">${t("thickness")}:</span>
+                         <span>${this.glass.thickness}mm</span>
+                     </div>
+                      <div class="print-property">
+                          <span class="print-property-label">${t("glassType")}:</span>
+                          <span>${this.getTranslatedGlassType(t)}</span>
+                      </div>
+                      ${this.glass.cpb ? `<div class="print-property">
+                          <span class="print-property-label">${t("cpb")}:</span>
+                          <span>${t("yes")}</span>
+                      </div>` : ''}
+                      <div class="print-property">
+                          <span class="print-property-label">${t("totalHolesClips")}:</span>
+                          <span>${this.holes.length}</span>
+                      </div>
 
-                    <h3 style="margin-top: 1.5rem;">${t("worksList")}</h3>
-                    ${holesSpecHTML}
-                </div>
-            </div>
-        `;
+                     <h3 style="margin-top: 1.5rem;">${t("worksList")}</h3>
+                     ${holesSpecHTML}
+
+                      <h3 style="margin-top: 1.5rem;">${t("paintAreas")}</h3>
+                     ${this.getPaintAreasHTML(t)}
+                 </div>
+             </div>
+         `;
 
     // Insert into print template container
     const printContainer = document.getElementById("print-template");
@@ -2206,13 +2581,37 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // Handle custom thickness input change
-      thicknessInput.addEventListener("change", function () {
-        updateDimensions();
-      });
+       // Handle custom thickness input change
+       thicknessInput.addEventListener("change", function () {
+         updateDimensions();
+       });
 
-      widthInput.addEventListener("change", updateDimensions);
-      heightInput.addEventListener("change", updateDimensions);
+       widthInput.addEventListener("change", updateDimensions);
+       heightInput.addEventListener("change", updateDimensions);
+
+        // Handle glass type selection
+        const typeSelect = document.getElementById("glass-type");
+        if (typeSelect) {
+          typeSelect.addEventListener("change", function () {
+            designer.updateGlassType(this.value);
+          });
+        }
+
+        // Handle paint color selection
+        const paintColorSelect = document.getElementById("paint-color");
+        if (paintColorSelect) {
+          paintColorSelect.addEventListener("change", function () {
+            designer.updatePaintColor(this.value);
+          });
+        }
+
+        // Handle CPB toggle
+        const cpbCheckbox = document.getElementById("glass-cpb");
+        if (cpbCheckbox) {
+          cpbCheckbox.addEventListener("change", function () {
+            designer.updateCPB(this.checked);
+          });
+        }
     }
 
     // Hole properties are now handled inline in the holes list
@@ -2264,9 +2663,18 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    document.getElementById("btn-print")?.addEventListener("click", () => {
-      designer.printDesign();
-    });
+     document.getElementById("btn-print")?.addEventListener("click", () => {
+       designer.printDesign();
+     });
+
+     // Paint buttons
+     document.getElementById("btn-paint-whole")?.addEventListener("click", () => {
+       designer.paintWholeGlass();
+     });
+
+     document.getElementById("btn-clear-paint")?.addEventListener("click", () => {
+       designer.clearPaint();
+     });
 
     // Save to Project button
     document

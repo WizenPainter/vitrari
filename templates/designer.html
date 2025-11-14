@@ -92,14 +92,21 @@
                         >
                             Countersink
                         </button>
-                        <button
-                            class="tool-btn"
-                            data-tool="clip"
-                            data-i18n="edgeClip"
-                        >
-                            Edge Clip
-                        </button>
-                    </div>
+                         <button
+                             class="tool-btn"
+                             data-tool="clip"
+                             data-i18n="edgeClip"
+                         >
+                             Edge Clip
+                         </button>
+                         <button
+                             class="tool-btn"
+                             data-tool="paint"
+                             data-i18n="paint"
+                         >
+                             Paint
+                         </button>
+                     </div>
 
                     <h3 data-i18n="glassProperties">Glass Properties</h3>
                     <div class="properties">
@@ -138,40 +145,133 @@
                                 <option value="12">12</option>
                                 <option value="custom">Custom...</option>
                             </select>
-                            <input
-                                type="number"
-                                id="glass-thickness"
-                                value="6"
-                                step="0.1"
-                                min="0"
-                                style="
-                                    width: 100%;
-                                    padding: 0.5rem;
-                                    border: 1px solid #cbd5e1;
-                                    border-radius: 4px;
-                                    margin-top: 0.25rem;
-                                    display: none;
-                                "
-                            />
-                        </label>
-                    </div>
+                             <input
+                                 type="number"
+                                 id="glass-thickness"
+                                 value="6"
+                                 step="0.1"
+                                 min="0"
+                                 style="
+                                     width: 100%;
+                                     padding: 0.5rem;
+                                     border: 1px solid #cbd5e1;
+                                     border-radius: 4px;
+                                     margin-top: 0.25rem;
+                                     display: none;
+                                 "
+                             />
+                         </label>
+                         <label>
+                             <span data-i18n="glassType">Glass Type</span>:
+                              <select
+                                  id="glass-type"
+                                  style="
+                                      width: 100%;
+                                      padding: 0.5rem;
+                                      border: 1px solid #cbd5e1;
+                                      border-radius: 4px;
+                                      margin-top: 0.25rem;
+                                  "
+                              >
+                                  <option value="clear" selected>Clear</option>
+                                  <option value="mirror">Mirror</option>
+                                  <option value="gray">Gray</option>
+                                  <option value="tinted">Tinted</option>
+                                  <option value="frosted">Frosted</option>
+                              </select>
+                          </label>
+                          <label style="display: block; margin-top: 1rem;">
+                              <input
+                                  type="checkbox"
+                                  id="glass-cpb"
+                                  style="margin-right: 0.5rem;"
+                              />
+                              <span data-i18n="cpb">CPB (Canto Pulido)</span>
+                          </label>
+                      </div>
 
-                    <div id="holes-section">
-                        <h3 data-i18n="holesList">Holes List</h3>
-                        <div id="holes-list" class="holes-list">
-                            <p
-                                style="
-                                    color: #64748b;
-                                    font-size: 0.875rem;
-                                    font-style: italic;
-                                "
-                                data-i18n="noHoles"
-                            >
-                                No holes yet. Click on canvas to add.
-                            </p>
-                        </div>
-                    </div>
-                </aside>
+                      <div id="holes-section">
+                         <h3 data-i18n="holesList">Holes List</h3>
+                         <div id="holes-list" class="holes-list">
+                             <p
+                                 style="
+                                     color: #64748b;
+                                     font-size: 0.875rem;
+                                     font-style: italic;
+                                 "
+                                 data-i18n="noHoles"
+                             >
+                                 No holes yet. Click on canvas to add.
+                             </p>
+                         </div>
+                     </div>
+
+                      <div id="paint-section">
+                          <h3 data-i18n="paintOptions">Paint Options</h3>
+                          <div class="paint-controls">
+                              <label style="display: block; margin-bottom: 0.5rem;">
+                                  <span style="font-size: 0.875rem; color: #374151;">Paint Color:</span>
+                                  <select
+                                      id="paint-color"
+                                      style="
+                                          width: 100%;
+                                          padding: 0.5rem;
+                                          border: 1px solid #cbd5e1;
+                                          border-radius: 4px;
+                                          margin-top: 0.25rem;
+                                      "
+                                  >
+                                      <option value="#8B4513" selected>Brown</option>
+                                      <option value="#000000">Black</option>
+                                      <option value="#FFFFFF">White</option>
+                                      <option value="#FF0000">Red</option>
+                                      <option value="#00FF00">Green</option>
+                                      <option value="#0000FF">Blue</option>
+                                      <option value="#FFFF00">Yellow</option>
+                                  </select>
+                              </label>
+                              <button
+                                  id="btn-paint-whole"
+                                  class="btn btn-outline"
+                                  style="width: 100%; margin-bottom: 0.5rem;"
+                                  data-i18n="paintWholeGlass"
+                              >
+                                  Paint Whole Glass
+                              </button>
+                              <button
+                                  id="btn-clear-paint"
+                                  class="btn btn-outline"
+                                  style="width: 100%; margin-bottom: 1rem;"
+                                  data-i18n="clearPaint"
+                              >
+                                  Clear Paint
+                              </button>
+                             <p
+                                 style="
+                                     color: #64748b;
+                                     font-size: 0.875rem;
+                                     font-style: italic;
+                                     margin: 0;
+                                 "
+                                 data-i18n="paintInstructions"
+                             >
+                                 Select Paint tool and click/drag to paint areas
+                             </p>
+                         </div>
+                         <div id="paint-areas-list" class="paint-areas-list" style="margin-top: 1rem;">
+                             <p
+                                 style="
+                                     color: #64748b;
+                                     font-size: 0.875rem;
+                                     font-style: italic;
+                                 "
+                                 data-i18n="noPaintAreas"
+                             >
+                                 No painted areas yet.
+                             </p>
+                         </div>
+                     </div>
+                 </aside>
 
                 <div class="canvas-area">
                     <div class="canvas-toolbar">
