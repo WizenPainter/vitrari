@@ -511,6 +511,95 @@
                 }
             }
 
+            // Handle swipe gestures for mobile sidebar
+            let gesturesInitialized = false;
+            function setupMobileGestures() {
+                if (gesturesInitialized) return;
+                
+                const sidebar = document.querySelector(".sidebar");
+                if (!sidebar) return;
+
+                const header = sidebar.querySelector(".mobile-sidebar-header");
+                if (header) {
+                    // Make header sticky for better UX
+                    header.style.position = "sticky";
+                    header.style.top = "0";
+                    header.style.zIndex = "1001";
+                }
+                
+                // Prevent overscroll chaining
+                sidebar.style.overscrollBehavior = "contain";
+
+                let startY = 0;
+                let isDragging = false;
+                let startScrollTop = 0;
+
+                sidebar.addEventListener(
+                    "touchstart",
+                    (e) => {
+                        if (window.innerWidth > 768) return;
+                        if (!sidebar.classList.contains("mobile-open")) return;
+
+                        startY = e.touches[0].clientY;
+                        startScrollTop = sidebar.scrollTop;
+                        isDragging = false;
+                    },
+                    { passive: true },
+                );
+
+                sidebar.addEventListener(
+                    "touchmove",
+                    (e) => {
+                        if (window.innerWidth > 768) return;
+                        if (!sidebar.classList.contains("mobile-open")) return;
+
+                        const currentY = e.touches[0].clientY;
+                        const deltaY = currentY - startY;
+
+                        // Check if we should start dragging
+                        if (!isDragging) {
+                            // Only consider dragging if pulling down
+                            if (deltaY > 0) {
+                                const isHeader = header && header.contains(e.target);
+                                // Allow drag if on header OR content is at top
+                                if (isHeader || startScrollTop <= 0) {
+                                    isDragging = true;
+                                    sidebar.style.transition = "none";
+                                }
+                            }
+                        }
+
+                        if (isDragging && deltaY > 0) {
+                            sidebar.style.transform = `translateY(${deltaY}px)`;
+                        }
+                    },
+                    { passive: true },
+                );
+
+                sidebar.addEventListener(
+                    "touchend",
+                    (e) => {
+                        if (!isDragging) return;
+                        isDragging = false;
+                        sidebar.style.transition = "transform 0.3s ease";
+
+                        const deltaY = e.changedTouches[0].clientY - startY;
+                        const threshold = 100; // 100px threshold
+
+                        if (deltaY > threshold) {
+                            // Close sidebar
+                            toggleMobileSidebar();
+                        } else {
+                            // Revert position
+                            sidebar.style.transform = "translateY(0)";
+                        }
+                    },
+                    { passive: true },
+                );
+                
+                gesturesInitialized = true;
+            }
+
             // Initialize mobile sidebar state
             function initializeMobile() {
                 handleMobileView();
@@ -554,11 +643,13 @@
             window.addEventListener("load", () => {
                 initializeEnvironment();
                 initializeMobile();
+                setupMobileGestures();
             });
 
             // Initialize immediately
             initializeEnvironment();
             initializeMobile();
+            setupMobileGestures();
 
             // User menu functions
             function toggleUserMenu() {
