@@ -520,12 +520,6 @@
                 if (!sidebar) return;
 
                 const header = sidebar.querySelector(".mobile-sidebar-header");
-                if (header) {
-                    // Make header sticky for better UX
-                    header.style.position = "sticky";
-                    header.style.top = "0";
-                    header.style.zIndex = "1001";
-                }
                 
                 // Prevent overscroll chaining
                 sidebar.style.overscrollBehavior = "contain";

@@ -506,26 +506,30 @@
     /* Canvas toolbar - compact mobile version */
     .canvas-toolbar {
         order: 2 !important;
-        padding: 0.75rem !important;
+        padding: 0.5rem !important;
         background: var(--surface) !important;
         border-top: 1px solid var(--border) !important;
         border-bottom: 1px solid var(--border) !important;
-        display: flex !important;
-        flex-wrap: wrap !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.5rem !important;
-        justify-content: space-between !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        overflow-x: hidden !important;
     }
 
     .canvas-toolbar .btn {
         min-height: 44px !important;
-        padding: 0.5rem 0.75rem !important;
-        font-size: 0.8rem !important;
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        min-width: 80px !important;
+        height: auto !important;
+        padding: 0.5rem !important;
+        font-size: 0.75rem !important;
+        white-space: normal !important;
+        min-width: 0 !important;
         border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        line-height: 1.2 !important;
+        width: 100% !important;
     }
 
     /* Sidebar becomes slide-up bottom panel */

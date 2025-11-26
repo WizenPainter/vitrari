@@ -930,22 +930,24 @@
                 // Clear canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Apply transformations
-                ctx.save();
-                ctx.translate(canvasState.panX, canvasState.panY);
-                ctx.scale(canvasState.zoom, canvasState.zoom);
-
-                // Calculate scale to fit sheet in canvas
+                // Calculate scale to fit sheet to fill the entire canvas
                 const sheetWidth = layout.sheet_width;
                 const sheetHeight = layout.sheet_height;
-                const padding = 50;
 
-                const scaleX = (canvas.width - padding * 2) / sheetWidth;
-                const scaleY = (canvas.height - padding * 2) / sheetHeight;
-                const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 1:1
+                const scaleX = canvas.width / sheetWidth;
+                const scaleY = canvas.height / sheetHeight;
+                const scale = Math.min(scaleX, scaleY);
 
+                // Center the sheet if it doesn't fill the entire canvas
+                const scaledSheetWidth = sheetWidth * scale;
+                const scaledSheetHeight = sheetHeight * scale;
+                const offsetX = (canvas.width - scaledSheetWidth) / 2;
+                const offsetY = (canvas.height - scaledSheetHeight) / 2;
+
+                // Apply transformations - no pan or zoom, just fit to canvas
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
                 ctx.scale(scale, scale);
-                ctx.translate(padding / scale, padding / scale);
 
                 // Draw sheet background
                 ctx.fillStyle = "#ffffff";
@@ -1065,135 +1067,35 @@
             function setupCanvasInteractions() {
                 const canvas = document.getElementById("layout-canvas");
 
-                // Mouse events for panning
-                canvas.addEventListener("mousedown", (e) => {
-                    canvasState.isDragging = true;
-                    canvasState.lastMouseX = e.clientX;
-                    canvasState.lastMouseY = e.clientY;
-                });
-
+                // Panning is disabled - sheet fills the entire canvas
                 canvas.addEventListener("mousemove", (e) => {
-                    if (canvasState.isDragging) {
-                        const deltaX = e.clientX - canvasState.lastMouseX;
-                        const deltaY = e.clientY - canvasState.lastMouseY;
-
-                        canvasState.panX += deltaX;
-                        canvasState.panY += deltaY;
-
-                        canvasState.lastMouseX = e.clientX;
-                        canvasState.lastMouseY = e.clientY;
-
-                        drawLayout();
-                    } else {
-                        // Show tooltip on hover
-                        showPieceTooltip(e);
-                    }
-                });
-
-                canvas.addEventListener("mouseup", () => {
-                    canvasState.isDragging = false;
+                    // Show tooltip on hover only
+                    showPieceTooltip(e);
                 });
 
                 canvas.addEventListener("mouseleave", () => {
-                    canvasState.isDragging = false;
                     hideTooltip();
                 });
 
-                // Touch events for mobile
-                canvas.addEventListener("touchstart", (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    canvasState.isDragging = true;
-                    canvasState.lastMouseX = touch.clientX;
-                    canvasState.lastMouseY = touch.clientY;
-                });
+                // Touch events are disabled - sheet fills the entire canvas
+                // Panning is not allowed
 
-                canvas.addEventListener("touchmove", (e) => {
-                    e.preventDefault();
-                    if (canvasState.isDragging && e.touches.length === 1) {
-                        const touch = e.touches[0];
-                        const deltaX = touch.clientX - canvasState.lastMouseX;
-                        const deltaY = touch.clientY - canvasState.lastMouseY;
+                // Pinch zoom for mobile is disabled - sheet is already properly scaled
 
-                        canvasState.panX += deltaX;
-                        canvasState.panY += deltaY;
-
-                        canvasState.lastMouseX = touch.clientX;
-                        canvasState.lastMouseY = touch.clientY;
-
-                        drawLayout();
-                    }
-                });
-
-                canvas.addEventListener("touchend", (e) => {
-                    e.preventDefault();
-                    canvasState.isDragging = false;
-                });
-
-                // Pinch zoom for mobile
-                let lastPinchDistance = 0;
-                canvas.addEventListener("touchstart", (e) => {
-                    if (e.touches.length === 2) {
-                        const touch1 = e.touches[0];
-                        const touch2 = e.touches[1];
-                        lastPinchDistance = Math.sqrt(
-                            Math.pow(touch2.clientX - touch1.clientX, 2) +
-                                Math.pow(touch2.clientY - touch1.clientY, 2),
-                        );
-                    }
-                });
-
-                canvas.addEventListener("touchmove", (e) => {
-                    if (e.touches.length === 2) {
-                        e.preventDefault();
-                        const touch1 = e.touches[0];
-                        const touch2 = e.touches[1];
-                        const currentDistance = Math.sqrt(
-                            Math.pow(touch2.clientX - touch1.clientX, 2) +
-                                Math.pow(touch2.clientY - touch1.clientY, 2),
-                        );
-
-                        if (lastPinchDistance > 0) {
-                            const zoomFactor =
-                                currentDistance / lastPinchDistance;
-                            canvasState.zoom = Math.max(
-                                0.1,
-                                Math.min(5, canvasState.zoom * zoomFactor),
-                            );
-                            drawLayout();
-                        }
-                        lastPinchDistance = currentDistance;
-                    }
-                });
-
-                // Zoom with mouse wheel
+                // Zoom with mouse wheel is disabled - canvas is displayed at optimal size
                 canvas.addEventListener("wheel", (e) => {
                     e.preventDefault();
-                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-                    canvasState.zoom = Math.max(
-                        0.1,
-                        Math.min(5, canvasState.zoom * zoomFactor),
-                    );
-                    drawLayout();
+                    // Zoom disabled - sheet is already properly scaled
                 });
 
                 // Control buttons
-                document
-                    .getElementById("zoom-in")
-                    .addEventListener("click", () => {
-                        canvasState.zoom = Math.min(5, canvasState.zoom * 1.2);
-                        drawLayout();
-                    });
-
-                document
-                    .getElementById("zoom-out")
-                    .addEventListener("click", () => {
-                        canvasState.zoom = Math.max(
-                            0.1,
-                            canvasState.zoom / 1.2,
-                        );
-                        drawLayout();
-                    });
+                // Zoom controls are hidden - users see the sheet at optimal size by default
+                const zoomInBtn = document.getElementById("zoom-in");
+                const zoomOutBtn = document.getElementById("zoom-out");
+                if (zoomInBtn) zoomInBtn.style.display = "none";
+                if (zoomOutBtn) zoomOutBtn.style.display = "none";
+                const zoomLevelDisplay = document.getElementById("zoom-level");
+                if (zoomLevelDisplay) zoomLevelDisplay.style.display = "none";
 
                 document
                     .getElementById("fit-to-view")
@@ -1215,38 +1117,20 @@
 
             function fitToView() {
                 if (!optimizationResult) return;
-
-                const canvas = document.getElementById("layout-canvas");
-                const layout = optimizationResult.layout;
-
-                const padding = 50;
-                const scaleX =
-                    (canvas.width - padding * 2) / layout.sheet_width;
-                const scaleY =
-                    (canvas.height - padding * 2) / layout.sheet_height;
-                const optimalScale = Math.min(scaleX, scaleY, 1);
-
-                canvasState.zoom = optimalScale;
-                canvasState.panX = 0;
-                canvasState.panY = 0;
-
+                // Sheet is always fitted to view - nothing to do
                 drawLayout();
             }
 
             function showPieceTooltip(e) {
-                if (!optimizationResult || canvasState.isDragging) return;
+                if (!optimizationResult) return;
 
                 const canvas = document.getElementById("layout-canvas");
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
-                // Transform mouse coordinates to canvas coordinates
-                const canvasX = (x - canvasState.panX) / canvasState.zoom;
-                const canvasY = (y - canvasState.panY) / canvasState.zoom;
-
                 // Find piece under mouse
-                const hoveredPiece = findPieceAt(canvasX, canvasY);
+                const hoveredPiece = findPieceAt(x, y);
 
                 if (hoveredPiece) {
                     const tooltip = document.getElementById("piece-tooltip");
@@ -1273,16 +1157,22 @@
 
                 // Calculate scale factors (same as in drawLayout)
                 const canvas = document.getElementById("layout-canvas");
-                const padding = 50;
-                const scaleX =
-                    (canvas.width - padding * 2) / layout.sheet_width;
-                const scaleY =
-                    (canvas.height - padding * 2) / layout.sheet_height;
-                const scale = Math.min(scaleX, scaleY, 1);
+                const sheetWidth = layout.sheet_width;
+                const sheetHeight = layout.sheet_height;
 
-                // Adjust coordinates for scale and padding
-                const adjustedX = x / scale - padding / scale;
-                const adjustedY = y / scale - padding / scale;
+                const scaleX = canvas.width / sheetWidth;
+                const scaleY = canvas.height / sheetHeight;
+                const scale = Math.min(scaleX, scaleY);
+
+                // Calculate offset (same as in drawLayout)
+                const scaledSheetWidth = sheetWidth * scale;
+                const scaledSheetHeight = sheetHeight * scale;
+                const offsetX = (canvas.width - scaledSheetWidth) / 2;
+                const offsetY = (canvas.height - scaledSheetHeight) / 2;
+
+                // Adjust coordinates for scale and offset
+                const adjustedX = (x - offsetX) / scale;
+                const adjustedY = (y - offsetY) / scale;
 
                 // Check each piece (reverse order for top-most)
                 for (let i = layout.pieces.length - 1; i >= 0; i--) {
