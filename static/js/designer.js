@@ -572,15 +572,18 @@ class GlassDesigner {
         const t = window.i18n ? window.i18n.t : (key) => key;
 
         // Build common herraje selection HTML
-        const herrajes_herraje_id = hole.herrajes_herraje_id || "";
-        const herraje_html = `
-                            <label>
-                                ${t("hardware")} (Herraje):
-                                <select onchange="designer.updateHoleProperty(${index}, 'herrajes_herraje_id', this.value)">
-                                    <option value="">-- Select Hardware --</option>
-                                </select>
-                            </label>
-                        `;
+          const herrajes_herraje_id = hole.herrajes_herraje_id || "";
+          const herraje_html = `
+                              <label>
+                                  ${t("hardware")}:
+                                  <select id="herraje-select-${index}" onchange="designer.updateHoleProperty(${index}, 'herrajes_herraje_id', this.value)">
+                                      <option value="">-- ${t("selectHardware")} --</option>
+                                  </select>
+                              </label>
+                              <div id="herraje-preview-${index}" style="margin-top: 0.5rem; display: none; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.5rem; background: #f8fafc;">
+                                  <img id="herraje-img-${index}" style="width: 100%; height: 60px; object-fit: contain; border-radius: 2px;">
+                              </div>
+                          `;
 
         if (hole.shape === "clip") {
           return `
@@ -734,8 +737,8 @@ class GlassDesigner {
   }
 
   /**
-   * Validate hardware compatibility with hole size
-   */
+    * Validate hardware compatibility with hole size and insertion depth
+    */
   async validateHardwareCompatibility(holeIndex, herrajeId) {
     try {
       const response = await fetch(`/api/herrajes/${herrajeId}`);
@@ -749,15 +752,28 @@ class GlassDesigner {
       const holeDiameter = hole.diameter || hole.holeDiameter || 0;
       const herrajeHoleSize = herraje.hole_size;
       
-      // Check tolerance (allow ±1mm)
+      // Check hole size tolerance (allow ±1mm)
       const tolerance = 1;
-      const isCompatible = Math.abs(holeDiameter - herrajeHoleSize) <= tolerance;
+      const isSizeCompatible = Math.abs(holeDiameter - herrajeHoleSize) <= tolerance;
       
-      if (!isCompatible) {
+      // Check insertion depth against glass thickness
+      const glassThickness = this.glass.thickness;
+      const insertionDepth = herraje.specs?.insertion_depth || 0;
+      const isDepthCompatible = insertionDepth <= glassThickness;
+      
+      if (!isSizeCompatible) {
         const message = `Hardware requires ${herrajeHoleSize}mm hole, but this hole is ${holeDiameter}mm. Difference: ${Math.abs(holeDiameter - herrajeHoleSize).toFixed(1)}mm`;
         
         // Show warning modal
         this.showHardwareWarningModal(message, herraje, hole, holeIndex);
+        return false;
+      }
+      
+      if (!isDepthCompatible) {
+        const message = `Hardware insertion depth (${insertionDepth}mm) exceeds glass thickness (${glassThickness}mm). Hardware will not fit properly.`;
+        
+        // Show warning modal
+        this.showHardwareDepthWarningModal(message, herraje, hole, holeIndex);
         return false;
       }
       
@@ -807,6 +823,42 @@ class GlassDesigner {
   }
 
   /**
+   * Show warning when hardware insertion depth exceeds glass thickness
+   */
+  showHardwareDepthWarningModal(message, herraje, hole, holeIndex) {
+    const modal = document.createElement('div');
+    modal.className = 'hardware-depth-warning-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5000;
+    `;
+    
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 500px; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #dc2626;">Hardware Insertion Depth Warning</h3>
+        <p style="color: #4b5563; line-height: 1.6;">${message}</p>
+        <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.875rem;">
+          <strong>⚠️ Warning:</strong> This hardware will not fit properly in the glass at this thickness. Consider using thicker glass or a different hardware piece.
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button class="btn btn-outline" onclick="this.closest('.hardware-depth-warning-modal').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="designer.assignHardwareForced(${holeIndex}, ${herraje.id}); this.closest('.hardware-depth-warning-modal').remove();">Assign Anyway</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+
+  /**
    * Assign hardware even with size mismatch
    */
   assignHardwareForced(holeIndex, herrajeId) {
@@ -840,7 +892,9 @@ class GlassDesigner {
       overflow-y: auto;
     `;
     
+    const t = window.i18n ? window.i18n.t : (key) => key;
     const specs = herraje.specs || {};
+    
     const detailsHtml = `
       <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; box-shadow: 0 20px 25px rgba(0,0,0,0.15); margin: 2rem 0;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
@@ -854,57 +908,72 @@ class GlassDesigner {
         ${herraje.picture_url ? `<img src="${herraje.picture_url}" alt="${herraje.name}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 1.5rem;">` : ''}
         
         <div style="background: #f1f5f9; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
-          <p style="margin: 0; color: #475569;">${herraje.description || 'No description available'}</p>
+          <p style="margin: 0; color: #475569;">${herraje.description || t('loading')}</p>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Hole Size</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('holeSize')}</label>
             <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.hole_size}mm</p>
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Category</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('category')}</label>
             <p style="margin: 0; font-weight: 600; color: #1e293b; text-transform: capitalize;">${herraje.category || 'N/A'}</p>
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Material</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('material')}</label>
             <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.material}</p>
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Max Load</label>
-            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.max_load} kg</p>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('finish')}</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.finish || 'N/A'}</p>
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Glass Thickness Range</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('maxLoad')}</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.max_load} ${t('maxLoadUnit')}</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('glassThicknessRange')}</label>
             <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.min_thickness}-${herraje.max_thickness}mm</p>
           </div>
           <div>
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Hole Pattern</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('holePattern')}</label>
             <p style="margin: 0; font-weight: 600; color: #1e293b; text-transform: capitalize;">${herraje.hole_pattern || 'N/A'}</p>
           </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">${t('positions')}</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.positions || 1}</p>
+          </div>
+          ${herraje.specs && herraje.specs.insertion_depth ? `
+          <div style="background: #dbeafe; border-left: 4px solid #0284c7; padding: 0.75rem; border-radius: 4px; grid-column: 1 / -1;">
+           <label style="display: block; font-size: 0.875rem; color: #0369a1; margin-bottom: 0.25rem; font-weight: 600;">${t('insertionDepth')}</label>
+           <p style="margin: 0; font-weight: 600; color: #0369a1;">${herraje.specs.insertion_depth}mm into glass</p>
+           ${herraje.min_thickness && herraje.max_thickness ? `<p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: #0369a1;">Glass range: ${herraje.min_thickness}-${herraje.max_thickness}mm</p>` : ''}
+          </div>
+          ` : ''}
         </div>
 
         ${herraje.countersink_size ? `
           <div style="background: #e0f2fe; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
-            <p style="margin: 0.5rem 0 0; color: #0369a1;"><strong>Countersink:</strong> ${herraje.countersink_size}mm (${herraje.countersink_type || 'standard'})</p>
+            <p style="margin: 0.5rem 0 0; color: #0369a1;"><strong>${t('avellanado')}:</strong> ${herraje.countersink_size}mm (${herraje.countersink_type || 'standard'})</p>
           </div>
         ` : ''}
         
         ${specs.installation ? `
           <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; font-weight: 600;">Installation</label>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; font-weight: 600;">${t('installation')}</label>
             <p style="margin: 0; color: #475569; text-transform: capitalize;">${specs.installation}</p>
           </div>
         ` : ''}
         
         ${specs.safety_notes ? `
           <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
-            <p style="margin: 0.5rem 0 0; color: #991b1b;"><strong>Safety:</strong> ${specs.safety_notes}</p>
+            <p style="margin: 0.5rem 0 0; color: #991b1b;"><strong>${t('notasSeguridad')}:</strong> ${specs.safety_notes}</p>
           </div>
         ` : ''}
         
         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-          <button class="btn btn-outline" onclick="this.closest('.hardware-details-modal').remove()">Close</button>
+          <button class="btn btn-outline" onclick="this.closest('.hardware-details-modal').remove()">${t('closeModal')}</button>
         </div>
       </div>
     `;
@@ -940,10 +1009,19 @@ class GlassDesigner {
       }
       const data = await response.json();
       const herrajes = data.herrajes || [];
+      
+      // Debug logging
+      console.log("populateHerrajes: Found", herrajes.length, "herrajes");
 
       // Update all herraje selects
-      document.querySelectorAll('select[onchange*="herrajes_herraje_id"]').forEach((select) => {
+      const selects = document.querySelectorAll('select[id^="herraje-select-"]');
+      console.log("populateHerrajes: Found", selects.length, "select elements");
+      
+      selects.forEach((select) => {
         const currentValue = select.value;
+        const holeIndex = select.id.replace('herraje-select-', '');
+        
+        console.log(`populateHerrajes: Processing select #${holeIndex}`);
         
         // Clear existing options except the first one
         while (select.options.length > 1) {
@@ -958,16 +1036,45 @@ class GlassDesigner {
           if (herraje.material) {
             option.textContent += ` (${herraje.material})`;
           }
+          option.dataset.picture = herraje.picture_url || '';
           select.appendChild(option);
         });
 
         // Restore selected value if it existed
         if (currentValue) {
           select.value = currentValue;
+          this.updateHerrrajePreview(holeIndex, currentValue);
         }
       });
     } catch (error) {
       console.error("Error loading herrajes:", error);
+    }
+  }
+
+  /**
+   * Update herraje preview image
+   */
+  updateHerrrajePreview(holeIndex, herrajeId) {
+    const imgElement = document.getElementById(`herraje-img-${holeIndex}`);
+    const previewDiv = document.getElementById(`herraje-preview-${holeIndex}`);
+    const selectElement = document.getElementById(`herraje-select-${holeIndex}`);
+
+    if (!herrajeId || !selectElement) return;
+
+    const selectedOption = selectElement.querySelector(`option[value="${herrajeId}"]`);
+    if (selectedOption && selectedOption.dataset.picture) {
+      const pictureUrl = selectedOption.dataset.picture;
+      if (pictureUrl && imgElement && previewDiv) {
+        imgElement.src = pictureUrl;
+        imgElement.onerror = () => {
+          previewDiv.style.display = 'none';
+        };
+        imgElement.onload = () => {
+          previewDiv.style.display = 'block';
+        };
+      }
+    } else if (previewDiv) {
+      previewDiv.style.display = 'none';
     }
   }
 
@@ -982,7 +1089,10 @@ class GlassDesigner {
       const herrajeId = value ? parseInt(value) : null;
       
       if (herrajeId) {
-        // Validate hole size compatibility
+        // Update preview immediately
+        this.updateHerrrajePreview(index, herrajeId);
+        
+        // Validate hole size and depth compatibility
         this.validateHardwareCompatibility(index, herrajeId).then(isCompatible => {
           if (isCompatible) {
             hole.herrajes_herraje_id = herrajeId;
@@ -991,6 +1101,7 @@ class GlassDesigner {
         });
       } else {
         hole.herrajes_herraje_id = null;
+        this.updateHerrrajePreview(index, null);
         this.renderHolesList();
       }
       return;

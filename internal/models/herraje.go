@@ -64,6 +64,7 @@ type HerrajeSpecs struct {
 	Installation        string  `json:"installation"`            // Installation location (interior, exterior)
 	Waterproof          bool    `json:"waterproof"`              // Waterproof capability
 	LoadPerHole         float64 `json:"load_per_hole"`           // Load capacity per hole in kg
+	InsertionDepth      float64 `json:"insertion_depth"`         // How far into the glass the hardware penetrates (mm)
 	Quantity            string  `json:"quantity"`                // Default quantity (e.g., "1pz", "1 set")
 	Compatibility       []string `json:"compatibility"`          // Compatible models
 	RelatedParts        []string `json:"related_parts"`          // Related part codes

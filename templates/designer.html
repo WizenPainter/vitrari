@@ -316,7 +316,7 @@
                        <canvas id="design-canvas" style="flex: 1;"></canvas>
                        <div class="right-sidebar" style="width: 300px; overflow-y: auto; border-left: 1px solid var(--border); padding: 1rem; background: var(--surface);">
                            <div id="herrajes-section-right">
-                               <h3 data-i18n="hardware" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0;">
+                               <h3 data-i18n="hardware" id="herrajes-header-right" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0; cursor: pointer;">
                                    Hardware
                                    <button id="herrajes-toggle-right" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0;">
                                        ▼
@@ -500,8 +500,8 @@
         <script src="/static/js/i18n.js"></script>
         <script src="/static/js/mobile.js"></script>
         <script src="/static/js/app.js"></script>
-        <script src="/static/js/designer.js"></script>
         <script src="/static/js/herrajes.js"></script>
+        <script src="/static/js/designer.js"></script>
         <script>
             // Check production environment and hide/show elements accordingly
             function initializeEnvironment() {

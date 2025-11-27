@@ -2434,14 +2434,30 @@ func (s *SQLiteStorage) CreateHerraje(herraje *models.Herraje) error {
 func (s *SQLiteStorage) GetHerraje(id int) (*models.Herraje, error) {
 	herraje := &models.Herraje{}
 	var active int
+	var countersinkSize sql.NullFloat64
+	var countersinkType sql.NullString
+	var pictureURL sql.NullString
+	var specsData sql.NullString
 
 	err := s.db.QueryRow(`
 		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
 		FROM herrajes
 		WHERE id = ? AND active = 1
-	`, id).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+	`, id).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &countersinkSize, &countersinkType, &herraje.HolePattern, &herraje.Positions, &pictureURL, &specsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
 
 	herraje.Active = active != 0
+	if countersinkSize.Valid {
+		herraje.CountersinkSize = countersinkSize.Float64
+	}
+	if countersinkType.Valid {
+		herraje.CountersinkType = countersinkType.String
+	}
+	if pictureURL.Valid {
+		herraje.PictureURL = pictureURL.String
+	}
+	if specsData.Valid {
+		herraje.SpecsData = specsData.String
+	}
 
 	if err == sql.ErrNoRows {
 		return nil, models.NewNotFoundError("herraje not found")
@@ -2511,9 +2527,26 @@ func (s *SQLiteStorage) GetHerrajes(limit, offset int) ([]models.Herraje, int, e
 	for rows.Next() {
 		herraje := models.Herraje{}
 		var active int
-		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+		var countersinkSize sql.NullFloat64
+		var countersinkType sql.NullString
+		var pictureURL sql.NullString
+		var specsData sql.NullString
+		
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &countersinkSize, &countersinkType, &herraje.HolePattern, &herraje.Positions, &pictureURL, &specsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
 
 		herraje.Active = active != 0
+		if countersinkSize.Valid {
+			herraje.CountersinkSize = countersinkSize.Float64
+		}
+		if countersinkType.Valid {
+			herraje.CountersinkType = countersinkType.String
+		}
+		if pictureURL.Valid {
+			herraje.PictureURL = pictureURL.String
+		}
+		if specsData.Valid {
+			herraje.SpecsData = specsData.String
+		}
 
 		if err != nil {
 			s.logger.Error("Failed to scan herraje", "error", err)
@@ -2534,14 +2567,30 @@ func (s *SQLiteStorage) GetHerrajes(limit, offset int) ([]models.Herraje, int, e
 func (s *SQLiteStorage) GetHerrajeByCode(code string) (*models.Herraje, error) {
 	herraje := &models.Herraje{}
 	var active int
+	var countersinkSize sql.NullFloat64
+	var countersinkType sql.NullString
+	var pictureURL sql.NullString
+	var specsData sql.NullString
 
 	err := s.db.QueryRow(`
 		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
 		FROM herrajes
 		WHERE code = ? AND active = 1
-	`, code).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+	`, code).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &countersinkSize, &countersinkType, &herraje.HolePattern, &herraje.Positions, &pictureURL, &specsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
 
 	herraje.Active = active != 0
+	if countersinkSize.Valid {
+		herraje.CountersinkSize = countersinkSize.Float64
+	}
+	if countersinkType.Valid {
+		herraje.CountersinkType = countersinkType.String
+	}
+	if pictureURL.Valid {
+		herraje.PictureURL = pictureURL.String
+	}
+	if specsData.Valid {
+		herraje.SpecsData = specsData.String
+	}
 
 	if err == sql.ErrNoRows {
 		return nil, models.NewNotFoundError("herraje not found")
@@ -2594,9 +2643,26 @@ func (s *SQLiteStorage) GetHerrajesByCategory(category string, limit, offset int
 	for rows.Next() {
 		herraje := models.Herraje{}
 		var active int
-		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+		var countersinkSize sql.NullFloat64
+		var countersinkType sql.NullString
+		var pictureURL sql.NullString
+		var specsData sql.NullString
+		
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &countersinkSize, &countersinkType, &herraje.HolePattern, &herraje.Positions, &pictureURL, &specsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
 
 		herraje.Active = active != 0
+		if countersinkSize.Valid {
+			herraje.CountersinkSize = countersinkSize.Float64
+		}
+		if countersinkType.Valid {
+			herraje.CountersinkType = countersinkType.String
+		}
+		if pictureURL.Valid {
+			herraje.PictureURL = pictureURL.String
+		}
+		if specsData.Valid {
+			herraje.SpecsData = specsData.String
+		}
 
 		if err != nil {
 			s.logger.Error("Failed to scan herraje", "error", err)
@@ -2682,9 +2748,26 @@ func (s *SQLiteStorage) SearchHerrajes(query string, limit, offset int) ([]model
 	for rows.Next() {
 		herraje := models.Herraje{}
 		var active int
-		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+		var countersinkSize sql.NullFloat64
+		var countersinkType sql.NullString
+		var pictureURL sql.NullString
+		var specsData sql.NullString
+		
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &countersinkSize, &countersinkType, &herraje.HolePattern, &herraje.Positions, &pictureURL, &specsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
 
 		herraje.Active = active != 0
+		if countersinkSize.Valid {
+			herraje.CountersinkSize = countersinkSize.Float64
+		}
+		if countersinkType.Valid {
+			herraje.CountersinkType = countersinkType.String
+		}
+		if pictureURL.Valid {
+			herraje.PictureURL = pictureURL.String
+		}
+		if specsData.Valid {
+			herraje.SpecsData = specsData.String
+		}
 
 		if err != nil {
 			s.logger.Error("Failed to scan herraje", "error", err)

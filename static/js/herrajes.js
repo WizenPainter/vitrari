@@ -21,20 +21,35 @@ class HerrrajesManager {
   initializeUI() {
     // Try right sidebar first (preferred location)
     let toggleBtn = document.getElementById('herrajes-toggle-right');
+    let header = document.getElementById('herrajes-header-right');
     let content = document.getElementById('herrajes-content-right');
     
     // Fall back to left sidebar if right doesn't exist
-    if (!toggleBtn) {
+    if (!content) {
       toggleBtn = document.getElementById('herrajes-toggle');
+      header = document.getElementById('herrajes-header');
       content = document.getElementById('herrajes-content');
     }
     
-    if (toggleBtn && content) {
-      toggleBtn.addEventListener('click', () => {
+    if (content) {
+      const toggleContent = () => {
         const isHidden = content.style.display === 'none';
         content.style.display = isHidden ? 'block' : 'none';
-        toggleBtn.textContent = isHidden ? '▲' : '▼';
-      });
+        if (toggleBtn) {
+          toggleBtn.textContent = isHidden ? '▲' : '▼';
+        }
+      };
+      
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleContent();
+        });
+      }
+      
+      if (header) {
+        header.addEventListener('click', toggleContent);
+      }
     }
   }
 

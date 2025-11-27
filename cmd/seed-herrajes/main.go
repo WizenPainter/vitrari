@@ -1,268 +1,191 @@
 package main
 
 import (
-	"fmt"
-	"log/slog"
-	"os"
+	"database/sql"
+	"log"
+	"path/filepath"
 
-	"glass-optimizer/internal/models"
-	"glass-optimizer/internal/storage"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	// Initialize database
-	db, err := storage.InitializeDatabase("./database/glass_optimizer.db", logger)
+	dbPath := filepath.Join("database", "glass_optimizer.db")
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		logger.Error("Failed to initialize database", "error", err)
-		os.Exit(1)
+		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
 
-	store := storage.NewSQLiteStorage(db, logger)
-
-	// Seed herrajes from Herralum catalog (pages 175+)
-	herrajes := []models.Herraje{
-		// Araña 1214 - Spider with 4 feet
+	herrajes := []map[string]interface{}{
+		// Arañas Mérida
 		{
-			Code:            "1214000",
-			Name:            "Araña 1214 (4 patas)",
-			Description:     "Araña baby Mérida con portacostillas de 4 patas. Diseñada para instalación en interiores, con modulaciones de vidrio de 1.20 x 3.00m máximo. Incluye conectores a vidrio.",
-			Category:        models.CategorySpider,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         0,
-			MinThickness:    6,
-			MaxThickness:    9.5,
-			HoleSize:        8,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternGrid,
-			Positions:       4,
-			Notes:           "No usar limpiadores base cloro. Recomendable usar limpiador 138010100. Medidas en mm.",
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "6 a 9.5mm",
-				Installation:        "Interiores",
-				Quantity:            "1pz",
-			},
-			Variants: []models.HerrajeVariant{
-				{
-					Code:     "1214104",
-					Name:     "Araña 1214 AISI 304",
-					Material: "Acero inoxidable AISI 304",
-					Finish:   "Satinado",
-				},
-			},
+			"code":              "1214104",
+			"name":              "Araña 1214 AISI 304",
+			"description":       "Araña 1214 de acero inoxidable AISI 304. Para instalación en fachadas de cristal.",
+			"category":          "spider",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         8.0,
+			"countersink_size":  0.0,
+			"min_thickness":     6.0,
+			"max_thickness":     9.0,
+			"positions":         4,
+			"hole_pattern":      "grid",
+			"max_load":          150.0,
+			"notes":             "Múltiplo: 1pz. No usar limpiadores base cloro.",
 		},
-		// Araña 1213 - Spider with 2 feet
 		{
-			Code:            "1213000",
-			Name:            "Araña baby Mérida (2 patas)",
-			Description:     "Araña baby Mérida con portacostillas de 2 patas. Diseñada para instalación en interiores, con modulaciones de vidrio de 1.20 x 3.00m máximo. Incluye conectores a vidrio.",
-			Category:        models.CategorySpider,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         0,
-			MinThickness:    6,
-			MaxThickness:    9.5,
-			HoleSize:        8,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternPair,
-			Positions:       2,
-			Notes:           "No usar limpiadores base cloro. Recomendable usar limpiador 138010100.",
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "6 a 9.5mm",
-				Installation:        "Interiores",
-				Quantity:            "1pz",
-			},
-			Variants: []models.HerrajeVariant{
-				{
-					Code:     "1213102",
-					Name:     "Araña Mérida AISI 304",
-					Material: "Acero inoxidable AISI 304",
-					Finish:   "Satinado",
-				},
-			},
+			"code":              "1213102",
+			"name":              "Araña baby Mérida 2 patas AISI 304",
+			"description":       "Araña baby Mérida de 2 patas con portacostillas. Acero inoxidable AISI 304.",
+			"category":          "spider",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         8.0,
+			"countersink_size":  0.0,
+			"min_thickness":     6.0,
+			"max_thickness":     9.0,
+			"positions":         2,
+			"hole_pattern":      "pair",
+			"max_load":          100.0,
+			"notes":             "Para instalación en interiores. Modulaciones máximo 1.20 x 3.00m. Múltiplo: 1pz.",
 		},
-		// Araña Querétaro 1201 - 2 feet for exterior
 		{
-			Code:            "1201002",
-			Name:            "Araña Querétaro (2 patas)",
-			Description:     "Araña Querétaro de 2 patas con portacostilla para vidrio. Diseñada para instalación en exteriores. Soporta máximo 150Kg de peso. Compatible con rótulas 120305BSA y 1203ESTSA.",
-			Category:        models.CategorySpider,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         150,
-			MinThickness:    9.5,
-			MaxThickness:    19,
-			HoleSize:        10,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternPair,
-			Positions:       2,
-			Notes:           "No usar limpiadores base cloro. Recomendable usar limpiador 138010100. La araña puede separarse para instalarse a muro con 1 sola pata.",
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9.5 a 19mm",
-				Installation:        "Exteriores",
-				LoadPerHole:         75,
-				Quantity:            "1pz",
-				Compatibility:       []string{"1203", "120305BSA", "1203ESTSA"},
-			},
-			Variants: []models.HerrajeVariant{
-				{
-					Code:     "1201102",
-					Name:     "Araña Querétaro AISI 304",
-					Material: "Acero inoxidable AISI 304",
-					Finish:   "Satinado",
-				},
-			},
+			"code":              "1201102",
+			"name":              "Araña Querétaro 2 patas AISI 304",
+			"description":       "Araña Querétaro de 2 patas con portacostilla. Acero inoxidable AISI 304.",
+			"category":          "spider",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  0.0,
+			"min_thickness":     9.5,
+			"max_thickness":     19.0,
+			"positions":         2,
+			"hole_pattern":      "pair",
+			"max_load":          150.0,
+			"notes":             "Para instalación en exteriores. Compatible con rótulas 120305BSA y 1203ESTSA. Múltiplo: 1pz.",
 		},
-		// Araña Querétaro 1201 - 4 feet for exterior
 		{
-			Code:            "1201004",
-			Name:            "Araña Querétaro (4 patas)",
-			Description:     "Araña Querétaro de 4 patas con portacostilla para vidrio. Diseñada para instalación en exteriores. Compatible con rótulas 120305BSA y 1203ESTSA.",
-			Category:        models.CategorySpider,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         150,
-			MinThickness:    9.5,
-			MaxThickness:    19,
-			HoleSize:        10,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternGrid,
-			Positions:       4,
-			Notes:           "No usar limpiadores base cloro. La araña puede separarse para instalarse a muro con 2 patas.",
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9.5 a 19mm",
-				Installation:        "Exteriores",
-				Quantity:            "1pz",
-				Compatibility:       []string{"1203", "120305BSA", "1203ESTSA"},
-			},
-			Variants: []models.HerrajeVariant{
-				{
-					Code:     "1201104",
-					Name:     "Araña Querétaro 4p AISI 304",
-					Material: "Acero inoxidable AISI 304",
-					Finish:   "Satinado",
-				},
-			},
+			"code":              "1201104",
+			"name":              "Araña Querétaro 4 patas AISI 304",
+			"description":       "Araña Querétaro de 4 patas con portacostilla. Acero inoxidable AISI 304.",
+			"category":          "spider",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  0.0,
+			"min_thickness":     9.5,
+			"max_thickness":     19.0,
+			"positions":         4,
+			"hole_pattern":      "grid",
+			"max_load":          200.0,
+			"notes":             "Para instalación en exteriores. Compatible con rótulas 120305BSA y 1203ESTSA. Múltiplo: 1pz.",
 		},
-		// Araña Querétaro 1202 - para viga tubular
 		{
-			Code:            "1202001",
-			Name:            "Araña Querétaro para viga (1 pata)",
-			Description:     "Araña Querétaro de 1 pata para instalación a viga, tubular o tensor. Compatible con rótula 1203, soporte 2216, tensor 2217, base 2236 y tornillo 2237.",
-			Category:        models.CategorySpider,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         150,
-			MinThickness:    9.5,
-			MaxThickness:    19,
-			HoleSize:        10,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternSingle,
-			Positions:       1,
-			Notes:           "No usar limpiadores base cloro.",
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9.5 a 19mm",
-				Installation:        "Vigas tubulares",
-				Quantity:            "1pz",
-				Compatibility:       []string{"1203", "2216", "2217", "2236", "2237"},
-			},
+			"code":              "1202102",
+			"name":              "Araña Querétaro para viga 1 pata AISI 304",
+			"description":       "Araña Querétaro para viga de 1 pata. Acero inoxidable AISI 304.",
+			"category":          "spider",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  0.0,
+			"min_thickness":     9.5,
+			"max_thickness":     19.0,
+			"positions":         1,
+			"hole_pattern":      "single",
+			"max_load":          150.0,
+			"notes":             "Para instalación en exteriores, conectada a vigas. Múltiplo: 1pz.",
 		},
-		// Rótula 1203
+		// Soportes/Brackets
 		{
-			Code:            "1203000",
-			Name:            "Soporte con rótula 1203",
-			Description:     "Soporte con rótula para arañas Querétaro 1201, 1202, 1250 y 1251. Facilita el ajuste fácil de paneles.",
-			Category:        models.CategoryConnector,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         200,
-			MinThickness:    9.5,
-			MaxThickness:    19,
-			HoleSize:        10,
-			CountersinkSize: 0,
-			HolePattern:     models.PatternSingle,
-			Positions:       1,
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9.5 a 19mm",
-				Quantity:            "1pz",
-				RelatedParts:        []string{"1201", "1202", "1250", "1251"},
-			},
-			Variants: []models.HerrajeVariant{
-				{
-					Code:     "1203101",
-					Name:     "Rótula 1203 AISI 304",
-					Material: "Acero inoxidable AISI 304",
-					Finish:   "Satinado",
-				},
-			},
+			"code":              "1203104",
+			"name":              "Soporte con rótula 1203 AISI 304",
+			"description":       "Soporte con rótula de acero inoxidable AISI 304. Permite ajuste angular.",
+			"category":          "bracket",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  0.0,
+			"min_thickness":     9.5,
+			"max_thickness":     19.0,
+			"positions":         1,
+			"hole_pattern":      "single",
+			"max_load":          200.0,
+			"notes":             "Soporte estándar con capacidad de rotación. Múltiplo: 1pz.",
 		},
-		// Rótula 120305BSA - avellanada
 		{
-			Code:            "120305BSA",
-			Name:            "Soporte con rótula avellanada 120305BSA",
-			Description:     "Soporte con rótula avellanado para arañas Querétaro 1201, 1202, 1250 y 1251.",
-			Category:        models.CategoryConnector,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         200,
-			MinThickness:    9.5,
-			MaxThickness:    19,
-			HoleSize:        10,
-			CountersinkSize: 13,
-			CountersinkType: "cone",
-			HolePattern:     models.PatternSingle,
-			Positions:       1,
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9.5 a 19mm",
-				Quantity:            "1pz",
-				RelatedParts:        []string{"1201", "1202", "1250", "1251"},
-			},
+			"code":              "120305104",
+			"name":              "Soporte con rótula avellanada 120305 AISI 304",
+			"description":       "Soporte con rótula avellanada de acero inoxidable AISI 304. Incluye avellanado de 13mm.",
+			"category":          "bracket",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  13.0,
+			"countersink_type":  "cone",
+			"min_thickness":     9.5,
+			"max_thickness":     19.0,
+			"positions":         1,
+			"hole_pattern":      "single",
+			"max_load":          200.0,
+			"notes":             "Soporte con rótula y avellanado. Múltiplo: 1pz.",
 		},
-		// Soporte estándar 1203ESTSA
 		{
-			Code:            "1203ESTSA",
-			Name:            "Soporte estándar 1203ESTSA",
-			Description:     "Soporte estándar para arañas Querétaro. Requiere de perforación avellanada y permite que el cristal vaya más cerca del cuerpo de las arañas.",
-			Category:        models.CategoryBracket,
-			Material:        "Acero inoxidable AISI 316",
-			Finish:          "Satinado",
-			MaxLoad:         0,
-			MinThickness:    9,
-			MaxThickness:    24,
-			HoleSize:        10,
-			CountersinkSize: 13,
-			CountersinkType: "cone",
-			HolePattern:     models.PatternSingle,
-			Positions:       1,
-			Active:          true,
-			Specs: models.HerrajeSpecs{
-				GlassThicknessRange: "9 a 24mm",
-				Quantity:            "1pz",
-			},
+			"code":              "1203104ESTSA",
+			"name":              "Soporte estándar 1203 AISI 304",
+			"description":       "Soporte estándar de acero inoxidable AISI 304. Sin rótula.",
+			"category":          "bracket",
+			"material":          "Acero inoxidable AISI 304",
+			"finish":            "Satinado",
+			"hole_size":         10.0,
+			"countersink_size":  13.0,
+			"countersink_type":  "cone",
+			"min_thickness":     9.0,
+			"max_thickness":     24.0,
+			"positions":         1,
+			"hole_pattern":      "single",
+			"max_load":          250.0,
+			"notes":             "Soporte estándar fijo. Múltiplo: 1pz.",
 		},
 	}
 
-	fmt.Printf("Seeding %d herrajes...\n", len(herrajes))
+	for _, h := range herrajes {
+		// Check if already exists
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM herrajes WHERE code = ?", h["code"]).Scan(&count)
+		if err != nil {
+			log.Printf("Error checking herraje %s: %v", h["code"], err)
+			continue
+		}
 
-	for i, herraje := range herrajes {
-		herraje.Active = true
-		if err := store.CreateHerraje(&herraje); err != nil {
-			logger.Error("Failed to create herraje", "error", err, "code", herraje.Code)
-			fmt.Printf("[%d/%d] FAILED: %s (%s)\n", i+1, len(herrajes), herraje.Name, err)
+		if count > 0 {
+			log.Printf("Herraje %s already exists, skipping", h["code"])
+			continue
+		}
+
+		// Insert herraje
+		_, err = db.Exec(`
+			INSERT INTO herrajes (
+				code, name, description, category, material, finish,
+				hole_size, countersink_size, countersink_type,
+				min_thickness, max_thickness, positions, hole_pattern, max_load,
+				notes, active, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		`,
+			h["code"], h["name"], h["description"], h["category"], h["material"], h["finish"],
+			h["hole_size"], h["countersink_size"], h["countersink_type"],
+			h["min_thickness"], h["max_thickness"], h["positions"], h["hole_pattern"], h["max_load"],
+			h["notes"],
+		)
+
+		if err != nil {
+			log.Printf("Error inserting herraje %s: %v", h["code"], err)
 		} else {
-			fmt.Printf("[%d/%d] Created: %s (ID: %d)\n", i+1, len(herrajes), herraje.Name, herraje.ID)
+			log.Printf("Added herraje: %s - %s", h["code"], h["name"])
 		}
 	}
 
-	fmt.Println("\nHerrajesseed completed!")
+	log.Println("Herraje seeding completed")
 }

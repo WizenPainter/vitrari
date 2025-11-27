@@ -372,12 +372,24 @@ body {
     color: var(--text-secondary);
 }
 
-.hole-item-props input {
+.hole-item-props input,
+.hole-item-props select {
     padding: 0.375rem;
     border: 1px solid var(--border);
     border-radius: 4px;
     font-size: 0.875rem;
     width: 100%;
+    background-color: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    appearance: auto;
+    z-index: 100;
+    position: relative;
+}
+
+.hole-item-props select {
+    position: relative;
+    z-index: 100;
 }
 
 /* Canvas Area */
