@@ -345,6 +345,50 @@ func runMigrations(db *sql.DB, logger *slog.Logger) error {
 		CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 		CREATE INDEX IF NOT EXISTS idx_orders_due_date ON orders(due_date);
 		CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+
+		-- Create herrajes table if not exists
+		CREATE TABLE IF NOT EXISTS herrajes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			code TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			description TEXT,
+			category TEXT NOT NULL,
+			material TEXT NOT NULL,
+			finish TEXT,
+			max_load REAL DEFAULT 0,
+			min_thickness REAL NOT NULL,
+			max_thickness REAL NOT NULL,
+			hole_size REAL NOT NULL,
+			countersink_size REAL,
+			countersink_type TEXT,
+			hole_pattern TEXT,
+			positions INTEGER DEFAULT 1,
+			picture_url TEXT,
+			specs_data TEXT,
+			notes TEXT,
+			active INTEGER DEFAULT 1,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_herrajes_code ON herrajes(code);
+		CREATE INDEX IF NOT EXISTS idx_herrajes_category ON herrajes(category);
+		CREATE INDEX IF NOT EXISTS idx_herrajes_active ON herrajes(active);
+
+		-- Create herraje_variants table if not exists
+		CREATE TABLE IF NOT EXISTS herraje_variants (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			herraje_id INTEGER NOT NULL,
+			code TEXT NOT NULL UNIQUE,
+			name TEXT NOT NULL,
+			material TEXT NOT NULL,
+			finish TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (herraje_id) REFERENCES herrajes(id) ON DELETE CASCADE
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_herraje_variants_herraje_id ON herraje_variants(herraje_id);
+		CREATE INDEX IF NOT EXISTS idx_herraje_variants_code ON herraje_variants(code);
 	`)
 
 	if err != nil {

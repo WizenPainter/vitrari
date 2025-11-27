@@ -308,6 +308,40 @@ The application uses structured logging with configurable levels. Logs include:
 - SQLite suitable for single-user to small team usage
 - Can be extended to use PostgreSQL for larger deployments
 
+## Documentation
+
+### User Guides
+- **[DESIGNER_HARDWARE_GUIDE.md](./DESIGNER_HARDWARE_GUIDE.md)** - Complete guide to assigning hardware (herrajes) in the glass designer
+  - Step-by-step workflow examples
+  - Hardware compatibility information
+  - Best practices and troubleshooting
+
+### Technical Documentation
+- **[HERRAJES_UI_INTEGRATION.md](./HERRAJES_UI_INTEGRATION.md)** - Technical implementation details of the hardware catalog system
+  - Data model specifications
+  - API integration details
+  - Visual indicator system
+
+- **[HERRAJES_IMPLEMENTATION.md](./HERRAJES_IMPLEMENTATION.md)** - Complete hardware catalog system documentation
+  - Data structure and schema
+  - CRUD operations
+  - API endpoints reference
+
+- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Overview of the hardware UI integration
+  - Feature summary
+  - Code statistics
+  - Integration points
+
+### Visual Guides
+- **[FEATURE_SHOWCASE.md](./FEATURE_SHOWCASE.md)** - Visual walkthrough of hardware features
+  - Step-by-step workflows with diagrams
+  - UI element reference
+  - Real-world usage scenarios
+
+### Quick References
+- **[HERRAJES_QUICK_START.md](./HERRAJES_QUICK_START.md)** - Quick start guide for hardware catalog
+- **[COMPLETION_CHECKLIST.md](./COMPLETION_CHECKLIST.md)** - Feature completion status
+
 ## Contributing
 
 1. Fork the repository

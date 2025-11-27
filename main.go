@@ -44,6 +44,7 @@ func main() {
 	// Create handlers
 	projectHandler := handlers.NewProjectHandler(store, logger)
 	authHandler := handlers.NewAuthHandler(authService, logger)
+	herrajeHandler := handlers.NewHerrajeHandler(store, logger)
 
 	// Create middleware
 	authMiddleware := services.NewAuthMiddleware(authService, logger)
@@ -121,6 +122,17 @@ func main() {
 	})))
 
 	mux.Handle("/api/sheets", authMiddleware.RequireAuth(http.HandlerFunc(handleSheets)))
+
+	// Herraje routes (public read, admin write)
+	mux.HandleFunc("/api/herrajes/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/herrajes/") && r.URL.Path != "/api/herrajes/" {
+			// Single herraje endpoint (ID-based)
+			herrajeHandler.HandleHerrajeByID(w, r)
+		} else {
+			herrajeHandler.HandleHerrajes(w, r)
+		}
+	})
+	mux.HandleFunc("/api/herrajes", herrajeHandler.HandleHerrajes)
 
 	// Project routes (protected)
 	mux.Handle("/api/projects/", authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

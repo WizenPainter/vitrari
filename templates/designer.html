@@ -202,9 +202,53 @@
                          </div>
                      </div>
 
+                      <div id="herrajes-section">
+                          <h3 data-i18n="hardware" style="display: flex; justify-content: space-between; align-items: center;">
+                              Hardware
+                              <button id="herrajes-toggle" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0;">
+                                  ▼
+                              </button>
+                          </h3>
+                          <div id="herrajes-content" style="display: none;">
+                              <div class="herrajes-filters" style="margin-bottom: 1rem;">
+                                  <input 
+                                      type="text" 
+                                      id="herrajes-search" 
+                                      placeholder="Search hardware..." 
+                                      style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 0.5rem;"
+                                  />
+                                  <select 
+                                      id="herrajes-category-filter" 
+                                      style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                                  >
+                                      <option value="">All Categories</option>
+                                      <option value="spider">Spiders (Arañas)</option>
+                                      <option value="bracket">Brackets (Soportes)</option>
+                                      <option value="connector">Connectors</option>
+                                      <option value="adjuster">Adjusters</option>
+                                      <option value="pin">Pins</option>
+                                      <option value="washer">Washers (Rondanas)</option>
+                                      <option value="other">Other</option>
+                                  </select>
+                              </div>
+                              <div id="herrajes-list" class="herrajes-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.5rem;">
+                                  <p style="color: #64748b; font-size: 0.875rem; text-align: center; padding: 1rem;">
+                                      Loading hardware...
+                                  </p>
+                              </div>
+                              <button 
+                                  id="btn-clear-herrajes" 
+                                  class="btn btn-outline" 
+                                  style="width: 100%; margin-top: 0.5rem;"
+                              >
+                                  Clear All Hardware
+                              </button>
+                          </div>
+                      </div>
+
                       <div id="paint-section">
-                          <h3 data-i18n="paintOptions">Paint Options</h3>
-                          <div class="paint-controls">
+                             <h3 data-i18n="paintOptions">Paint Options</h3>
+                             <div class="paint-controls">
                                <label style="display: block; margin-bottom: 0.5rem;">
                                    <span style="font-size: 0.875rem; color: #374151;" data-i18n="paintColor">Paint Color</span>:
                                    <select
@@ -264,75 +308,122 @@
                  </aside>
 
                 <div class="canvas-area">
-                    <div class="canvas-toolbar">
-                        <button
-                            class="btn btn-primary"
-                            id="btn-save-to-project"
-                            data-i18n="save"
-                        >
-                            Save
-                        </button>
-                        <button
-                            class="btn btn-outline"
-                            id="btn-save-as"
-                            data-i18n="saveAs"
-                        >
-                            Save As
-                        </button>
-                        <button
-                            class="btn production-only desktop-only"
-                            id="btn-save"
-                            data-i18n="saveDesign"
-                        >
-                            Export to File
-                        </button>
-                        <button
-                            class="btn production-only desktop-only"
-                            id="btn-load"
-                            data-i18n="loadDesign"
-                        >
-                            Load Design
-                        </button>
-                        <button
-                            class="btn"
-                            id="btn-print"
-                            data-i18n="printDesign"
-                        >
-                            Print Design
-                        </button>
-                        <button class="btn" id="btn-clear" data-i18n="clearAll">
-                            Clear All
-                        </button>
-                    </div>
-                    <canvas id="design-canvas"></canvas>
-                    <div class="canvas-info">
-                        <p>
-                            <strong data-i18n="instructions"
-                                >Instructions:</strong
-                            >
-                        </p>
-                        <ul style="text-align: left; margin-top: 0.5rem">
-                            <li data-i18n="instruction1">
-                                Select a tool from the left sidebar
-                            </li>
-                            <li data-i18n="instruction2">
-                                Click and drag on the canvas to create holes
-                            </li>
-                            <li data-i18n="instruction3">
-                                Use the Select tool to move existing holes
-                            </li>
-                            <li data-i18n="instruction4">
-                                Edit hole properties in the sidebar when
-                                selected
-                            </li>
-                            <li data-i18n="instruction5">
-                                Press Delete key to remove selected hole
-                            </li>
-                            <li data-i18n="instruction6">
-                                Save your design to a JSON file for later use
-                            </li>
-                        </ul>
-                    </div>
+                   <div class="canvas-toolbar">
+                       <button
+                           class="btn btn-primary"
+                           id="btn-save-to-project"
+                           data-i18n="save"
+                       >
+                           Save
+                       </button>
+                       <button
+                           class="btn btn-outline"
+                           id="btn-save-as"
+                           data-i18n="saveAs"
+                       >
+                           Save As
+                       </button>
+                       <button
+                           class="btn production-only desktop-only"
+                           id="btn-save"
+                           data-i18n="saveDesign"
+                       >
+                           Export to File
+                       </button>
+                       <button
+                           class="btn production-only desktop-only"
+                           id="btn-load"
+                           data-i18n="loadDesign"
+                       >
+                           Load Design
+                       </button>
+                       <button
+                           class="btn"
+                           id="btn-print"
+                           data-i18n="printDesign"
+                       >
+                           Print Design
+                       </button>
+                       <button class="btn" id="btn-clear" data-i18n="clearAll">
+                           Clear All
+                       </button>
+                   </div>
+                   <div style="display: flex; gap: 1rem; flex: 1; min-height: 0;">
+                       <canvas id="design-canvas" style="flex: 1;"></canvas>
+                       <div class="right-sidebar" style="width: 300px; overflow-y: auto; border-left: 1px solid var(--border); padding: 1rem; background: var(--surface);">
+                           <div id="herrajes-section-right">
+                               <h3 data-i18n="hardware" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0;">
+                                   Hardware
+                                   <button id="herrajes-toggle-right" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0;">
+                                       ▼
+                                   </button>
+                               </h3>
+                               <div id="herrajes-content-right" style="display: none;">
+                                   <div class="herrajes-filters" style="margin-bottom: 1rem;">
+                                       <input 
+                                           type="text" 
+                                           id="herrajes-search-right" 
+                                           placeholder="Search hardware..." 
+                                           style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 0.5rem;"
+                                       />
+                                       <select 
+                                           id="herrajes-category-filter-right" 
+                                           style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                                       >
+                                           <option value="">All Categories</option>
+                                           <option value="spider">Spiders (Arañas)</option>
+                                           <option value="bracket">Brackets (Soportes)</option>
+                                           <option value="connector">Connectors</option>
+                                           <option value="adjuster">Adjusters</option>
+                                           <option value="pin">Pins</option>
+                                           <option value="washer">Washers (Rondanas)</option>
+                                           <option value="other">Other</option>
+                                       </select>
+                                   </div>
+                                   <div id="herrajes-list-right" class="herrajes-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.5rem;">
+                                       <p style="color: #64748b; font-size: 0.875rem; text-align: center; padding: 1rem;">
+                                           Loading hardware...
+                                       </p>
+                                   </div>
+                                   <button 
+                                       id="btn-clear-herrajes-right" 
+                                       class="btn btn-outline" 
+                                       style="width: 100%; margin-top: 0.5rem;"
+                                   >
+                                       Clear All Hardware
+                                   </button>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+                   <div class="canvas-info">
+                       <p>
+                           <strong data-i18n="instructions"
+                               >Instructions:</strong
+                           >
+                       </p>
+                       <ul style="text-align: left; margin-top: 0.5rem">
+                           <li data-i18n="instruction1">
+                               Select a tool from the left sidebar
+                           </li>
+                           <li data-i18n="instruction2">
+                               Click and drag on the canvas to create holes
+                           </li>
+                           <li data-i18n="instruction3">
+                               Use the Select tool to move existing holes
+                           </li>
+                           <li data-i18n="instruction4">
+                               Edit hole properties in the sidebar when
+                               selected
+                           </li>
+                           <li data-i18n="instruction5">
+                               Press Delete key to remove selected hole
+                           </li>
+                           <li data-i18n="instruction6">
+                               Save your design to a JSON file for later use
+                           </li>
+                       </ul>
+                   </div>
                 </div>
             </main>
 
@@ -446,6 +537,7 @@
         <script src="/static/js/mobile.js"></script>
         <script src="/static/js/app.js"></script>
         <script src="/static/js/designer.js"></script>
+        <script src="/static/js/herrajes.js"></script>
         <script>
             // Check production environment and hide/show elements accordingly
             function initializeEnvironment() {

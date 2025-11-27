@@ -71,6 +71,16 @@ type Storage interface {
 	DeleteProject(id int, userID int64) error
 	GetProjectTree(userID int64) ([]models.Project, error)
 
+	// Herraje (Hardware) operations
+	CreateHerraje(herraje *models.Herraje) error
+	GetHerraje(id int) (*models.Herraje, error)
+	GetHerrajes(limit, offset int) ([]models.Herraje, int, error)
+	GetHerrajeByCode(code string) (*models.Herraje, error)
+	GetHerrajesByCategory(category string, limit, offset int) ([]models.Herraje, int, error)
+	UpdateHerraje(herraje *models.Herraje) error
+	DeleteHerraje(id int) error
+	SearchHerrajes(query string, limit, offset int) ([]models.Herraje, int, error)
+
 	// Health check
 	Ping() error
 }
@@ -2377,4 +2387,324 @@ func (s *SQLiteStorage) GetOrdersByStatus(userID int64, status models.OrderStatu
 	}
 
 	return orders, nil
+}
+
+
+// CreateHerraje creates a new herraje in the database
+func (s *SQLiteStorage) CreateHerraje(herraje *models.Herraje) error {
+	if err := herraje.Validate(); err != nil {
+		return err
+	}
+
+	if err := herraje.MarshalSpecs(); err != nil {
+		return err
+	}
+
+	result, err := s.db.Exec(`
+		INSERT INTO herrajes (code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`, herraje.Code, herraje.Name, herraje.Description, herraje.Category, herraje.Material, herraje.Finish, herraje.MaxLoad, herraje.MinThickness, herraje.MaxThickness, herraje.HoleSize, herraje.CountersinkSize, herraje.CountersinkType, herraje.HolePattern, herraje.Positions, herraje.PictureURL, herraje.SpecsData, herraje.Notes, boolToInt(herraje.Active))
+
+	if err != nil {
+		return err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	herraje.ID = int(id)
+
+	// Create variants if provided
+	for _, variant := range herraje.Variants {
+		_, err := s.db.Exec(`
+			INSERT INTO herraje_variants (herraje_id, code, name, material, finish, created_at)
+			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		`, herraje.ID, variant.Code, variant.Name, variant.Material, variant.Finish)
+		if err != nil {
+			s.logger.Error("Failed to create herraje variant", "error", err)
+		}
+	}
+
+	return nil
+}
+
+// GetHerraje retrieves a herraje by ID
+func (s *SQLiteStorage) GetHerraje(id int) (*models.Herraje, error) {
+	herraje := &models.Herraje{}
+	var active int
+
+	err := s.db.QueryRow(`
+		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
+		FROM herrajes
+		WHERE id = ? AND active = 1
+	`, id).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+
+	herraje.Active = active != 0
+
+	if err == sql.ErrNoRows {
+		return nil, models.NewNotFoundError("herraje not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := herraje.UnmarshalSpecs(); err != nil {
+		s.logger.Error("Failed to unmarshal herraje specs", "error", err)
+	}
+
+	// Load variants
+	rows, err := s.db.Query(`
+		SELECT id, code, name, material, finish
+		FROM herraje_variants
+		WHERE herraje_id = ?
+		ORDER BY created_at
+	`, id)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var variant models.HerrajeVariant
+			if err := rows.Scan(&variant.ID, &variant.Code, &variant.Name, &variant.Material, &variant.Finish); err == nil {
+				herraje.Variants = append(herraje.Variants, variant)
+			}
+		}
+	}
+
+	return herraje, nil
+}
+
+// GetHerrajes retrieves all active herrajes with pagination
+func (s *SQLiteStorage) GetHerrajes(limit, offset int) ([]models.Herraje, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var herrajes []models.Herraje
+
+	// Get total count
+	var total int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM herrajes WHERE active = 1
+	`).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	rows, err := s.db.Query(`
+		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
+		FROM herrajes
+		WHERE active = 1
+		ORDER BY category, name
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		herraje := models.Herraje{}
+		var active int
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+
+		herraje.Active = active != 0
+
+		if err != nil {
+			s.logger.Error("Failed to scan herraje", "error", err)
+			continue
+		}
+
+		if err := herraje.UnmarshalSpecs(); err != nil {
+			s.logger.Error("Failed to unmarshal specs", "error", err)
+		}
+
+		herrajes = append(herrajes, herraje)
+	}
+
+	return herrajes, total, nil
+}
+
+// GetHerrajeByCode retrieves a herraje by product code
+func (s *SQLiteStorage) GetHerrajeByCode(code string) (*models.Herraje, error) {
+	herraje := &models.Herraje{}
+	var active int
+
+	err := s.db.QueryRow(`
+		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
+		FROM herrajes
+		WHERE code = ? AND active = 1
+	`, code).Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+
+	herraje.Active = active != 0
+
+	if err == sql.ErrNoRows {
+		return nil, models.NewNotFoundError("herraje not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := herraje.UnmarshalSpecs(); err != nil {
+		s.logger.Error("Failed to unmarshal specs", "error", err)
+	}
+
+	return herraje, nil
+}
+
+// GetHerrajesByCategory retrieves herrajes by category with pagination
+func (s *SQLiteStorage) GetHerrajesByCategory(category string, limit, offset int) ([]models.Herraje, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var herrajes []models.Herraje
+
+	// Get total count
+	var total int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM herrajes WHERE category = ? AND active = 1
+	`, category).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	rows, err := s.db.Query(`
+		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
+		FROM herrajes
+		WHERE category = ? AND active = 1
+		ORDER BY name
+		LIMIT ? OFFSET ?
+	`, category, limit, offset)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		herraje := models.Herraje{}
+		var active int
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+
+		herraje.Active = active != 0
+
+		if err != nil {
+			s.logger.Error("Failed to scan herraje", "error", err)
+			continue
+		}
+
+		if err := herraje.UnmarshalSpecs(); err != nil {
+			s.logger.Error("Failed to unmarshal specs", "error", err)
+		}
+
+		herrajes = append(herrajes, herraje)
+	}
+
+	return herrajes, total, nil
+}
+
+// UpdateHerraje updates an existing herraje
+func (s *SQLiteStorage) UpdateHerraje(herraje *models.Herraje) error {
+	if err := herraje.Validate(); err != nil {
+		return err
+	}
+
+	if err := herraje.MarshalSpecs(); err != nil {
+		return err
+	}
+
+	_, err := s.db.Exec(`
+		UPDATE herrajes
+		SET name = ?, description = ?, category = ?, material = ?, finish = ?, max_load = ?, min_thickness = ?, max_thickness = ?, hole_size = ?, countersink_size = ?, countersink_type = ?, hole_pattern = ?, positions = ?, picture_url = ?, specs_data = ?, notes = ?, active = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`, herraje.Name, herraje.Description, herraje.Category, herraje.Material, herraje.Finish, herraje.MaxLoad, herraje.MinThickness, herraje.MaxThickness, herraje.HoleSize, herraje.CountersinkSize, herraje.CountersinkType, herraje.HolePattern, herraje.Positions, herraje.PictureURL, herraje.SpecsData, herraje.Notes, boolToInt(herraje.Active), herraje.ID)
+
+	return err
+}
+
+// DeleteHerraje soft-deletes a herraje (marks as inactive)
+func (s *SQLiteStorage) DeleteHerraje(id int) error {
+	_, err := s.db.Exec(`
+		UPDATE herrajes
+		SET active = 0, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`, id)
+
+	return err
+}
+
+// SearchHerrajes searches herrajes by name or description
+func (s *SQLiteStorage) SearchHerrajes(query string, limit, offset int) ([]models.Herraje, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var herrajes []models.Herraje
+	searchQuery := "%" + query + "%"
+
+	// Get total count
+	var total int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM herrajes 
+		WHERE active = 1 AND (code LIKE ? OR name LIKE ? OR description LIKE ?)
+	`, searchQuery, searchQuery, searchQuery).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	rows, err := s.db.Query(`
+		SELECT id, code, name, description, category, material, finish, max_load, min_thickness, max_thickness, hole_size, countersink_size, countersink_type, hole_pattern, positions, picture_url, specs_data, notes, active, created_at, updated_at
+		FROM herrajes
+		WHERE active = 1 AND (code LIKE ? OR name LIKE ? OR description LIKE ?)
+		ORDER BY name
+		LIMIT ? OFFSET ?
+	`, searchQuery, searchQuery, searchQuery, limit, offset)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		herraje := models.Herraje{}
+		var active int
+		err := rows.Scan(&herraje.ID, &herraje.Code, &herraje.Name, &herraje.Description, &herraje.Category, &herraje.Material, &herraje.Finish, &herraje.MaxLoad, &herraje.MinThickness, &herraje.MaxThickness, &herraje.HoleSize, &herraje.CountersinkSize, &herraje.CountersinkType, &herraje.HolePattern, &herraje.Positions, &herraje.PictureURL, &herraje.SpecsData, &herraje.Notes, &active, &herraje.CreatedAt, &herraje.UpdatedAt)
+
+		herraje.Active = active != 0
+
+		if err != nil {
+			s.logger.Error("Failed to scan herraje", "error", err)
+			continue
+		}
+
+		if err := herraje.UnmarshalSpecs(); err != nil {
+			s.logger.Error("Failed to unmarshal specs", "error", err)
+		}
+
+		herrajes = append(herrajes, herraje)
+	}
+
+	return herrajes, total, nil
+}
+
+// boolToInt converts bool to int for SQLite storage
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

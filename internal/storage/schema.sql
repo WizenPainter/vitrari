@@ -124,3 +124,47 @@ CREATE INDEX IF NOT EXISTS idx_optimizations_user_id ON optimizations(user_id);
 CREATE INDEX IF NOT EXISTS idx_optimizations_project_id ON optimizations(project_id);
 CREATE INDEX IF NOT EXISTS idx_optimizations_sheet_id ON optimizations(sheet_id);
 CREATE INDEX IF NOT EXISTS idx_optimizations_created_at ON optimizations(created_at DESC);
+
+-- Herrajes (Hardware) table for glass installation fittings
+CREATE TABLE IF NOT EXISTS herrajes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT NOT NULL,  -- spider, bracket, connector, etc.
+    material TEXT NOT NULL,
+    finish TEXT,
+    max_load REAL DEFAULT 0,  -- in kg
+    min_thickness REAL NOT NULL,  -- minimum glass thickness in mm
+    max_thickness REAL NOT NULL,  -- maximum glass thickness in mm
+    hole_size REAL NOT NULL,  -- diameter in mm
+    countersink_size REAL,  -- countersink diameter in mm
+    countersink_type TEXT,  -- cone, flat, etc.
+    hole_pattern TEXT,  -- single, pair, grid, linear, custom
+    positions INTEGER DEFAULT 1,  -- number of holes/positions
+    picture_url TEXT,
+    specs_data TEXT,  -- JSON blob for additional specs
+    notes TEXT,
+    active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_herrajes_code ON herrajes(code);
+CREATE INDEX IF NOT EXISTS idx_herrajes_category ON herrajes(category);
+CREATE INDEX IF NOT EXISTS idx_herrajes_active ON herrajes(active);
+
+-- Herraje variants table for different material/finish combinations
+CREATE TABLE IF NOT EXISTS herraje_variants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    herraje_id INTEGER NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    material TEXT NOT NULL,
+    finish TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (herraje_id) REFERENCES herrajes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_herraje_variants_herraje_id ON herraje_variants(herraje_id);
+CREATE INDEX IF NOT EXISTS idx_herraje_variants_code ON herraje_variants(code);

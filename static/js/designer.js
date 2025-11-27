@@ -571,6 +571,17 @@ class GlassDesigner {
 
         const t = window.i18n ? window.i18n.t : (key) => key;
 
+        // Build common herraje selection HTML
+        const herrajes_herraje_id = hole.herrajes_herraje_id || "";
+        const herraje_html = `
+                            <label>
+                                ${t("hardware")} (Herraje):
+                                <select onchange="designer.updateHoleProperty(${index}, 'herrajes_herraje_id', this.value)">
+                                    <option value="">-- Select Hardware --</option>
+                                </select>
+                            </label>
+                        `;
+
         if (hole.shape === "clip") {
           return `
                     <div class="hole-item ${selectedClass}" data-hole-index="${index}">
@@ -599,6 +610,7 @@ class GlassDesigner {
                                 <input type="number" value="${Math.round(hole.depth)}"
                                     onchange="designer.updateHoleProperty(${index}, 'depth', this.value)">
                             </label>
+                            ${herraje_html}
                         </div>
                     </div>
                 `;
@@ -627,6 +639,7 @@ class GlassDesigner {
                                 <input type="number" value="${Math.round(hole.diameter)}"
                                     onchange="designer.updateHoleProperty(${index}, 'diameter', this.value)">
                             </label>
+                            ${herraje_html}
                         </div>
                     </div>
                 `;
@@ -658,6 +671,7 @@ class GlassDesigner {
                                 <input type="number" value="${Math.round(hole.holeDiameter)}"
                                     onchange="designer.updateHoleProperty(${index}, 'holeDiameter', this.value)">
                             </label>
+                            ${herraje_html}
                         </div>
                     </div>
                 `;
@@ -691,6 +705,7 @@ class GlassDesigner {
                                 <input type="number" value="${Math.round(hole.height)}"
                                     onchange="designer.updateHoleProperty(${index}, 'height', this.value)">
                             </label>
+                            ${herraje_html}
                         </div>
                     </div>
                 `;
@@ -704,7 +719,8 @@ class GlassDesigner {
         if (
           !e.target.classList.contains("hole-item-delete") &&
           e.target.tagName !== "INPUT" &&
-          e.target.tagName !== "BUTTON"
+          e.target.tagName !== "BUTTON" &&
+          e.target.tagName !== "SELECT"
         ) {
           this.selectedHoleIndex = index;
           this.render();
@@ -712,6 +728,52 @@ class GlassDesigner {
         }
       });
     });
+
+    // Populate herraje dropdowns
+    this.populateHerrajes();
+  }
+
+  /**
+   * Load herrajes and populate dropdowns
+   */
+  async populateHerrajes() {
+    try {
+      const response = await fetch("/api/herrajes?limit=100");
+      if (!response.ok) {
+        console.warn("Failed to load herrajes:", response.statusText);
+        return;
+      }
+      const data = await response.json();
+      const herrajes = data.herrajes || [];
+
+      // Update all herraje selects
+      document.querySelectorAll('select[onchange*="herrajes_herraje_id"]').forEach((select) => {
+        const currentValue = select.value;
+        
+        // Clear existing options except the first one
+        while (select.options.length > 1) {
+          select.remove(1);
+        }
+
+        // Add herraje options
+        herrajes.forEach((herraje) => {
+          const option = document.createElement("option");
+          option.value = herraje.id;
+          option.textContent = herraje.nombre; // Display name with key
+          if (herraje.material_variants && herraje.material_variants.length > 0) {
+            option.textContent += ` (${herraje.material_variants[0]})`; // Add first material
+          }
+          select.appendChild(option);
+        });
+
+        // Restore selected value if it existed
+        if (currentValue) {
+          select.value = currentValue;
+        }
+      });
+    } catch (error) {
+      console.error("Error loading herrajes:", error);
+    }
   }
 
   updateHoleProperty(index, property, value) {
@@ -719,6 +781,13 @@ class GlassDesigner {
 
     const hole = this.holes[index];
     const numValue = parseFloat(value);
+
+    // Handle herraje (hardware) selection - applies to all hole types
+    if (property === "herrajes_herraje_id") {
+      hole.herrajes_herraje_id = value ? parseInt(value) : null;
+      this.renderHolesList();
+      return;
+    }
 
     if (hole.shape === "clip") {
       if (property === "x") hole.x = numValue;
@@ -2167,6 +2236,35 @@ class GlassDesigner {
         centerCanvasPos.y,
       );
     }
+
+    // Draw herraje indicator badge if hardware is assigned
+    if (hole.herrajes_herraje_id) {
+      const badgeX = canvasPos.x + 8;
+      const badgeY = canvasPos.y - 12;
+      const badgeRadius = 6;
+
+      // Draw badge background
+      ctx.fillStyle = "#10b981"; // Green badge
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw badge border
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Draw checkmark icon
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(badgeX - 2, badgeY + 1);
+      ctx.lineTo(badgeX, badgeY + 3);
+      ctx.lineTo(badgeX + 2.5, badgeY - 1);
+      ctx.stroke();
+    }
   }
 
   drawDimensions() {
@@ -2573,10 +2671,14 @@ async function loadDesignFromBackend(designId) {
 
 // Initialize when page loads
 let designer = null;
+let herrajesManager = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("design-canvas")) {
     designer = new GlassDesigner("design-canvas");
+
+    // Initialize herrajes manager
+    herrajesManager = new HerrrajesManager(designer);
 
     // Populate dropdowns with current language
     designer.populateGlassTypeDropdown(window.t || ((key) => key));
@@ -3040,7 +3142,7 @@ function convertToBackendFormat(holes) {
 
     if (hole.shape === "clip") {
       // Edge clips are represented as notched cuts in the backend
-      elements.cuts.push({
+      const cut = {
         id: `cut-${Date.now()}-${index}`,
         type: "notched",
         start_x: hole.x - hole.width / 2,
@@ -3052,10 +3154,14 @@ function convertToBackendFormat(holes) {
         style: { ...defaultStyle, stroke_color: "#10b981" },
         locked: false,
         visible: true,
-      });
+      };
+      if (hole.herrajes_herraje_id) {
+        cut.herrajes_herraje_id = hole.herrajes_herraje_id;
+      }
+      elements.cuts.push(cut);
     } else if (hole.shape === "circle" || hole.shape === "taladro") {
       // Circular holes (both regular circles and drill holes)
-      elements.holes.push({
+      const circular = {
         id: `hole-${Date.now()}-${index}`,
         type: "circular",
         center: { x: hole.x, y: hole.y },
@@ -3070,11 +3176,15 @@ function convertToBackendFormat(holes) {
         tolerance: 0,
         locked: false,
         visible: true,
-      });
+      };
+      if (hole.herrajes_herraje_id) {
+        circular.herrajes_herraje_id = hole.herrajes_herraje_id;
+      }
+      elements.holes.push(circular);
     } else if (hole.shape === "avellanado") {
       // Countersink holes - currently stored as circular with inner diameter in tolerance
       // TODO: Backend should be enhanced to properly support countersink holes
-      elements.holes.push({
+      const countersink = {
         id: `hole-${Date.now()}-${index}`,
         type: "circular",
         center: { x: hole.x, y: hole.y },
@@ -3086,10 +3196,14 @@ function convertToBackendFormat(holes) {
         tolerance: hole.holeDiameter, // Store inner diameter here temporarily
         locked: false,
         visible: true,
-      });
+      };
+      if (hole.herrajes_herraje_id) {
+        countersink.herrajes_herraje_id = hole.herrajes_herraje_id;
+      }
+      elements.holes.push(countersink);
     } else if (hole.shape === "rectangle") {
       // Rectangular holes
-      elements.holes.push({
+      const rectangular = {
         id: `hole-${Date.now()}-${index}`,
         type: "rectangular",
         center: {
@@ -3104,7 +3218,11 @@ function convertToBackendFormat(holes) {
         tolerance: 0,
         locked: false,
         visible: true,
-      });
+      };
+      if (hole.herrajes_herraje_id) {
+        rectangular.herrajes_herraje_id = hole.herrajes_herraje_id;
+      }
+      elements.holes.push(rectangular);
     }
   });
 
