@@ -19,9 +19,15 @@ class HerrrajesManager {
    * Initialize UI elements
    */
   initializeUI() {
-    // Toggle button for expanding/collapsing hardware section
-    const toggleBtn = document.getElementById('herrajes-toggle');
-    const content = document.getElementById('herrajes-content');
+    // Try right sidebar first (preferred location)
+    let toggleBtn = document.getElementById('herrajes-toggle-right');
+    let content = document.getElementById('herrajes-content-right');
+    
+    // Fall back to left sidebar if right doesn't exist
+    if (!toggleBtn) {
+      toggleBtn = document.getElementById('herrajes-toggle');
+      content = document.getElementById('herrajes-content');
+    }
     
     if (toggleBtn && content) {
       toggleBtn.addEventListener('click', () => {
@@ -57,9 +63,17 @@ class HerrrajesManager {
    * Render herrajes list based on filters
    */
   renderHerrajes() {
-    const searchInput = document.getElementById('herrajes-search');
-    const categoryFilter = document.getElementById('herrajes-category-filter');
-    const list = document.getElementById('herrajes-list');
+    // Try right sidebar first (preferred location)
+    let searchInput = document.getElementById('herrajes-search-right');
+    let categoryFilter = document.getElementById('herrajes-category-filter-right');
+    let list = document.getElementById('herrajes-list-right');
+    
+    // Fall back to left sidebar
+    if (!list) {
+      searchInput = document.getElementById('herrajes-search');
+      categoryFilter = document.getElementById('herrajes-category-filter');
+      list = document.getElementById('herrajes-list');
+    }
     
     if (!list) return;
 
@@ -344,9 +358,17 @@ class HerrrajesManager {
    * Setup event listeners
    */
   setupEventListeners() {
-    const searchInput = document.getElementById('herrajes-search');
-    const categoryFilter = document.getElementById('herrajes-category-filter');
-    const clearBtn = document.getElementById('btn-clear-herrajes');
+    // Try right sidebar first (preferred location)
+    let searchInput = document.getElementById('herrajes-search-right');
+    let categoryFilter = document.getElementById('herrajes-category-filter-right');
+    let clearBtn = document.getElementById('btn-clear-herrajes-right');
+
+    // Fall back to left sidebar
+    if (!searchInput) {
+      searchInput = document.getElementById('herrajes-search');
+      categoryFilter = document.getElementById('herrajes-category-filter');
+      clearBtn = document.getElementById('btn-clear-herrajes');
+    }
 
     if (searchInput) {
       searchInput.addEventListener('input', () => this.renderHerrajes());

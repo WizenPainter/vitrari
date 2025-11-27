@@ -734,8 +734,203 @@ class GlassDesigner {
   }
 
   /**
-   * Load herrajes and populate dropdowns
+   * Validate hardware compatibility with hole size
    */
+  async validateHardwareCompatibility(holeIndex, herrajeId) {
+    try {
+      const response = await fetch(`/api/herrajes/${herrajeId}`);
+      if (!response.ok) return true; // Allow if can't fetch
+      
+      const data = await response.json();
+      const herraje = data.herraje;
+      if (!herraje) return true;
+      
+      const hole = this.holes[holeIndex];
+      const holeDiameter = hole.diameter || hole.holeDiameter || 0;
+      const herrajeHoleSize = herraje.hole_size;
+      
+      // Check tolerance (allow ±1mm)
+      const tolerance = 1;
+      const isCompatible = Math.abs(holeDiameter - herrajeHoleSize) <= tolerance;
+      
+      if (!isCompatible) {
+        const message = `Hardware requires ${herrajeHoleSize}mm hole, but this hole is ${holeDiameter}mm. Difference: ${Math.abs(holeDiameter - herrajeHoleSize).toFixed(1)}mm`;
+        
+        // Show warning modal
+        this.showHardwareWarningModal(message, herraje, hole, holeIndex);
+        return false;
+      }
+      
+      // Show hardware details
+      this.showHardwareDetailsModal(herraje, hole);
+      return true;
+    } catch (error) {
+      console.error("Error validating hardware:", error);
+      return true; // Allow if error
+    }
+  }
+
+  /**
+   * Show warning when hardware and hole size don't match
+   */
+  showHardwareWarningModal(message, herraje, hole, holeIndex) {
+    const modal = document.createElement('div');
+    modal.className = 'hardware-warning-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5000;
+    `;
+    
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 500px; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+        <h3 style="margin-top: 0; color: #dc2626;">Hardware Size Mismatch</h3>
+        <p style="color: #4b5563; line-height: 1.6;">${message}</p>
+        <div style="background: #fef3c7; border-left: 4px solid #eab308; padding: 1rem; border-radius: 4px; margin: 1rem 0; font-size: 0.875rem;">
+          <strong>Note:</strong> You can still assign this hardware, but ensure the hole is drilled to the correct size during fabrication.
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button class="btn btn-outline" onclick="this.closest('.hardware-warning-modal').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="designer.assignHardwareForced(${holeIndex}, ${herraje.id}); this.closest('.hardware-warning-modal').remove();">Assign Anyway</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Assign hardware even with size mismatch
+   */
+  assignHardwareForced(holeIndex, herrajeId) {
+    if (holeIndex >= 0 && holeIndex < this.holes.length) {
+      this.holes[holeIndex].herrajes_herraje_id = herrajeId;
+      this.renderHolesList();
+      this.render();
+      
+      // Show details modal after assignment
+      this.fetchAndShowHardwareDetails(herrajeId, this.holes[holeIndex]);
+    }
+  }
+
+  /**
+   * Show hardware details modal
+   */
+  async showHardwareDetailsModal(herraje, hole) {
+    const modal = document.createElement('div');
+    modal.className = 'hardware-details-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5000;
+      overflow-y: auto;
+    `;
+    
+    const specs = herraje.specs || {};
+    const detailsHtml = `
+      <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; box-shadow: 0 20px 25px rgba(0,0,0,0.15); margin: 2rem 0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+          <div>
+            <h2 style="margin: 0; color: #1e293b;">${herraje.code}</h2>
+            <p style="margin: 0.5rem 0 0; color: #64748b; font-size: 1.05rem;">${herraje.name}</p>
+          </div>
+          <button onclick="this.closest('.hardware-details-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8;">×</button>
+        </div>
+        
+        ${herraje.picture_url ? `<img src="${herraje.picture_url}" alt="${herraje.name}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 4px; margin-bottom: 1.5rem;">` : ''}
+        
+        <div style="background: #f1f5f9; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <p style="margin: 0; color: #475569;">${herraje.description || 'No description available'}</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Hole Size</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.hole_size}mm</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Category</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b; text-transform: capitalize;">${herraje.category || 'N/A'}</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Material</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.material}</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Max Load</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.max_load} kg</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Glass Thickness Range</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b;">${herraje.min_thickness}-${herraje.max_thickness}mm</p>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem;">Hole Pattern</label>
+            <p style="margin: 0; font-weight: 600; color: #1e293b; text-transform: capitalize;">${herraje.hole_pattern || 'N/A'}</p>
+          </div>
+        </div>
+
+        ${herraje.countersink_size ? `
+          <div style="background: #e0f2fe; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+            <p style="margin: 0.5rem 0 0; color: #0369a1;"><strong>Countersink:</strong> ${herraje.countersink_size}mm (${herraje.countersink_type || 'standard'})</p>
+          </div>
+        ` : ''}
+        
+        ${specs.installation ? `
+          <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; font-size: 0.875rem; color: #64748b; margin-bottom: 0.25rem; font-weight: 600;">Installation</label>
+            <p style="margin: 0; color: #475569; text-transform: capitalize;">${specs.installation}</p>
+          </div>
+        ` : ''}
+        
+        ${specs.safety_notes ? `
+          <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+            <p style="margin: 0.5rem 0 0; color: #991b1b;"><strong>Safety:</strong> ${specs.safety_notes}</p>
+          </div>
+        ` : ''}
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+          <button class="btn btn-outline" onclick="this.closest('.hardware-details-modal').remove()">Close</button>
+        </div>
+      </div>
+    `;
+    
+    modal.innerHTML = detailsHtml;
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Fetch and show hardware details by ID
+   */
+  async fetchAndShowHardwareDetails(herrajeId, hole) {
+    try {
+      const response = await fetch(`/api/herrajes/${herrajeId}`);
+      if (!response.ok) throw new Error('Failed to load hardware');
+      
+      const data = await response.json();
+      this.showHardwareDetailsModal(data.herraje, hole);
+    } catch (error) {
+      console.error("Error fetching hardware details:", error);
+    }
+  }
+
+  /**
+    * Load herrajes and populate dropdowns
+    */
   async populateHerrajes() {
     try {
       const response = await fetch("/api/herrajes?limit=100");
@@ -759,9 +954,9 @@ class GlassDesigner {
         herrajes.forEach((herraje) => {
           const option = document.createElement("option");
           option.value = herraje.id;
-          option.textContent = herraje.nombre; // Display name with key
-          if (herraje.material_variants && herraje.material_variants.length > 0) {
-            option.textContent += ` (${herraje.material_variants[0]})`; // Add first material
+          option.textContent = `${herraje.code} - ${herraje.name}`;
+          if (herraje.material) {
+            option.textContent += ` (${herraje.material})`;
           }
           select.appendChild(option);
         });
@@ -784,8 +979,20 @@ class GlassDesigner {
 
     // Handle herraje (hardware) selection - applies to all hole types
     if (property === "herrajes_herraje_id") {
-      hole.herrajes_herraje_id = value ? parseInt(value) : null;
-      this.renderHolesList();
+      const herrajeId = value ? parseInt(value) : null;
+      
+      if (herrajeId) {
+        // Validate hole size compatibility
+        this.validateHardwareCompatibility(index, herrajeId).then(isCompatible => {
+          if (isCompatible) {
+            hole.herrajes_herraje_id = herrajeId;
+            this.renderHolesList();
+          }
+        });
+      } else {
+        hole.herrajes_herraje_id = null;
+        this.renderHolesList();
+      }
       return;
     }
 
@@ -2325,6 +2532,265 @@ class GlassDesigner {
       glass: { ...this.glass },
       holes: this.holes.map((hole) => ({ ...hole })),
     };
+  }
+
+  /**
+   * Generate Bill of Materials from current design
+   */
+  async generateBillOfMaterials() {
+    const bom = {
+      glass: this.generateGlassBOM(),
+      hardware: await this.generateHardwareBOM(),
+      holes: this.generateHolesBOM(),
+      summary: {},
+    };
+
+    // Calculate totals
+    bom.summary = {
+      totalHoles: this.holes.length,
+      totalHardwareItems: bom.hardware.length,
+      totalArea: (this.glass.width * this.glass.height / 1000000).toFixed(2),
+    };
+
+    return bom;
+  }
+
+  /**
+   * Generate glass specifications for BOM
+   */
+  generateGlassBOM() {
+    const paintedAreas = this.paintAreas.length;
+    const glassData = {
+      quantity: 1,
+      width: this.glass.width,
+      height: this.glass.height,
+      thickness: this.glass.thickness,
+      area: (this.glass.width * this.glass.height / 1000000).toFixed(2),
+      unit: 'm²',
+      type: this.glass.type,
+      cpb: this.glass.cpb,
+      painted: paintedAreas > 0,
+      paintedAreas: paintedAreas,
+    };
+
+    if (paintedAreas > 0) {
+      let totalPaintArea = 0;
+      this.paintAreas.forEach(area => {
+        if (area.isWholeGlass) {
+          totalPaintArea = this.glass.width * this.glass.height;
+        } else {
+          totalPaintArea += area.width * area.height;
+        }
+      });
+      glassData.paintedArea = (totalPaintArea / 1000000).toFixed(2);
+      glassData.paintedUnit = 'm²';
+    }
+
+    return glassData;
+  }
+
+  /**
+   * Generate hardware list for BOM
+   */
+  async generateHardwareBOM() {
+    const hardwareList = [];
+    const herrajeIds = new Set();
+
+    // Collect unique hardware IDs
+    this.holes.forEach(hole => {
+      if (hole.herrajes_herraje_id) {
+        herrajeIds.add(hole.herrajes_herraje_id);
+      }
+    });
+
+    // Fetch hardware details for each
+    for (const herrajeId of herrajeIds) {
+      try {
+        const response = await fetch(`/api/herrajes/${herrajeId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const herraje = data.herraje;
+
+          // Count how many holes use this hardware
+          const quantity = this.holes.filter(h => h.herrajes_herraje_id === herrajeId).length;
+
+          hardwareList.push({
+            id: herraje.id,
+            code: herraje.code,
+            name: herraje.name,
+            category: herraje.category,
+            material: herraje.material,
+            finish: herraje.finish,
+            quantity: quantity,
+            unit: 'piece',
+            holeSize: herraje.hole_size,
+            maxLoad: herraje.max_load,
+            maxLoadUnit: 'kg',
+          });
+        }
+      } catch (error) {
+        console.error(`Error loading hardware ${herrajeId}:`, error);
+      }
+    }
+
+    return hardwareList;
+  }
+
+  /**
+   * Generate holes specifications for BOM
+   */
+  generateHolesBOM() {
+    const holesByType = {
+      circle: [],
+      taladro: [],
+      avellanado: [],
+      rectangle: [],
+      clip: [],
+    };
+
+    this.holes.forEach((hole, index) => {
+      const holeInfo = {
+        index: index + 1,
+        x: hole.x.toFixed(1),
+        y: hole.y.toFixed(1),
+        herraje: hole.herrajes_herraje_id || null,
+      };
+
+      if (hole.shape === 'circle' || hole.shape === 'taladro') {
+        holeInfo.diameter = hole.diameter.toFixed(1);
+        holesByType[hole.shape].push(holeInfo);
+      } else if (hole.shape === 'avellanado') {
+        holeInfo.counterDiameter = hole.diameter.toFixed(1);
+        holeInfo.holeDiameter = hole.holeDiameter?.toFixed(1) || 'N/A';
+        holesByType.avellanado.push(holeInfo);
+      } else if (hole.shape === 'rectangle') {
+        holeInfo.width = hole.width.toFixed(1);
+        holeInfo.height = hole.height.toFixed(1);
+        holesByType.rectangle.push(holeInfo);
+      } else if (hole.shape === 'clip') {
+        holeInfo.width = hole.width.toFixed(1);
+        holeInfo.depth = hole.depth.toFixed(1);
+        holesByType.clip.push(holeInfo);
+      }
+    });
+
+    return holesByType;
+  }
+
+  /**
+   * Export BOM as JSON
+   */
+  async exportBOMAsJSON() {
+    const bom = await this.generateBillOfMaterials();
+    const bomText = JSON.stringify(bom, null, 2);
+    
+    const link = document.createElement('a');
+    link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(bomText);
+    link.download = `bom-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  /**
+   * Display BOM in a modal
+   */
+  async showBillOfMaterials() {
+    const bom = await this.generateBillOfMaterials();
+    
+    const modal = document.createElement('div');
+    modal.className = 'bom-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5000;
+      overflow-y: auto;
+    `;
+
+    let hardwareHtml = '';
+    if (bom.hardware.length > 0) {
+      hardwareHtml = `
+        <h4 style="margin-top: 1.5rem; color: #1e293b;">Hardware Components</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+          <thead>
+            <tr style="background: #f1f5f9;">
+              <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #cbd5e1;">Code</th>
+              <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #cbd5e1;">Name</th>
+              <th style="padding: 0.5rem; text-align: center; border-bottom: 2px solid #cbd5e1;">Qty</th>
+              <th style="padding: 0.5rem; text-align: left; border-bottom: 2px solid #cbd5e1;">Material</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bom.hardware.map(h => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 0.5rem;">${h.code}</td>
+                <td style="padding: 0.5rem;">${h.name}</td>
+                <td style="padding: 0.5rem; text-align: center; font-weight: 600;">${h.quantity}</td>
+                <td style="padding: 0.5rem;">${h.material}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    let holesHtml = '';
+    const totalHoles = Object.values(bom.holes).reduce((sum, arr) => sum + arr.length, 0);
+    if (totalHoles > 0) {
+      holesHtml = `
+        <h4 style="margin-top: 1.5rem; color: #1e293b;">Holes Summary</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+          ${bom.holes.circle.length > 0 ? `<div style="background: #f1f5f9; padding: 1rem; border-radius: 4px;"><strong>Circle Holes:</strong> ${bom.holes.circle.length}</div>` : ''}
+          ${bom.holes.taladro.length > 0 ? `<div style="background: #f1f5f9; padding: 1rem; border-radius: 4px;"><strong>Drill Holes:</strong> ${bom.holes.taladro.length}</div>` : ''}
+          ${bom.holes.avellanado.length > 0 ? `<div style="background: #f1f5f9; padding: 1rem; border-radius: 4px;"><strong>Countersinks:</strong> ${bom.holes.avellanado.length}</div>` : ''}
+          ${bom.holes.rectangle.length > 0 ? `<div style="background: #f1f5f9; padding: 1rem; border-radius: 4px;"><strong>Rectangular:</strong> ${bom.holes.rectangle.length}</div>` : ''}
+          ${bom.holes.clip.length > 0 ? `<div style="background: #f1f5f9; padding: 1rem; border-radius: 4px;"><strong>Edge Clips:</strong> ${bom.holes.clip.length}</div>` : ''}
+        </div>
+      `;
+    }
+
+    const bomHtml = `
+      <div style="background: white; border-radius: 8px; padding: 2rem; max-width: 800px; box-shadow: 0 20px 25px rgba(0,0,0,0.15); margin: 2rem 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2 style="margin: 0; color: #1e293b;">Bill of Materials</h2>
+          <button onclick="this.closest('.bom-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8;">×</button>
+        </div>
+
+        <div style="background: #f1f5f9; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+          <h4 style="margin: 0 0 1rem; color: #1e293b;">Glass Specifications</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+            <div><label style="color: #64748b;">Size:</label> <strong>${bom.glass.width}×${bom.glass.height}mm</strong></div>
+            <div><label style="color: #64748b;">Area:</label> <strong>${bom.glass.area}m²</strong></div>
+            <div><label style="color: #64748b;">Thickness:</label> <strong>${bom.glass.thickness}mm</strong></div>
+            <div><label style="color: #64748b;">Type:</label> <strong style="text-transform: capitalize;">${bom.glass.type}</strong></div>
+            ${bom.glass.cpb ? `<div style="grid-column: 1/-1;"><label style="color: #64748b;">✓ Polished Edge (CPB)</label></div>` : ''}
+            ${bom.glass.painted ? `<div style="grid-column: 1/-1;"><label style="color: #64748b;">Painted Areas:</label> <strong>${bom.glass.paintedAreas} area(s) = ${bom.glass.paintedArea}m²</strong></div>` : ''}
+          </div>
+        </div>
+
+        ${hardwareHtml}
+        ${holesHtml}
+
+        <div style="background: #f0fdf4; padding: 1rem; border-radius: 4px; margin-top: 1.5rem; font-size: 0.875rem;">
+          <p style="margin: 0; color: #166534;"><strong>Summary:</strong> ${totalHoles} hole(s), ${bom.hardware.length} hardware item(s)</p>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button class="btn btn-outline" onclick="designer.exportBOMAsJSON()">Export JSON</button>
+          <button class="btn btn-outline" onclick="this.closest('.bom-modal').remove()">Close</button>
+        </div>
+      </div>
+    `;
+
+    modal.innerHTML = bomHtml;
+    document.body.appendChild(modal);
   }
 
   loadDesignData(data) {
