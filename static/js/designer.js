@@ -3,6 +3,523 @@
  * Allows users to design glass pieces with holes at specific locations
  */
 
+/**
+ * Shape definitions for the glass designer.
+ * Each shape has: name, category, params (array of {key, label, defaultFn}),
+ * and generate(w, h, params) returning an array of {x, y} points.
+ * Coordinate system: Y=0 at bottom, Y increases upward.
+ */
+const GLASS_SHAPES = {
+  "rectangle": {
+    name: "Rectangle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    }
+  },
+  "circle": {
+    name: "Circle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      const cx = w/2, cy = h/2, r = Math.min(w,h)/2;
+      const pts = [];
+      for (let i=0; i<64; i++) {
+        const a = (i/64)*Math.PI*2;
+        pts.push({x: cx+r*Math.cos(a), y: cy+r*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "oval": {
+    name: "Oval / Ellipse",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      const cx = w/2, cy = h/2, rx = w/2, ry = h/2;
+      const pts = [];
+      for (let i=0; i<64; i++) {
+        const a = (i/64)*Math.PI*2;
+        pts.push({x: cx+rx*Math.cos(a), y: cy+ry*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "triangle": {
+    name: "Triangle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      return [{x:0,y:0},{x:w,y:0},{x:w/2,y:h}];
+    }
+  },
+  "right-triangle": {
+    name: "Right Triangle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      return [{x:0,y:0},{x:w,y:0},{x:0,y:h}];
+    }
+  },
+  "semicircle": {
+    name: "Semicircle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      const pts = [{x:0,y:0},{x:w,y:0}];
+      for (let i=1; i<=32; i++) {
+        const a = (i/32)*Math.PI;
+        pts.push({x: w/2 + (w/2)*Math.cos(a), y: (w/2)*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "quarter-circle": {
+    name: "Quarter Circle",
+    category: "basic",
+    params: [],
+    generate(w, h) {
+      const r = Math.min(w, h);
+      const pts = [{x:0,y:0}];
+      pts.push({x:r,y:0});
+      for (let i=1; i<=32; i++) {
+        const a = (i/32)*(Math.PI/2);
+        pts.push({x: r*Math.cos(a), y: r*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "trapezoid": {
+    name: "Trapezoid",
+    category: "trapezoids",
+    params: [{key:"topWidth", label:"Top Width", defaultFn:(w)=>w*0.6}],
+    generate(w, h, params) {
+      const tw = params.topWidth || w*0.6;
+      const off = (w-tw)/2;
+      return [{x:0,y:0},{x:w,y:0},{x:w-off,y:h},{x:off,y:h}];
+    }
+  },
+  "right-trapezoid": {
+    name: "Right Trapezoid",
+    category: "trapezoids",
+    params: [{key:"topWidth", label:"Top Width", defaultFn:(w)=>w*0.6}],
+    generate(w, h, params) {
+      const tw = params.topWidth || w*0.6;
+      return [{x:0,y:0},{x:w,y:0},{x:tw,y:h},{x:0,y:h}];
+    }
+  },
+  "parallelogram": {
+    name: "Parallelogram",
+    category: "trapezoids",
+    params: [{key:"offset", label:"Offset", defaultFn:(w)=>w*0.2}],
+    generate(w, h, params) {
+      const off = params.offset || w*0.2;
+      return [{x:0,y:0},{x:w-off,y:0},{x:w,y:h},{x:off,y:h}];
+    }
+  },
+  "pentagon": {
+    name: "Pentagon",
+    category: "polygons",
+    params: [],
+    generate(w, h) {
+      const r = Math.min(w,h)/2, cx=w/2, cy=h/2, pts=[];
+      for (let i=0;i<5;i++){const a=(i/5)*Math.PI*2 - Math.PI/2; pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}
+      return pts;
+    }
+  },
+  "hexagon": {
+    name: "Hexagon",
+    category: "polygons",
+    params: [],
+    generate(w, h) {
+      const r = Math.min(w,h)/2, cx=w/2, cy=h/2, pts=[];
+      for (let i=0;i<6;i++){const a=(i/6)*Math.PI*2 - Math.PI/2; pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}
+      return pts;
+    }
+  },
+  "octagon": {
+    name: "Octagon",
+    category: "polygons",
+    params: [],
+    generate(w, h) {
+      const r = Math.min(w,h)/2, cx=w/2, cy=h/2, pts=[];
+      for (let i=0;i<8;i++){const a=(i/8)*Math.PI*2 - Math.PI/2; pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}
+      return pts;
+    }
+  },
+  "diamond": {
+    name: "Diamond / Rhombus",
+    category: "polygons",
+    params: [],
+    generate(w, h) {
+      return [{x:w/2,y:0},{x:w,y:h/2},{x:w/2,y:h},{x:0,y:h/2}];
+    }
+  },
+  "arch": {
+    name: "Arch",
+    category: "arched",
+    params: [{key:"archHeight", label:"Arch Height", defaultFn:(w,h)=>Math.min(h*0.3, w/2)}],
+    generate(w, h, params) {
+      const ah = params.archHeight || Math.min(h*0.3, w/2);
+      const rectTop = h - ah;
+      const pts = [{x:0,y:0},{x:w,y:0},{x:w,y:rectTop}];
+      for (let i=1;i<=32;i++){
+        const a=(i/32)*Math.PI;
+        pts.push({x: w/2+(w/2)*Math.cos(a), y: rectTop+ah*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "gothic-arch": {
+    name: "Gothic Arch",
+    category: "arched",
+    params: [{key:"archHeight", label:"Arch Height", defaultFn:(w,h)=>Math.min(h*0.4, w)}],
+    generate(w, h, params) {
+      const ah = params.archHeight || Math.min(h*0.4, w);
+      const rectTop = h - ah;
+      const pts = [{x:0,y:0},{x:w,y:0},{x:w,y:rectTop}];
+      // Approximate gothic pointed arch with bezier-like points
+      const segments = 16;
+      // Right curve: from (w, rectTop) bending toward (w/2, h)
+      for (let i=1;i<=segments;i++){
+        const t=i/segments;
+        // Quadratic bezier: P0=(w,rectTop), P1=(w, h), P2=(w/2, h)
+        const x=(1-t)*(1-t)*w + 2*(1-t)*t*w + t*t*(w/2);
+        const y=(1-t)*(1-t)*rectTop + 2*(1-t)*t*h + t*t*h;
+        pts.push({x,y});
+      }
+      // Left curve: from (w/2, h) bending toward (0, rectTop)
+      for (let i=1;i<=segments;i++){
+        const t=i/segments;
+        const x=(1-t)*(1-t)*(w/2) + 2*(1-t)*t*0 + t*t*0;
+        const y=(1-t)*(1-t)*h + 2*(1-t)*t*h + t*t*rectTop;
+        pts.push({x,y});
+      }
+      return pts;
+    }
+  },
+  "tombstone": {
+    name: "Tombstone",
+    category: "arched",
+    params: [],
+    generate(w, h) {
+      const archR = w/2;
+      const rectTop = h - archR;
+      if (rectTop <= 0) {
+        // If height is too small, just make a semicircle on top of a line
+        const pts = [{x:0,y:0},{x:w,y:0}];
+        for (let i=1;i<=32;i++){const a=(i/32)*Math.PI; pts.push({x:w/2+(w/2)*Math.cos(a), y:(w/2)*Math.sin(a)});}
+        return pts;
+      }
+      const pts = [{x:0,y:0},{x:w,y:0},{x:w,y:rectTop}];
+      for (let i=1;i<=32;i++){
+        const a=(i/32)*Math.PI;
+        pts.push({x: w/2+archR*Math.cos(a), y: rectTop+archR*Math.sin(a)});
+      }
+      return pts;
+    }
+  },
+  "house": {
+    name: "House",
+    category: "arched",
+    params: [{key:"roofHeight", label:"Roof Height", defaultFn:(w,h)=>h*0.3}],
+    generate(w, h, params) {
+      const rh = params.roofHeight || h*0.3;
+      const wallTop = h - rh;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:wallTop},{x:w/2,y:h},{x:0,y:wallTop}];
+    }
+  },
+  "corner-cut-1": {
+    name: "Corner Cut (1)",
+    category: "cuts",
+    params: [{key:"cutSize", label:"Cut Size", defaultFn:(w,h)=>Math.min(w,h)*0.2}],
+    generate(w, h, params) {
+      const c = params.cutSize || Math.min(w,h)*0.2;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h-c},{x:w-c,y:h},{x:0,y:h}];
+    }
+  },
+  "corner-cut-2": {
+    name: "Corner Cut (2)",
+    category: "cuts",
+    params: [{key:"cutSize", label:"Cut Size", defaultFn:(w,h)=>Math.min(w,h)*0.2}],
+    generate(w, h, params) {
+      const c = params.cutSize || Math.min(w,h)*0.2;
+      return [{x:c,y:0},{x:w,y:0},{x:w,y:h-c},{x:w-c,y:h},{x:0,y:h},{x:0,y:c}];
+    }
+  },
+  "corner-cut-4": {
+    name: "Corner Cut (4)",
+    category: "cuts",
+    params: [{key:"cutSize", label:"Cut Size", defaultFn:(w,h)=>Math.min(w,h)*0.15}],
+    generate(w, h, params) {
+      const c = params.cutSize || Math.min(w,h)*0.15;
+      return [{x:c,y:0},{x:w-c,y:0},{x:w,y:c},{x:w,y:h-c},{x:w-c,y:h},{x:c,y:h},{x:0,y:h-c},{x:0,y:c}];
+    }
+  },
+  "notch-top": {
+    name: "Notch Top",
+    category: "cuts",
+    params: [{key:"notchWidth", label:"Notch Width", defaultFn:(w)=>w*0.3},{key:"notchDepth", label:"Notch Depth", defaultFn:(w,h)=>h*0.2}],
+    generate(w, h, params) {
+      const nw = params.notchWidth || w*0.3;
+      const nd = params.notchDepth || h*0.2;
+      const nx = (w-nw)/2;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:nx+nw,y:h},{x:nx+nw,y:h-nd},{x:nx,y:h-nd},{x:nx,y:h},{x:0,y:h}];
+    }
+  },
+  "notch-right": {
+    name: "Notch Right",
+    category: "cuts",
+    params: [{key:"notchWidth", label:"Notch Width", defaultFn:(w,h)=>h*0.3},{key:"notchDepth", label:"Notch Depth", defaultFn:(w)=>w*0.2}],
+    generate(w, h, params) {
+      const nw = params.notchWidth || h*0.3;
+      const nd = params.notchDepth || w*0.2;
+      const ny = (h-nw)/2;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:ny},{x:w-nd,y:ny},{x:w-nd,y:ny+nw},{x:w,y:ny+nw},{x:w,y:h},{x:0,y:h}];
+    }
+  },
+  "notch-bottom": {
+    name: "Notch Bottom",
+    category: "cuts",
+    params: [{key:"notchWidth", label:"Notch Width", defaultFn:(w)=>w*0.3},{key:"notchDepth", label:"Notch Depth", defaultFn:(w,h)=>h*0.2}],
+    generate(w, h, params) {
+      const nw = params.notchWidth || w*0.3;
+      const nd = params.notchDepth || h*0.2;
+      const nx = (w-nw)/2;
+      return [{x:0,y:0},{x:nx,y:0},{x:nx,y:nd},{x:nx+nw,y:nd},{x:nx+nw,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    }
+  },
+  "v-notch-top": {
+    name: "V-Notch Top",
+    category: "cuts",
+    params: [{key:"notchWidth", label:"Notch Width", defaultFn:(w)=>w*0.3},{key:"notchDepth", label:"Notch Depth", defaultFn:(w,h)=>h*0.2}],
+    generate(w, h, params) {
+      const nw = params.notchWidth || w*0.3;
+      const nd = params.notchDepth || h*0.2;
+      const nx = (w-nw)/2;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:nx+nw,y:h},{x:w/2,y:h-nd},{x:nx,y:h},{x:0,y:h}];
+    }
+  },
+  "half-circle-top": {
+    name: "Half-Circle Top",
+    category: "curves",
+    params: [{key:"circleDiameter", label:"Circle Diameter", defaultFn:(w)=>w*0.4}],
+    generate(w, h, params) {
+      const d = params.circleDiameter || w*0.4;
+      const r = d/2;
+      const pts = [{x:0,y:0},{x:w,y:0},{x:w,y:h}];
+      // Flat top then bump
+      const cx = w/2;
+      pts.push({x:cx+r,y:h});
+      for (let i=1;i<=32;i++){
+        const a=(i/32)*Math.PI;
+        pts.push({x:cx+r*Math.cos(a), y:h+r*Math.sin(a)});
+      }
+      pts.push({x:cx-r,y:h});
+      pts.push({x:0,y:h});
+      return pts;
+    }
+  },
+  "half-circle-right": {
+    name: "Half-Circle Right",
+    category: "curves",
+    params: [{key:"circleDiameter", label:"Circle Diameter", defaultFn:(w,h)=>h*0.4}],
+    generate(w, h, params) {
+      const d = params.circleDiameter || h*0.4;
+      const r = d/2;
+      const cy = h/2;
+      const pts = [{x:0,y:0},{x:w,y:0}];
+      pts.push({x:w,y:cy-r});
+      for (let i=0;i<=32;i++){
+        const a=-Math.PI/2+(i/32)*Math.PI;
+        pts.push({x:w+r*Math.cos(a+Math.PI/2), y:cy+r*Math.sin(a+Math.PI/2)});
+      }
+      // Correct: semicircle bulging right from (w, cy-r) to (w, cy+r)
+      // Clear and redo
+      pts.length = 2; // keep first two
+      pts.push({x:w,y:cy-r});
+      for (let i=1;i<=32;i++){
+        const a=(i/32)*Math.PI - Math.PI/2;
+        pts.push({x:w+r*Math.cos(a), y:cy+r*Math.sin(a)});
+      }
+      pts.push({x:w,y:cy+r});
+      pts.push({x:w,y:h});
+      pts.push({x:0,y:h});
+      return pts;
+    }
+  },
+  "half-circle-bottom": {
+    name: "Half-Circle Bottom",
+    category: "curves",
+    params: [{key:"circleDiameter", label:"Circle Diameter", defaultFn:(w)=>w*0.4}],
+    generate(w, h, params) {
+      const d = params.circleDiameter || w*0.4;
+      const r = d/2;
+      const cx = w/2;
+      const pts = [];
+      pts.push({x:0,y:0});
+      pts.push({x:cx-r,y:0});
+      for (let i=0;i<=32;i++){
+        const a=Math.PI+(i/32)*Math.PI;
+        pts.push({x:cx+r*Math.cos(a), y:r*Math.sin(a)});
+      }
+      pts.push({x:cx+r,y:0});
+      pts.push({x:w,y:0});
+      pts.push({x:w,y:h});
+      pts.push({x:0,y:h});
+      return pts;
+    }
+  },
+  "half-circle-left": {
+    name: "Half-Circle Left",
+    category: "curves",
+    params: [{key:"circleDiameter", label:"Circle Diameter", defaultFn:(w,h)=>h*0.4}],
+    generate(w, h, params) {
+      const d = params.circleDiameter || h*0.4;
+      const r = d/2;
+      const cy = h/2;
+      const pts = [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+      // Insert bump on left side: between (0,h) and (0,0)
+      // Rebuild: go CW: bottom-left -> bottom-right -> top-right -> top-left side with bump
+      pts.length = 0;
+      pts.push({x:0,y:0});
+      pts.push({x:w,y:0});
+      pts.push({x:w,y:h});
+      pts.push({x:0,y:h});
+      pts.push({x:0,y:cy+r});
+      for (let i=0;i<=32;i++){
+        const a=Math.PI/2+(i/32)*Math.PI;
+        pts.push({x:r*Math.cos(a), y:cy+r*Math.sin(a)});
+      }
+      pts.push({x:0,y:cy-r});
+      return pts;
+    }
+  },
+  "l-shape": {
+    name: "L-Shape",
+    category: "complex",
+    params: [{key:"notchWidth", label:"Notch Width", defaultFn:(w)=>w*0.4},{key:"notchHeight", label:"Notch Height", defaultFn:(w,h)=>h*0.4}],
+    generate(w, h, params) {
+      const nw = params.notchWidth || w*0.4;
+      const nh = params.notchHeight || h*0.4;
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h-nh},{x:w-nw,y:h-nh},{x:w-nw,y:h},{x:0,y:h}];
+    }
+  },
+  "t-shape": {
+    name: "T-Shape",
+    category: "complex",
+    params: [{key:"stemWidth", label:"Stem Width", defaultFn:(w)=>w*0.4},{key:"barHeight", label:"Bar Height", defaultFn:(w,h)=>h*0.35}],
+    generate(w, h, params) {
+      const sw = params.stemWidth || w*0.4;
+      const bh = params.barHeight || h*0.35;
+      const sx = (w-sw)/2;
+      return [{x:sx,y:0},{x:sx+sw,y:0},{x:sx+sw,y:h-bh},{x:w,y:h-bh},{x:w,y:h},{x:0,y:h},{x:0,y:h-bh},{x:sx,y:h-bh}];
+    }
+  },
+  "u-shape": {
+    name: "U-Shape",
+    category: "complex",
+    params: [{key:"wallThickness", label:"Wall Thickness", defaultFn:(w)=>w*0.25}],
+    generate(w, h, params) {
+      const wt = params.wallThickness || w*0.25;
+      return [{x:0,y:0},{x:wt,y:0},{x:wt,y:h-wt},{x:w-wt,y:h-wt},{x:w-wt,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    }
+  },
+  "cross": {
+    name: "Cross / Plus",
+    category: "complex",
+    params: [{key:"armWidth", label:"Arm Width", defaultFn:(w,h)=>Math.min(w,h)*0.33}],
+    generate(w, h, params) {
+      const aw = params.armWidth || Math.min(w,h)*0.33;
+      const ax = (w-aw)/2;
+      const ay = (h-aw)/2;
+      return [
+        {x:ax,y:0},{x:ax+aw,y:0},{x:ax+aw,y:ay},{x:w,y:ay},{x:w,y:ay+aw},
+        {x:ax+aw,y:ay+aw},{x:ax+aw,y:h},{x:ax,y:h},{x:ax,y:ay+aw},{x:0,y:ay+aw},
+        {x:0,y:ay},{x:ax,y:ay}
+      ];
+    }
+  },
+  "freeform": {
+    name: "Freeform",
+    category: "custom",
+    params: [],
+    generate(w, h, params, glass) {
+      if (glass && glass.freeformPoints && glass.freeformPoints.length >= 3) {
+        return glass.freeformPoints;
+      }
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    }
+  }
+};
+
+const SHAPE_CATEGORIES = [
+  { id: "basic", name: "Basic" },
+  { id: "trapezoids", name: "Trapezoids" },
+  { id: "polygons", name: "Polygons" },
+  { id: "arched", name: "Arched" },
+  { id: "cuts", name: "With Cuts" },
+  { id: "curves", name: "With Curves" },
+  { id: "complex", name: "Complex" },
+  { id: "custom", name: "Custom" }
+];
+
+/**
+ * Generate an SVG thumbnail from a shape's points.
+ * Calls generate(100, 70, defaultParams) to get points,
+ * scales to fit in a 50x36 viewBox with 3px padding,
+ * flips Y axis for SVG, returns an SVG string.
+ */
+function generateShapeSVG(shapeId) {
+  const shapeDef = GLASS_SHAPES[shapeId];
+  if (!shapeDef) return "";
+
+  // Build default params
+  const defaultParams = {};
+  (shapeDef.params || []).forEach(p => {
+    defaultParams[p.key] = p.defaultFn(100, 70);
+  });
+
+  let points;
+  if (shapeId === "freeform") {
+    // Use a sample freeform polygon for the thumbnail
+    points = [{x:10,y:5},{x:90,y:8},{x:95,y:55},{x:50,y:65},{x:5,y:45}];
+  } else {
+    points = shapeDef.generate(100, 70, defaultParams);
+  }
+
+  if (!points || points.length < 2) return "";
+
+  // Find bounding box
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  points.forEach(p => {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  });
+
+  const bw = maxX - minX || 1;
+  const bh = maxY - minY || 1;
+  const pad = 3;
+  const vw = 50, vh = 36;
+  const availW = vw - pad*2, availH = vh - pad*2;
+  const scale = Math.min(availW / bw, availH / bh);
+  const offX = pad + (availW - bw*scale)/2;
+  const offY = pad + (availH - bh*scale)/2;
+
+  // Build path data with Y flip for SVG
+  const pathParts = points.map((p, i) => {
+    const sx = offX + (p.x - minX) * scale;
+    const sy = offY + (maxY - p.y) * scale; // Flip Y
+    return (i === 0 ? "M" : "L") + sx.toFixed(1) + "," + sy.toFixed(1);
+  });
+  pathParts.push("Z");
+
+  return `<svg viewBox="0 0 ${vw} ${vh}" width="50" height="36"><path d="${pathParts.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.5"${shapeId === "freeform" ? ' stroke-dasharray="2,1.5"' : ""}/></svg>`;
+}
+
 class GlassDesigner {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -21,9 +538,11 @@ class GlassDesigner {
       thickness: 6,
       type: "clear", // clear, mirror, gray, tinted, frosted
       cpb: false, // Canto Pulido (polished edge)
-      shape: "rectangle", // rectangle, circle, triangle, right-triangle, arch, trapezoid, l-shape, freeform
+      shape: "rectangle", // rectangle, circle, triangle, etc.
       shapeParams: {}, // Shape-specific parameters
       freeformPoints: [], // Custom polygon points for freeform shape
+      flipH: false, // Flip shape horizontally
+      flipV: false, // Flip shape vertically
     };
 
     // Paint areas - array of painted rectangles
@@ -33,6 +552,14 @@ class GlassDesigner {
     // Freeform shape drawing state
     this.isDrawingFreeform = false;
     this.freeformTempPoints = [];
+    this.freeformCursorPos = null;
+    this.shiftKeyDown = false;
+
+    // Snap alignment guides
+    this.snapGuides = [];
+
+    // Clickable measurement label hit areas (populated during render)
+    this.measurementHitAreas = [];
 
     // Holes array - each hole has {x, y, diameter, shape}
     this.holes = [];
@@ -137,6 +664,7 @@ class GlassDesigner {
 
     // Keyboard shortcuts
     document.addEventListener("keydown", (e) => {
+      if (e.key === "Shift") this.shiftKeyDown = true;
       if (e.key === "Delete" && this.selectedHoleIndex >= 0) {
         this.deleteHole(this.selectedHoleIndex);
       }
@@ -145,6 +673,9 @@ class GlassDesigner {
         this.render();
         this.renderHolesList();
       }
+    });
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "Shift") this.shiftKeyDown = false;
     });
   }
 
@@ -175,12 +706,36 @@ class GlassDesigner {
     const canvasX = (e.clientX - rect.left) * scaleX;
     const canvasY = (e.clientY - rect.top) * scaleY;
 
+    // Check if clicking on a measurement label (before anything else)
+    const hitMeasurement = this.findMeasurementAtPoint(canvasX, canvasY);
+    if (hitMeasurement) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Delay so the mousedown event fully completes before creating the input
+      setTimeout(() => this.showInlineMeasurementEditor(hitMeasurement), 0);
+      return;
+    }
+
     const glassCoords = this.canvasToGlass(canvasX, canvasY);
 
     // Handle freeform shape drawing mode
     if (this.isDrawingFreeform) {
-      const x = Math.max(0, Math.min(this.glass.width, glassCoords.x));
-      const y = Math.max(0, Math.min(this.glass.height, glassCoords.y));
+      let x = Math.max(0, Math.min(this.glass.width, glassCoords.x));
+      let y = Math.max(0, Math.min(this.glass.height, glassCoords.y));
+
+      // Shift-key snapping to nearest 45-degree angle
+      if (e.shiftKey && this.freeformTempPoints.length > 0) {
+        const last = this.freeformTempPoints[this.freeformTempPoints.length - 1];
+        const dx = x - last.x;
+        const dy = y - last.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const angle = Math.atan2(dy, dx);
+        const snapped = Math.round(angle / (Math.PI/4)) * (Math.PI/4);
+        x = last.x + dist * Math.cos(snapped);
+        y = last.y + dist * Math.sin(snapped);
+        x = Math.max(0, Math.min(this.glass.width, x));
+        y = Math.max(0, Math.min(this.glass.height, y));
+      }
 
       // Check if near first point to close shape
       if (this.freeformTempPoints.length >= 3) {
@@ -324,11 +879,32 @@ class GlassDesigner {
 
     const glassCoords = this.canvasToGlass(canvasX, canvasY);
 
+    // Track freeform cursor position for preview line
+    if (this.isDrawingFreeform && this.freeformTempPoints.length > 0) {
+      let cx = Math.max(0, Math.min(this.glass.width, glassCoords.x));
+      let cy = Math.max(0, Math.min(this.glass.height, glassCoords.y));
+      if (this.shiftKeyDown) {
+        const last = this.freeformTempPoints[this.freeformTempPoints.length - 1];
+        const dx = cx - last.x;
+        const dy = cy - last.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const angle = Math.atan2(dy, dx);
+        const snapped = Math.round(angle / (Math.PI/4)) * (Math.PI/4);
+        cx = last.x + dist * Math.cos(snapped);
+        cy = last.y + dist * Math.sin(snapped);
+        cx = Math.max(0, Math.min(this.glass.width, cx));
+        cy = Math.max(0, Math.min(this.glass.height, cy));
+      }
+      this.freeformCursorPos = { x: cx, y: cy };
+      this.render();
+      return;
+    }
+
     if (this.isDragging && this.selectedHoleIndex >= 0) {
       // Drag existing hole
       const hole = this.holes[this.selectedHoleIndex];
 
-      if (hole.shape === "circle") {
+      if (hole.shape === "circle" || hole.shape === "taladro" || hole.shape === "avellanado") {
         // For circles, x,y is the center
         hole.x = glassCoords.x - this.dragStartX;
         hole.y = glassCoords.y - this.dragStartY;
@@ -363,6 +939,60 @@ class GlassDesigner {
         hole.y = clampedCenterY - hole.height / 2;
       }
 
+      // Snap alignment guides
+      this.snapGuides = [];
+      const snapThreshold = 5; // mm
+      // Get the center of the dragged hole
+      let hcx, hcy;
+      if (hole.shape === "rectangle") {
+        hcx = hole.x + hole.width / 2;
+        hcy = hole.y + hole.height / 2;
+      } else {
+        hcx = hole.x;
+        hcy = hole.y;
+      }
+
+      // Snap targets: glass center, glass edges, other hole centers
+      const snapTargetsX = [0, this.glass.width, this.glass.width / 2];
+      const snapTargetsY = [0, this.glass.height, this.glass.height / 2];
+
+      this.holes.forEach((otherHole, idx) => {
+        if (idx === this.selectedHoleIndex) return;
+        if (otherHole.shape === "rectangle") {
+          snapTargetsX.push(otherHole.x + otherHole.width / 2);
+          snapTargetsY.push(otherHole.y + otherHole.height / 2);
+        } else {
+          snapTargetsX.push(otherHole.x);
+          snapTargetsY.push(otherHole.y);
+        }
+      });
+
+      for (const tx of snapTargetsX) {
+        if (Math.abs(hcx - tx) < snapThreshold) {
+          const dx = tx - hcx;
+          if (hole.shape === "rectangle") {
+            hole.x += dx;
+          } else {
+            hole.x += dx;
+          }
+          this.snapGuides.push({ type: "vertical", pos: tx });
+          break;
+        }
+      }
+
+      for (const ty of snapTargetsY) {
+        if (Math.abs(hcy - ty) < snapThreshold) {
+          const dy = ty - hcy;
+          if (hole.shape === "rectangle") {
+            hole.y += dy;
+          } else {
+            hole.y += dy;
+          }
+          this.snapGuides.push({ type: "horizontal", pos: ty });
+          break;
+        }
+      }
+
        this.render();
        this.updatePropertiesPanel();
      } else if (this.isPainting && this.currentPaintArea) {
@@ -378,8 +1008,11 @@ class GlassDesigner {
        this.render();
      }
 
-     // Update cursor
-    if (this.currentTool === "select") {
+     // Update cursor — check measurement labels first
+    const hitMeasure = this.findMeasurementAtPoint(canvasX, canvasY);
+    if (hitMeasure) {
+      this.canvas.style.cursor = "pointer";
+    } else if (this.currentTool === "select") {
       const holeIndex = this.findHoleAtPoint(glassCoords.x, glassCoords.y);
       this.canvas.style.cursor = holeIndex >= 0 ? "move" : "default";
     } else if (this.currentTool === "paint") {
@@ -391,6 +1024,7 @@ class GlassDesigner {
 
   onMouseUp(e) {
     this.isDragging = false;
+    this.snapGuides = [];
 
     // Finish painting if we were painting
     if (this.isPainting && this.currentPaintArea) {
@@ -530,111 +1164,245 @@ class GlassDesigner {
    * Y=0 is at the bottom.
    */
   getGlassPoints() {
+    const shapeDef = GLASS_SHAPES[this.glass.shape] || GLASS_SHAPES["rectangle"];
+    let points = shapeDef.generate(this.glass.width, this.glass.height, this.glass.shapeParams || {}, this.glass);
+
     const w = this.glass.width;
     const h = this.glass.height;
-    const shape = this.glass.shape;
-    const params = this.glass.shapeParams || {};
 
-    switch (shape) {
-      case "circle": {
-        const cx = w / 2;
-        const cy = h / 2;
-        const r = Math.min(w, h) / 2;
-        const points = [];
-        const segments = 64;
-        for (let i = 0; i < segments; i++) {
-          const angle = (i / segments) * Math.PI * 2;
-          points.push({
-            x: cx + r * Math.cos(angle),
-            y: cy + r * Math.sin(angle),
-          });
-        }
-        return points;
-      }
-      case "triangle":
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w / 2, y: h },
-        ];
-      case "right-triangle":
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: 0, y: h },
-        ];
-      case "arch": {
-        const archHeight = params.archHeight || Math.min(h * 0.3, w / 2);
-        const rectTop = h - archHeight;
-        const points = [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w, y: rectTop },
-        ];
-        const segments = 32;
-        for (let i = 1; i <= segments; i++) {
-          const angle = (i / segments) * Math.PI;
-          points.push({
-            x: w / 2 + (w / 2) * Math.cos(angle),
-            y: rectTop + archHeight * Math.sin(angle),
-          });
-        }
-        return points;
-      }
-      case "trapezoid": {
-        const topWidth = params.topWidth || w * 0.6;
-        const offset = (w - topWidth) / 2;
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w - offset, y: h },
-          { x: offset, y: h },
-        ];
-      }
-      case "right-trapezoid": {
-        const rtTopWidth = params.topWidth || w * 0.6;
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: rtTopWidth, y: h },
-          { x: 0, y: h },
-        ];
-      }
-      case "l-shape": {
-        const notchWidth = params.notchWidth || w * 0.4;
-        const notchHeight = params.notchHeight || h * 0.4;
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w, y: h - notchHeight },
-          { x: w - notchWidth, y: h - notchHeight },
-          { x: w - notchWidth, y: h },
-          { x: 0, y: h },
-        ];
-      }
-      case "freeform": {
-        if (
-          this.glass.freeformPoints &&
-          this.glass.freeformPoints.length >= 3
-        ) {
-          return this.glass.freeformPoints;
-        }
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w, y: h },
-          { x: 0, y: h },
-        ];
-      }
-      default:
-        // rectangle
-        return [
-          { x: 0, y: 0 },
-          { x: w, y: 0 },
-          { x: w, y: h },
-          { x: 0, y: h },
-        ];
+    if (this.glass.flipH) {
+      points = points.map((p) => ({ x: w - p.x, y: p.y }));
     }
+    if (this.glass.flipV) {
+      points = points.map((p) => ({ x: p.x, y: h - p.y }));
+    }
+
+    return points;
+  }
+
+  /**
+   * Rotate the glass shape 90 degrees clockwise.
+   * Swaps width/height and transforms the shape accordingly.
+   */
+  rotateShape90() {
+    if (this.glass.shape === "rectangle" || this.glass.shape === "circle") {
+      // For rectangle/circle just swap dimensions
+      const tmp = this.glass.width;
+      this.glass.width = this.glass.height;
+      this.glass.height = tmp;
+    } else if (this.glass.shape === "freeform") {
+      // Rotate freeform points: (x, y) → (y, oldW - x), then swap w/h
+      const oldW = this.glass.width;
+      this.glass.freeformPoints = this.glass.freeformPoints.map((p) => ({
+        x: p.y,
+        y: oldW - p.x,
+      }));
+      const tmp = this.glass.width;
+      this.glass.width = this.glass.height;
+      this.glass.height = tmp;
+    } else {
+      // For predefined shapes, cycle through flip combinations
+      // to achieve rotation: rotate CW = flipH then swap flips diagonally
+      const wasFlipH = this.glass.flipH;
+      const wasFlipV = this.glass.flipV;
+      // CW rotation: flipH,flipV → new states
+      // 0,0 → 0,1 → 1,1 → 1,0 → 0,0
+      if (!wasFlipH && !wasFlipV) {
+        this.glass.flipV = true;
+      } else if (!wasFlipH && wasFlipV) {
+        this.glass.flipH = true;
+      } else if (wasFlipH && wasFlipV) {
+        this.glass.flipV = false;
+      } else {
+        this.glass.flipH = false;
+      }
+      // Also swap width and height
+      const tmp = this.glass.width;
+      this.glass.width = this.glass.height;
+      this.glass.height = tmp;
+    }
+
+    // Update dimension inputs
+    const widthInput = document.getElementById("glass-width");
+    const heightInput = document.getElementById("glass-height");
+    if (widthInput) widthInput.value = Math.round(this.glass.width);
+    if (heightInput) heightInput.value = Math.round(this.glass.height);
+
+    this.setupCanvas();
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Flip the glass shape horizontally (mirror left-right).
+   */
+  flipShapeH() {
+    if (this.glass.shape === "freeform") {
+      const w = this.glass.width;
+      this.glass.freeformPoints = this.glass.freeformPoints.map((p) => ({
+        x: w - p.x,
+        y: p.y,
+      }));
+    } else {
+      this.glass.flipH = !this.glass.flipH;
+    }
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Flip the glass shape vertically (mirror top-bottom).
+   */
+  flipShapeV() {
+    if (this.glass.shape === "freeform") {
+      const h = this.glass.height;
+      this.glass.freeformPoints = this.glass.freeformPoints.map((p) => ({
+        x: p.x,
+        y: h - p.y,
+      }));
+    } else {
+      this.glass.flipV = !this.glass.flipV;
+    }
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Find a measurement label at the given canvas pixel coordinates.
+   */
+  findMeasurementAtPoint(canvasX, canvasY) {
+    for (const area of this.measurementHitAreas) {
+      if (
+        canvasX >= area.x - area.w / 2 &&
+        canvasX <= area.x + area.w / 2 &&
+        canvasY >= area.y - area.h / 2 &&
+        canvasY <= area.y + area.h / 2
+      ) {
+        return area;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Show an inline input over a measurement label for direct editing.
+   */
+  showInlineMeasurementEditor(hitArea) {
+    // Remove any existing editor
+    const existing = document.getElementById("inline-measurement-editor");
+    if (existing) {
+      existing.remove();
+    }
+
+    // Convert canvas pixel position to page position
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const displayScaleX = canvasRect.width / this.canvas.width;
+    const displayScaleY = canvasRect.height / this.canvas.height;
+    const pageX = canvasRect.left + hitArea.x * displayScaleX;
+    const pageY = canvasRect.top + hitArea.y * displayScaleY;
+
+    const input = document.createElement("input");
+    input.id = "inline-measurement-editor";
+    input.type = "number";
+    input.value = Math.round(hitArea.value);
+    input.step = "1";
+    input.min = "1";
+    input.style.cssText = `
+      position: fixed;
+      left: ${pageX - 40}px;
+      top: ${pageY - 14}px;
+      width: 80px;
+      height: 28px;
+      font-size: 13px;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid #2563eb;
+      border-radius: 6px;
+      outline: none;
+      z-index: 10000;
+      background: white;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      color: #1e293b;
+    `;
+
+    // Prevent mousedown on the input from bubbling to the canvas
+    input.addEventListener("mousedown", (ev) => ev.stopPropagation());
+
+    document.body.appendChild(input);
+
+    // Delay focus so the original mousedown event fully completes first
+    let ready = false;
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+      // Only enable blur-to-apply after input is fully ready
+      setTimeout(() => {
+        ready = true;
+      }, 150);
+    });
+
+    let applied = false;
+    const self = this;
+
+    const applyValue = () => {
+      if (applied) return;
+      applied = true;
+      const newVal = parseFloat(input.value);
+      input.remove();
+
+      if (!newVal || newVal <= 0) return;
+
+      if (hitArea.type === "width") {
+        self.glass.width = newVal;
+        const el = document.getElementById("glass-width");
+        if (el) el.value = Math.round(newVal);
+        self.setupCanvas();
+        self.render();
+        self.updateShapeParamsUI();
+      } else if (hitArea.type === "height") {
+        self.glass.height = newVal;
+        const el = document.getElementById("glass-height");
+        if (el) el.value = Math.round(newVal);
+        self.setupCanvas();
+        self.render();
+        self.updateShapeParamsUI();
+      } else if (hitArea.type === "thickness") {
+        self.glass.thickness = newVal;
+        const el = document.getElementById("glass-thickness");
+        if (el) el.value = newVal;
+        const sel = document.getElementById("glass-thickness-select");
+        if (sel) {
+          const presets = ["4", "6", "8", "9.5", "12"];
+          sel.value = presets.includes(String(newVal))
+            ? String(newVal)
+            : "custom";
+        }
+        self.render();
+      } else if (hitArea.type === "side") {
+        if (self.glass.shape === "freeform") {
+          self.updateSideLength(hitArea.sideIndex, String(newVal));
+        } else {
+          self.updatePredefinedSideLength(hitArea.sideIndex, String(newVal));
+        }
+      }
+    };
+
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        applyValue();
+      }
+      if (ev.key === "Escape") {
+        applied = true;
+        input.remove();
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      // Only apply on blur if the input was fully initialized
+      if (!ready) return;
+      setTimeout(applyValue, 100);
+    });
   }
 
   /**
@@ -697,38 +1465,28 @@ class GlassDesigner {
   updateGlassShape(shape) {
     this.glass.shape = shape;
 
-    // Set default params for shapes that need them
-    if (shape === "arch" && !this.glass.shapeParams.archHeight) {
-      this.glass.shapeParams.archHeight = Math.min(
-        this.glass.height * 0.3,
-        this.glass.width / 2,
-      );
-    }
-    if (shape === "trapezoid" && !this.glass.shapeParams.topWidth) {
-      this.glass.shapeParams.topWidth = this.glass.width * 0.6;
-    }
-    if (shape === "right-trapezoid" && !this.glass.shapeParams.topWidth) {
-      this.glass.shapeParams.topWidth = this.glass.width * 0.6;
-    }
-    if (shape === "l-shape") {
-      if (!this.glass.shapeParams.notchWidth) {
-        this.glass.shapeParams.notchWidth = this.glass.width * 0.4;
-      }
-      if (!this.glass.shapeParams.notchHeight) {
-        this.glass.shapeParams.notchHeight = this.glass.height * 0.4;
-      }
+    // Set default params from shape definition for any missing params
+    const shapeDef = GLASS_SHAPES[shape];
+    if (shapeDef && shapeDef.params) {
+      shapeDef.params.forEach(p => {
+        if (this.glass.shapeParams[p.key] === undefined || this.glass.shapeParams[p.key] === null) {
+          this.glass.shapeParams[p.key] = p.defaultFn(this.glass.width, this.glass.height);
+        }
+      });
     }
 
     this.render();
     this.updateShapeParamsUI();
 
-    // Update shape button states
-    document.querySelectorAll(".shape-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-    document
-      .querySelector('[data-shape="' + shape + '"]')
-      ?.classList.add("active");
+    // Update shape picker button
+    const pickerName = document.getElementById("shape-picker-name");
+    const pickerIcon = document.getElementById("shape-picker-icon");
+    if (pickerName && shapeDef) {
+      pickerName.textContent = shapeDef.name;
+    }
+    if (pickerIcon) {
+      pickerIcon.innerHTML = generateShapeSVG(shape);
+    }
   }
 
   /**
@@ -757,6 +1515,7 @@ class GlassDesigner {
   cancelFreeformDrawing() {
     this.isDrawingFreeform = false;
     this.freeformTempPoints = [];
+    this.freeformCursorPos = null;
     // Restore freeform shape if it had points, otherwise stay rectangle
     if (
       this.glass.freeformPoints &&
@@ -780,6 +1539,7 @@ class GlassDesigner {
     }
     this.isDrawingFreeform = false;
     this.freeformTempPoints = [];
+    this.freeformCursorPos = null;
     this.render();
     this.renderHolesList();
     this.updateShapeParamsUI();
@@ -811,50 +1571,29 @@ class GlassDesigner {
     const shape = this.glass.shape;
     const params = this.glass.shapeParams;
     const t = window.i18n ? window.i18n.t : (key) => key;
+    const shapeDef = GLASS_SHAPES[shape];
 
     let html = "";
 
-    if (shape === "arch") {
-      html = `
-        <label>
-          <span>${t("archHeight") || "Arch Height"} (mm):</span>
-          <input type="number" value="${Math.round(params.archHeight || this.glass.height * 0.3)}"
-            onchange="designer.updateShapeParam('archHeight', this.value)">
-        </label>
-      `;
-    } else if (shape === "trapezoid") {
-      html = `
-        <label>
-          <span>${t("topWidth") || "Top Width"} (mm):</span>
-          <input type="number" value="${Math.round(params.topWidth || this.glass.width * 0.6)}"
-            onchange="designer.updateShapeParam('topWidth', this.value)">
-        </label>
-      `;
-    } else if (shape === "right-trapezoid") {
-      html = `
-        <label>
-          <span>${t("topWidth") || "Top Width"} (mm):</span>
-          <input type="number" value="${Math.round(params.topWidth || this.glass.width * 0.6)}"
-            onchange="designer.updateShapeParam('topWidth', this.value)">
-        </label>
-      `;
-    } else if (shape === "l-shape") {
-      html = `
-        <label>
-          <span>${t("notchWidth") || "Notch Width"} (mm):</span>
-          <input type="number" value="${Math.round(params.notchWidth || this.glass.width * 0.4)}"
-            onchange="designer.updateShapeParam('notchWidth', this.value)">
-        </label>
-        <label>
-          <span>${t("notchHeight") || "Notch Height"} (mm):</span>
-          <input type="number" value="${Math.round(params.notchHeight || this.glass.height * 0.4)}"
-            onchange="designer.updateShapeParam('notchHeight', this.value)">
-        </label>
-      `;
-    } else if (shape === "freeform" || this.isDrawingFreeform) {
+    // Auto-generate parameter inputs from shape definition (for non-freeform shapes)
+    if (shape !== "freeform" && !this.isDrawingFreeform && shapeDef && shapeDef.params.length > 0) {
+      shapeDef.params.forEach(p => {
+        const val = params[p.key] !== undefined ? params[p.key] : p.defaultFn(this.glass.width, this.glass.height);
+        html += `
+          <label>
+            <span>${t(p.key) || p.label} (mm):</span>
+            <input type="number" value="${Math.round(val)}"
+              onchange="designer.updateShapeParam('${p.key}', this.value)">
+          </label>
+        `;
+      });
+    }
+
+    // Freeform-specific UI
+    if (shape === "freeform" || this.isDrawingFreeform) {
       const hasPoints =
         this.glass.freeformPoints && this.glass.freeformPoints.length >= 3;
-      html = `
+      html += `
         <button class="btn btn-outline" style="width: 100%; margin-top: 0.5rem;"
           onclick="designer.startFreeformDrawing()">
           ${hasPoints ? t("redrawShape") || "Redraw Shape" : t("drawShape") || "Draw Shape"}
@@ -867,7 +1606,7 @@ class GlassDesigner {
             ${t("cancelDrawing") || "Cancel Drawing"}
           </button>
           <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
-            ${t("freeformInstructions") || "Click to place points. Double-click or click near the first point to close the shape."}
+            ${t("freeformInstructions") || "Click to place points. Hold Shift for straight lines. Double-click or click near the first point to close the shape."}
           </p>
         `
             : ""
@@ -910,16 +1649,21 @@ class GlassDesigner {
       }
     }
 
-    // Show editable side lengths for predefined non-rectangular shapes
+    // Show side lengths for predefined non-rectangular shapes
+    // Shapes with updatePredefinedSideLength support get editable inputs;
+    // others get read-only display.
+    const editableShapes = ["rectangle", "trapezoid", "right-trapezoid", "triangle", "right-triangle", "l-shape"];
     if (
       !this.isDrawingFreeform &&
       shape !== "rectangle" &&
       shape !== "circle" &&
+      shape !== "oval" &&
       shape !== "freeform"
     ) {
       const points = this.getGlassPoints();
       if (points.length <= 12) {
         const sideLengths = this.calculateSideLengths();
+        const isEditable = editableShapes.includes(shape);
         html += `
           <div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">
             <span style="font-size: 0.8rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.5rem;">
@@ -927,17 +1671,26 @@ class GlassDesigner {
             </span>
         `;
         sideLengths.forEach((side, i) => {
-          html += `
-            <label style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; font-size: 0.8rem;">
-              <span style="min-width: 48px; color: #374151;">
-                ${i + 1}:
-              </span>
-              <input type="number" value="${Math.round(side.length)}" step="1" min="1"
-                style="flex: 1; padding: 0.2rem 0.35rem; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 0.8rem;"
-                onchange="designer.updatePredefinedSideLength(${i}, this.value)">
-              <span style="color: #94a3b8; font-size: 0.75rem;">mm</span>
-            </label>
-          `;
+          if (isEditable) {
+            html += `
+              <label style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; font-size: 0.8rem;">
+                <span style="min-width: 48px; color: #374151;">
+                  ${i + 1}:
+                </span>
+                <input type="number" value="${Math.round(side.length)}" step="1" min="1"
+                  style="flex: 1; padding: 0.2rem 0.35rem; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 0.8rem;"
+                  onchange="designer.updatePredefinedSideLength(${i}, this.value)">
+                <span style="color: #94a3b8; font-size: 0.75rem;">mm</span>
+              </label>
+            `;
+          } else {
+            html += `
+              <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; font-size: 0.8rem;">
+                <span style="min-width: 48px; color: #374151;">${i + 1}:</span>
+                <span style="flex: 1; padding: 0.2rem 0.35rem; color: #64748b;">${Math.round(side.length)}mm</span>
+              </div>
+            `;
+          }
         });
         html += `</div>`;
       }
@@ -1002,6 +1755,28 @@ class GlassDesigner {
         ctx.lineTo(p.x, p.y);
       }
       ctx.closePath();
+      ctx.fill();
+    }
+
+    // Draw cursor preview line from last point to cursor
+    if (this.freeformCursorPos && points.length > 0) {
+      const lastPt = points[points.length - 1];
+      const lastCanvas = this.glassToCanvas(lastPt.x, lastPt.y);
+      const curCanvas = this.glassToCanvas(this.freeformCursorPos.x, this.freeformCursorPos.y);
+
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(lastCanvas.x, lastCanvas.y);
+      ctx.lineTo(curCanvas.x, curCanvas.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw cursor dot
+      ctx.fillStyle = "rgba(16, 185, 129, 0.5)";
+      ctx.beginPath();
+      ctx.arc(curCanvas.x, curCanvas.y, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1401,14 +2176,15 @@ class GlassDesigner {
         midY + normalY * offsetMM,
       );
 
-      const text = Math.round(length) + "mm";
+      const sideNum = i + 1;
+      const text = sideNum + ": " + Math.round(length) + "mm";
       const textWidth = ctx.measureText(text).width;
-      const pillW = textWidth + 8;
-      const pillH = 15;
+      const pillW = textWidth + 10;
+      const pillH = 16;
 
       // Background pill
       ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
-      ctx.strokeStyle = "rgba(37, 99, 235, 0.25)";
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.3)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       if (ctx.roundRect) {
@@ -1417,7 +2193,7 @@ class GlassDesigner {
           labelCanvas.y - pillH / 2,
           pillW,
           pillH,
-          3,
+          4,
         );
       } else {
         ctx.rect(
@@ -1433,6 +2209,30 @@ class GlassDesigner {
       // Text
       ctx.fillStyle = "#1e40af";
       ctx.fillText(text, labelCanvas.x, labelCanvas.y);
+
+      // Draw small circled number on the glass edge (midpoint of the side)
+      const edgeMid = this.glassToCanvas(midX, midY);
+      const badgeR = 8;
+      ctx.fillStyle = "#2563eb";
+      ctx.beginPath();
+      ctx.arc(edgeMid.x, edgeMid.y, badgeR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillText(String(sideNum), edgeMid.x, edgeMid.y);
+      // Restore font for next label
+      ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+      // Store hit area for click-to-edit
+      this.measurementHitAreas.push({
+        x: labelCanvas.x,
+        y: labelCanvas.y,
+        w: pillW + 6,
+        h: pillH + 6,
+        sideIndex: i,
+        type: "side",
+        value: length,
+      });
     }
 
     ctx.restore();
@@ -2289,8 +3089,113 @@ class GlassDesigner {
      }
    }
 
+  /**
+   * Show the shape picker modal.
+   */
+  showShapePickerModal() {
+    // Remove existing modal if any
+    const existing = document.querySelector(".shape-modal-overlay");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "shape-modal-overlay";
+    overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:5000;";
+
+    const currentShape = this.glass.shape;
+    let contentHtml = `
+      <div class="shape-modal" style="background:white;border-radius:12px;padding:1.5rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 25px rgba(0,0,0,0.15);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h3 style="margin:0;color:#1e293b;">Choose Glass Shape</h3>
+          <button class="shape-modal-close" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;">&times;</button>
+        </div>
+    `;
+
+    SHAPE_CATEGORIES.forEach(cat => {
+      const shapesInCat = Object.entries(GLASS_SHAPES).filter(([, def]) => def.category === cat.id);
+      if (shapesInCat.length === 0) return;
+
+      contentHtml += `
+        <div style="margin-bottom:1rem;">
+          <div style="font-size:0.8rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">${cat.name}</div>
+          <div class="shape-modal-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem;">
+      `;
+
+      shapesInCat.forEach(([id, def]) => {
+        const isActive = id === currentShape;
+        const svg = generateShapeSVG(id);
+        contentHtml += `
+          <button class="shape-modal-item${isActive ? " active" : ""}" data-shape="${id}"
+            style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;padding:0.5rem;border:2px solid ${isActive ? "#2563eb" : "#e2e8f0"};border-radius:8px;background:${isActive ? "#eff6ff" : "white"};cursor:pointer;transition:all 0.2s;color:${isActive ? "#2563eb" : "#64748b"};">
+            <span style="display:flex;align-items:center;justify-content:center;height:36px;">${svg}</span>
+            <span style="font-size:0.7rem;text-align:center;line-height:1.2;">${def.name}</span>
+          </button>
+        `;
+      });
+
+      contentHtml += `</div></div>`;
+    });
+
+    contentHtml += `</div>`;
+    overlay.innerHTML = contentHtml;
+    document.body.appendChild(overlay);
+
+    // Event listeners
+    overlay.querySelector(".shape-modal-close").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    overlay.querySelectorAll(".shape-modal-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const shapeId = btn.getAttribute("data-shape");
+        this.glass.shapeParams = {}; // Reset params for new shape
+        this.glass.flipH = false;
+        this.glass.flipV = false;
+        this.updateGlassShape(shapeId);
+        overlay.remove();
+      });
+    });
+  }
+
+  /**
+   * Draw snap alignment guides on the canvas.
+   */
+  drawSnapGuides() {
+    if (this.snapGuides.length === 0) return;
+    const ctx = this.ctx;
+    ctx.save();
+
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    this.snapGuides.forEach(guide => {
+      if (guide.type === "vertical") {
+        const cp = this.glassToCanvas(guide.pos, 0);
+        const cp2 = this.glassToCanvas(guide.pos, this.glass.height);
+        ctx.beginPath();
+        ctx.moveTo(cp.x, cp.y);
+        ctx.lineTo(cp2.x, cp2.y);
+        ctx.stroke();
+      } else if (guide.type === "horizontal") {
+        const cp = this.glassToCanvas(0, guide.pos);
+        const cp2 = this.glassToCanvas(this.glass.width, guide.pos);
+        ctx.beginPath();
+        ctx.moveTo(cp.x, cp.y);
+        ctx.lineTo(cp2.x, cp2.y);
+        ctx.stroke();
+      }
+    });
+
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   render() {
     const ctx = this.ctx;
+
+    // Reset clickable measurement hit areas
+    this.measurementHitAreas = [];
 
     // Enable smooth rendering
     ctx.imageSmoothingEnabled = true;
@@ -2314,6 +3219,9 @@ class GlassDesigner {
 
     // Draw holes
     this.drawHoles();
+
+    // Draw snap alignment guides
+    this.drawSnapGuides();
 
     // Draw dimensions
     this.drawDimensions();
@@ -3788,26 +4696,62 @@ class GlassDesigner {
     if (!hasSideLabels) {
       // Width dimension
       const widthText = this.glass.width + "mm";
-      ctx.fillText(
-        widthText,
-        this.offsetX + (this.glass.width * this.scale) / 2,
-        this.canvas.height - 10,
-      );
+      const widthLabelX = this.offsetX + (this.glass.width * this.scale) / 2;
+      const widthLabelY = this.canvas.height - 10;
+      ctx.fillText(widthText, widthLabelX, widthLabelY);
+
+      const widthTextW = ctx.measureText(widthText).width;
+      this.measurementHitAreas.push({
+        x: widthLabelX,
+        y: widthLabelY,
+        w: widthTextW + 12,
+        h: 22,
+        type: "width",
+        value: this.glass.width,
+      });
 
       // Height dimension
+      const heightLabelX = 10;
+      const heightLabelY =
+        this.offsetY + (this.glass.height * this.scale) / 2;
       ctx.save();
-      ctx.translate(10, this.offsetY + (this.glass.height * this.scale) / 2);
+      ctx.translate(heightLabelX, heightLabelY);
       ctx.rotate(-Math.PI / 2);
       ctx.fillText(this.glass.height + "mm", 0, 0);
       ctx.restore();
+
+      const heightTextW = ctx.measureText(this.glass.height + "mm").width;
+      this.measurementHitAreas.push({
+        x: heightLabelX,
+        y: heightLabelY,
+        w: 22,
+        h: heightTextW + 12,
+        type: "height",
+        value: this.glass.height,
+      });
     }
 
     // Thickness
+    const thicknessLabelX =
+      this.offsetX + (this.glass.width * this.scale) / 2;
+    const thicknessLabelY = 20;
     ctx.fillText(
       "Espesor: " + this.glass.thickness + "mm",
-      this.offsetX + (this.glass.width * this.scale) / 2,
-      20,
+      thicknessLabelX,
+      thicknessLabelY,
     );
+
+    const thicknessTextW = ctx.measureText(
+      "Espesor: " + this.glass.thickness + "mm",
+    ).width;
+    this.measurementHitAreas.push({
+      x: thicknessLabelX,
+      y: thicknessLabelY,
+      w: thicknessTextW + 12,
+      h: 22,
+      type: "thickness",
+      value: this.glass.thickness,
+    });
 
     // CPB indicator
     if (this.glass.cpb) {
@@ -4108,6 +5052,8 @@ class GlassDesigner {
         shape: "rectangle",
         shapeParams: {},
         freeformPoints: [],
+        flipH: false,
+        flipV: false,
         ...data.glass,
       };
       // Ensure nested objects are properly copied
@@ -4129,13 +5075,16 @@ class GlassDesigner {
     this.selectedHoleIndex = -1;
     this.render();
 
-    // Update shape selector UI
-    document.querySelectorAll(".shape-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-    document
-      .querySelector('[data-shape="' + this.glass.shape + '"]')
-      ?.classList.add("active");
+    // Update shape picker button
+    const shapeDef = GLASS_SHAPES[this.glass.shape];
+    const pickerName = document.getElementById("shape-picker-name");
+    const pickerIcon = document.getElementById("shape-picker-icon");
+    if (pickerName && shapeDef) {
+      pickerName.textContent = shapeDef.name;
+    }
+    if (pickerIcon) {
+      pickerIcon.innerHTML = generateShapeSVG(this.glass.shape);
+    }
     this.updateShapeParamsUI();
   }
 
@@ -4146,17 +5095,17 @@ class GlassDesigner {
     this.glass.shape = "rectangle";
     this.glass.shapeParams = {};
     this.glass.freeformPoints = [];
+    this.glass.flipH = false;
+    this.glass.flipV = false;
     this.isDrawingFreeform = false;
     this.freeformTempPoints = [];
     this.render();
 
-    // Reset shape selector UI
-    document.querySelectorAll(".shape-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-    document
-      .querySelector('[data-shape="rectangle"]')
-      ?.classList.add("active");
+    // Reset shape picker button
+    const pickerName = document.getElementById("shape-picker-name");
+    const pickerIcon = document.getElementById("shape-picker-icon");
+    if (pickerName) pickerName.textContent = "Rectangle";
+    if (pickerIcon) pickerIcon.innerHTML = generateShapeSVG("rectangle");
     this.updateShapeParamsUI();
   }
 
@@ -4463,6 +5412,8 @@ async function loadDesignFromBackend(designId) {
         shape: glassShape.shape || "rectangle",
         shapeParams: glassShape.shapeParams || {},
         freeformPoints: glassShape.freeformPoints || [],
+        flipH: glassShape.flipH || false,
+        flipV: glassShape.flipV || false,
       },
       holes: holes,
     });
@@ -4510,15 +5461,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Setup glass shape selector buttons
-    document.querySelectorAll(".shape-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const shape = btn.getAttribute("data-shape");
-        if (shape) {
-          designer.updateGlassShape(shape);
-        }
-      });
-    });
+    // Initialize shape picker button with default shape
+    const pickerIcon = document.getElementById("shape-picker-icon");
+    if (pickerIcon) pickerIcon.innerHTML = generateShapeSVG("rectangle");
 
     // Setup glass dimension inputs
     const widthInput = document.getElementById("glass-width");
@@ -4960,6 +5905,8 @@ function convertToBackendFormat(holes, glassData) {
       shape: glassData.shape,
       shapeParams: glassData.shapeParams || {},
       freeformPoints: glassData.freeformPoints || [],
+      flipH: glassData.flipH || false,
+      flipV: glassData.flipV || false,
     };
   }
 

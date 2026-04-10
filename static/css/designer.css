@@ -1,37 +1,32 @@
 /* Glass Designer Tool - Specific Styles */
 
-/* Glass Shape Selector */
-.shape-selector {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.25rem;
-    margin-top: 0.5rem;
-}
-
-.shape-btn {
+/* Shape Picker Button */
+.shape-picker-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0.35rem;
-    border: 2px solid #e2e8f0;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #cbd5e1;
     border-radius: 6px;
     background: white;
     cursor: pointer;
     transition: all 0.2s;
-    color: #64748b;
-    min-height: 40px;
+    color: #334155;
+    font-size: 0.875rem;
+    font-family: inherit;
+    margin-top: 0.25rem;
 }
 
-.shape-btn:hover {
+.shape-picker-btn:hover {
     border-color: #94a3b8;
-    color: #334155;
     background: #f8fafc;
 }
 
-.shape-btn.active {
+.shape-picker-btn:focus {
+    outline: none;
     border-color: #2563eb;
-    color: #2563eb;
-    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .shape-params {
@@ -52,29 +47,99 @@
     margin-top: 0.25rem;
 }
 
+/* Shape Picker Modal */
+.shape-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5000;
+}
+
+.shape-modal {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+}
+
+.shape-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 0.5rem;
+}
+
+.shape-modal-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+    font-family: inherit;
+}
+
+.shape-modal-item:hover {
+    border-color: #94a3b8;
+    color: #334155;
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.shape-modal-item.active {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
+}
+
 @media (prefers-color-scheme: dark) {
-    .shape-btn {
-        border-color: #374151;
+    .shape-picker-btn {
         background: #1f2937;
-        color: #9ca3af;
-    }
-
-    .shape-btn:hover {
-        border-color: #4b5563;
+        border-color: #374151;
         color: #d1d5db;
-        background: #374151;
     }
 
-    .shape-btn.active {
-        border-color: #3b82f6;
-        color: #60a5fa;
-        background: #1e3a5f;
+    .shape-picker-btn:hover {
+        border-color: #4b5563;
+        background: #374151;
     }
 
     .shape-params input[type="number"] {
         background: #1f2937;
         border-color: #374151;
         color: #d1d5db;
+    }
+
+    .shape-modal-item {
+        border-color: #374151;
+        background: #1f2937;
+        color: #9ca3af;
+    }
+
+    .shape-modal-item:hover {
+        border-color: #4b5563;
+        color: #d1d5db;
+        background: #374151;
+    }
+
+    .shape-modal-item.active {
+        border-color: #3b82f6;
+        color: #60a5fa;
+        background: #1e3a5f;
     }
 }
 
