@@ -2090,15 +2090,17 @@ class GlassDesigner {
         if (sideIndex === 0) {
           this.glass.width = val;
         } else if (sideIndex === 1) {
-          // h - nh = val  →  h = val + nh
-          this.glass.height = val + nh;
+          // h - nh = val → adjust notch height, keep overall height fixed
+          const newNh = h - val;
+          if (newNh > 0) this.glass.shapeParams.notchHeight = newNh;
         } else if (sideIndex === 2) {
           this.glass.shapeParams.notchWidth = val;
         } else if (sideIndex === 3) {
           this.glass.shapeParams.notchHeight = val;
         } else if (sideIndex === 4) {
-          // w - nw = val  →  w = val + nw
-          this.glass.width = val + nw;
+          // w - nw = val → adjust notch width, keep overall width fixed
+          const newNw = w - val;
+          if (newNw > 0) this.glass.shapeParams.notchWidth = newNw;
         } else if (sideIndex === 5) {
           this.glass.height = val;
         }
