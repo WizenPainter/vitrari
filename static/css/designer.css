@@ -1,5 +1,83 @@
 /* Glass Designer Tool - Specific Styles */
 
+/* Glass Shape Selector */
+.shape-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.shape-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+    min-height: 40px;
+}
+
+.shape-btn:hover {
+    border-color: #94a3b8;
+    color: #334155;
+    background: #f8fafc;
+}
+
+.shape-btn.active {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.shape-params {
+    margin-top: 0.25rem;
+}
+
+.shape-params label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.shape-params input[type="number"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .shape-btn {
+        border-color: #374151;
+        background: #1f2937;
+        color: #9ca3af;
+    }
+
+    .shape-btn:hover {
+        border-color: #4b5563;
+        color: #d1d5db;
+        background: #374151;
+    }
+
+    .shape-btn.active {
+        border-color: #3b82f6;
+        color: #60a5fa;
+        background: #1e3a5f;
+    }
+
+    .shape-params input[type="number"] {
+        background: #1f2937;
+        border-color: #374151;
+        color: #d1d5db;
+    }
+}
+
 /* Design Canvas Container */
 .design-workspace {
     display: flex;
@@ -660,6 +738,101 @@
     }
 }
 
+/* Herraje Menu Dropdown Styles */
+.herraje-menu-wrapper {
+    position: relative;
+}
+
+.herraje-menu-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    color: #1f2937;
+}
+
+.herraje-menu-button:hover {
+    border-color: #94a3b8;
+    background-color: #f8fafc;
+}
+
+.herraje-menu-button:active,
+.herraje-menu-button:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.herraje-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    margin-top: 0.25rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.herraje-menu-item {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.herraje-menu-item:last-child {
+    border-bottom: none;
+}
+
+.herraje-menu-item:hover {
+    background-color: #f0f9ff;
+}
+
+.herraje-menu-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 2px;
+}
+
+.herraje-menu-item-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.herraje-menu-item-code {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #1f2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.herraje-menu-item-material {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
 /* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
     .canvas-container {
@@ -678,5 +851,37 @@
 
     .measurement-label {
         background-color: #bb86fc;
+    }
+    
+    .herraje-menu-button {
+        background: #1f2937;
+        color: #f3f4f6;
+        border-color: #4b5563;
+    }
+    
+    .herraje-menu-button:hover {
+        border-color: #6b7280;
+        background-color: #2d3748;
+    }
+    
+    .herraje-dropdown-menu {
+        background: #1f2937;
+        border-color: #4b5563;
+    }
+    
+    .herraje-menu-item {
+        border-bottom-color: #4b5563;
+    }
+    
+    .herraje-menu-item:hover {
+        background-color: #2d3748;
+    }
+    
+    .herraje-menu-item-code {
+        color: #f3f4f6;
+    }
+    
+    .herraje-menu-item-material {
+        color: #9ca3af;
     }
 }

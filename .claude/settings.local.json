@@ -9,7 +9,8 @@
       "Bash(xargs kill:*)",
       "Bash(go build:*)",
       "Bash(./glass-optimizer)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(node:*)"
     ]
   },
   "enableAllProjectMcpServers": false

@@ -21,11 +21,18 @@ class GlassDesigner {
       thickness: 6,
       type: "clear", // clear, mirror, gray, tinted, frosted
       cpb: false, // Canto Pulido (polished edge)
+      shape: "rectangle", // rectangle, circle, triangle, right-triangle, arch, trapezoid, l-shape, freeform
+      shapeParams: {}, // Shape-specific parameters
+      freeformPoints: [], // Custom polygon points for freeform shape
     };
 
     // Paint areas - array of painted rectangles
     this.paintAreas = [];
     this.paintColor = "#FFFFFF"; // Default white color
+
+    // Freeform shape drawing state
+    this.isDrawingFreeform = false;
+    this.freeformTempPoints = [];
 
     // Holes array - each hole has {x, y, diameter, shape}
     this.holes = [];
@@ -112,6 +119,7 @@ class GlassDesigner {
     this.canvas.addEventListener("mousemove", this.onMouseMove.bind(this));
     this.canvas.addEventListener("mouseup", this.onMouseUp.bind(this));
     this.canvas.addEventListener("mouseleave", this.onMouseUp.bind(this));
+    this.canvas.addEventListener("dblclick", this.onDoubleClick.bind(this));
 
     // Touch events for mobile
     this.canvas.addEventListener("touchstart", this.onTouchStart.bind(this), {
@@ -169,13 +177,28 @@ class GlassDesigner {
 
     const glassCoords = this.canvasToGlass(canvasX, canvasY);
 
-    // Check if click is within glass bounds
-    if (
-      glassCoords.x < 0 ||
-      glassCoords.x > this.glass.width ||
-      glassCoords.y < 0 ||
-      glassCoords.y > this.glass.height
-    ) {
+    // Handle freeform shape drawing mode
+    if (this.isDrawingFreeform) {
+      const x = Math.max(0, Math.min(this.glass.width, glassCoords.x));
+      const y = Math.max(0, Math.min(this.glass.height, glassCoords.y));
+
+      // Check if near first point to close shape
+      if (this.freeformTempPoints.length >= 3) {
+        const first = this.freeformTempPoints[0];
+        const dist = Math.sqrt((x - first.x) ** 2 + (y - first.y) ** 2);
+        if (dist < 20) {
+          this.finalizeFreeformShape();
+          return;
+        }
+      }
+
+      this.freeformTempPoints.push({ x, y });
+      this.render();
+      return;
+    }
+
+    // Check if click is within glass shape
+    if (!this.isPointInGlass(glassCoords.x, glassCoords.y)) {
       return;
     }
 
@@ -500,6 +523,1005 @@ class GlassDesigner {
     this.render();
   }
 
+  // --- Glass Shape Methods ---
+
+  /**
+   * Get the polygon points defining the glass outline in glass coordinates (mm).
+   * Y=0 is at the bottom.
+   */
+  getGlassPoints() {
+    const w = this.glass.width;
+    const h = this.glass.height;
+    const shape = this.glass.shape;
+    const params = this.glass.shapeParams || {};
+
+    switch (shape) {
+      case "circle": {
+        const cx = w / 2;
+        const cy = h / 2;
+        const r = Math.min(w, h) / 2;
+        const points = [];
+        const segments = 64;
+        for (let i = 0; i < segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          points.push({
+            x: cx + r * Math.cos(angle),
+            y: cy + r * Math.sin(angle),
+          });
+        }
+        return points;
+      }
+      case "triangle":
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w / 2, y: h },
+        ];
+      case "right-triangle":
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: 0, y: h },
+        ];
+      case "arch": {
+        const archHeight = params.archHeight || Math.min(h * 0.3, w / 2);
+        const rectTop = h - archHeight;
+        const points = [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w, y: rectTop },
+        ];
+        const segments = 32;
+        for (let i = 1; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI;
+          points.push({
+            x: w / 2 + (w / 2) * Math.cos(angle),
+            y: rectTop + archHeight * Math.sin(angle),
+          });
+        }
+        return points;
+      }
+      case "trapezoid": {
+        const topWidth = params.topWidth || w * 0.6;
+        const offset = (w - topWidth) / 2;
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w - offset, y: h },
+          { x: offset, y: h },
+        ];
+      }
+      case "right-trapezoid": {
+        const rtTopWidth = params.topWidth || w * 0.6;
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: rtTopWidth, y: h },
+          { x: 0, y: h },
+        ];
+      }
+      case "l-shape": {
+        const notchWidth = params.notchWidth || w * 0.4;
+        const notchHeight = params.notchHeight || h * 0.4;
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w, y: h - notchHeight },
+          { x: w - notchWidth, y: h - notchHeight },
+          { x: w - notchWidth, y: h },
+          { x: 0, y: h },
+        ];
+      }
+      case "freeform": {
+        if (
+          this.glass.freeformPoints &&
+          this.glass.freeformPoints.length >= 3
+        ) {
+          return this.glass.freeformPoints;
+        }
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w, y: h },
+          { x: 0, y: h },
+        ];
+      }
+      default:
+        // rectangle
+        return [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w, y: h },
+          { x: 0, y: h },
+        ];
+    }
+  }
+
+  /**
+   * Create a canvas path for the glass shape outline.
+   */
+  createGlassCanvasPath(ctx) {
+    const points = this.getGlassPoints();
+    ctx.beginPath();
+    const first = this.glassToCanvas(points[0].x, points[0].y);
+    ctx.moveTo(first.x, first.y);
+    for (let i = 1; i < points.length; i++) {
+      const p = this.glassToCanvas(points[i].x, points[i].y);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+  }
+
+  /**
+   * Test whether a point (in glass mm coordinates) is inside the glass shape.
+   */
+  isPointInGlass(x, y) {
+    // Quick bounding box check first
+    if (
+      x < 0 ||
+      x > this.glass.width ||
+      y < 0 ||
+      y > this.glass.height
+    ) {
+      return false;
+    }
+    if (this.glass.shape === "rectangle") {
+      return true; // Already passed bounding box check
+    }
+    return this.pointInPolygon(x, y, this.getGlassPoints());
+  }
+
+  /**
+   * Ray-casting point-in-polygon test.
+   */
+  pointInPolygon(px, py, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x,
+        yi = polygon[i].y;
+      const xj = polygon[j].x,
+        yj = polygon[j].y;
+      if (
+        yi > py !== yj > py &&
+        px < ((xj - xi) * (py - yi)) / (yj - yi) + xi
+      ) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  /**
+   * Update the glass shape type.
+   */
+  updateGlassShape(shape) {
+    this.glass.shape = shape;
+
+    // Set default params for shapes that need them
+    if (shape === "arch" && !this.glass.shapeParams.archHeight) {
+      this.glass.shapeParams.archHeight = Math.min(
+        this.glass.height * 0.3,
+        this.glass.width / 2,
+      );
+    }
+    if (shape === "trapezoid" && !this.glass.shapeParams.topWidth) {
+      this.glass.shapeParams.topWidth = this.glass.width * 0.6;
+    }
+    if (shape === "right-trapezoid" && !this.glass.shapeParams.topWidth) {
+      this.glass.shapeParams.topWidth = this.glass.width * 0.6;
+    }
+    if (shape === "l-shape") {
+      if (!this.glass.shapeParams.notchWidth) {
+        this.glass.shapeParams.notchWidth = this.glass.width * 0.4;
+      }
+      if (!this.glass.shapeParams.notchHeight) {
+        this.glass.shapeParams.notchHeight = this.glass.height * 0.4;
+      }
+    }
+
+    this.render();
+    this.updateShapeParamsUI();
+
+    // Update shape button states
+    document.querySelectorAll(".shape-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    document
+      .querySelector('[data-shape="' + shape + '"]')
+      ?.classList.add("active");
+  }
+
+  /**
+   * Update a shape-specific parameter.
+   */
+  updateShapeParam(key, value) {
+    this.glass.shapeParams[key] = parseFloat(value) || 0;
+    this.render();
+  }
+
+  /**
+   * Enter freeform shape drawing mode.
+   */
+  startFreeformDrawing() {
+    this.isDrawingFreeform = true;
+    this.freeformTempPoints = [];
+    // Temporarily show as rectangle while drawing
+    this.glass.shape = "rectangle";
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Cancel freeform shape drawing.
+   */
+  cancelFreeformDrawing() {
+    this.isDrawingFreeform = false;
+    this.freeformTempPoints = [];
+    // Restore freeform shape if it had points, otherwise stay rectangle
+    if (
+      this.glass.freeformPoints &&
+      this.glass.freeformPoints.length >= 3
+    ) {
+      this.glass.shape = "freeform";
+    }
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Finalize the freeform shape from drawn points.
+   */
+  finalizeFreeformShape() {
+    if (this.freeformTempPoints.length >= 3) {
+      this.glass.freeformPoints = this.freeformTempPoints.map((p) => ({
+        ...p,
+      }));
+      this.glass.shape = "freeform";
+    }
+    this.isDrawingFreeform = false;
+    this.freeformTempPoints = [];
+    this.render();
+    this.renderHolesList();
+    this.updateShapeParamsUI();
+
+    // Show side lengths modal for exact measurements
+    if (this.glass.freeformPoints.length >= 3) {
+      this.showSideLengthsModal();
+    }
+  }
+
+  /**
+   * Handle double-click for freeform shape closing.
+   */
+  onDoubleClick(e) {
+    if (this.isDrawingFreeform && this.freeformTempPoints.length >= 3) {
+      // Remove the last point (added by the mousedown of double-click)
+      this.freeformTempPoints.pop();
+      this.finalizeFreeformShape();
+    }
+  }
+
+  /**
+   * Update the shape parameters UI panel.
+   */
+  updateShapeParamsUI() {
+    const container = document.getElementById("shape-params");
+    if (!container) return;
+
+    const shape = this.glass.shape;
+    const params = this.glass.shapeParams;
+    const t = window.i18n ? window.i18n.t : (key) => key;
+
+    let html = "";
+
+    if (shape === "arch") {
+      html = `
+        <label>
+          <span>${t("archHeight") || "Arch Height"} (mm):</span>
+          <input type="number" value="${Math.round(params.archHeight || this.glass.height * 0.3)}"
+            onchange="designer.updateShapeParam('archHeight', this.value)">
+        </label>
+      `;
+    } else if (shape === "trapezoid") {
+      html = `
+        <label>
+          <span>${t("topWidth") || "Top Width"} (mm):</span>
+          <input type="number" value="${Math.round(params.topWidth || this.glass.width * 0.6)}"
+            onchange="designer.updateShapeParam('topWidth', this.value)">
+        </label>
+      `;
+    } else if (shape === "right-trapezoid") {
+      html = `
+        <label>
+          <span>${t("topWidth") || "Top Width"} (mm):</span>
+          <input type="number" value="${Math.round(params.topWidth || this.glass.width * 0.6)}"
+            onchange="designer.updateShapeParam('topWidth', this.value)">
+        </label>
+      `;
+    } else if (shape === "l-shape") {
+      html = `
+        <label>
+          <span>${t("notchWidth") || "Notch Width"} (mm):</span>
+          <input type="number" value="${Math.round(params.notchWidth || this.glass.width * 0.4)}"
+            onchange="designer.updateShapeParam('notchWidth', this.value)">
+        </label>
+        <label>
+          <span>${t("notchHeight") || "Notch Height"} (mm):</span>
+          <input type="number" value="${Math.round(params.notchHeight || this.glass.height * 0.4)}"
+            onchange="designer.updateShapeParam('notchHeight', this.value)">
+        </label>
+      `;
+    } else if (shape === "freeform" || this.isDrawingFreeform) {
+      const hasPoints =
+        this.glass.freeformPoints && this.glass.freeformPoints.length >= 3;
+      html = `
+        <button class="btn btn-outline" style="width: 100%; margin-top: 0.5rem;"
+          onclick="designer.startFreeformDrawing()">
+          ${hasPoints ? t("redrawShape") || "Redraw Shape" : t("drawShape") || "Draw Shape"}
+        </button>
+        ${
+          this.isDrawingFreeform
+            ? `
+          <button class="btn btn-outline" style="width: 100%; margin-top: 0.25rem;"
+            onclick="designer.cancelFreeformDrawing()">
+            ${t("cancelDrawing") || "Cancel Drawing"}
+          </button>
+          <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
+            ${t("freeformInstructions") || "Click to place points. Double-click or click near the first point to close the shape."}
+          </p>
+        `
+            : ""
+        }
+      `;
+
+      // Show editable side lengths for existing freeform shapes
+      if (hasPoints && !this.isDrawingFreeform) {
+        const sideLengths = this.calculateSideLengths();
+        html += `
+          <div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="font-size: 0.8rem; font-weight: 600; color: #374151;">
+                ${t("sideLengths") || "Side Lengths"}
+              </span>
+              <button class="btn btn-outline" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;"
+                onclick="designer.showSideLengthsModal()">
+                ${t("editAll") || "Edit All"}
+              </button>
+            </div>
+        `;
+        sideLengths.forEach((side, i) => {
+          const isClosing = i === sideLengths.length - 1;
+          html += `
+            <label style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; font-size: 0.8rem;">
+              <span style="min-width: 48px; color: ${isClosing ? "#94a3b8" : "#374151"};">
+                ${i + 1}${isClosing ? "*" : ""}:
+              </span>
+              <input type="number" value="${Math.round(side.length)}" step="1" min="1"
+                style="flex: 1; padding: 0.2rem 0.35rem; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 0.8rem;"
+                onchange="designer.updateSideLength(${i}, this.value)">
+              <span style="color: #94a3b8; font-size: 0.75rem;">mm</span>
+            </label>
+          `;
+        });
+        html += `
+            <p style="font-size: 0.7rem; color: #94a3b8; margin: 0.25rem 0 0;">* closing side (auto-adjusts)</p>
+          </div>
+        `;
+      }
+    }
+
+    // Show editable side lengths for predefined non-rectangular shapes
+    if (
+      !this.isDrawingFreeform &&
+      shape !== "rectangle" &&
+      shape !== "circle" &&
+      shape !== "freeform"
+    ) {
+      const points = this.getGlassPoints();
+      if (points.length <= 12) {
+        const sideLengths = this.calculateSideLengths();
+        html += `
+          <div style="margin-top: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: #374151; display: block; margin-bottom: 0.5rem;">
+              ${t("sideLengths") || "Side Lengths"}
+            </span>
+        `;
+        sideLengths.forEach((side, i) => {
+          html += `
+            <label style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem; font-size: 0.8rem;">
+              <span style="min-width: 48px; color: #374151;">
+                ${i + 1}:
+              </span>
+              <input type="number" value="${Math.round(side.length)}" step="1" min="1"
+                style="flex: 1; padding: 0.2rem 0.35rem; border: 1px solid #cbd5e1; border-radius: 3px; font-size: 0.8rem;"
+                onchange="designer.updatePredefinedSideLength(${i}, this.value)">
+              <span style="color: #94a3b8; font-size: 0.75rem;">mm</span>
+            </label>
+          `;
+        });
+        html += `</div>`;
+      }
+    }
+
+    container.innerHTML = html;
+  }
+
+  /**
+   * Draw overlay for freeform shape drawing mode.
+   */
+  drawFreeformOverlay() {
+    const ctx = this.ctx;
+    const points = this.freeformTempPoints;
+
+    // Draw semi-transparent bounding box
+    ctx.fillStyle = "rgba(5, 150, 105, 0.05)";
+    ctx.fillRect(
+      this.offsetX,
+      this.offsetY,
+      this.glass.width * this.scale,
+      this.glass.height * this.scale,
+    );
+
+    // Draw instruction text
+    ctx.fillStyle = "#059669";
+    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = "center";
+    const msg =
+      points.length < 3
+        ? "Click to add points (min 3)"
+        : "Double-click or click near first point to close";
+    ctx.fillText(msg, this.canvas.width / 2, 25);
+
+    if (points.length === 0) return;
+
+    // Draw lines between points
+    ctx.strokeStyle = "#059669";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    const first = this.glassToCanvas(points[0].x, points[0].y);
+    ctx.moveTo(first.x, first.y);
+    for (let i = 1; i < points.length; i++) {
+      const p = this.glassToCanvas(points[i].x, points[i].y);
+      ctx.lineTo(p.x, p.y);
+    }
+    // Draw closing line (dashed) back to first point
+    if (points.length >= 3) {
+      ctx.lineTo(first.x, first.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Fill the polygon area with semi-transparent green
+    if (points.length >= 3) {
+      ctx.fillStyle = "rgba(5, 150, 105, 0.15)";
+      ctx.beginPath();
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < points.length; i++) {
+        const p = this.glassToCanvas(points[i].x, points[i].y);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Draw dots at each point
+    points.forEach((pt, i) => {
+      const cp = this.glassToCanvas(pt.x, pt.y);
+      ctx.fillStyle = i === 0 ? "#059669" : "#10b981";
+      ctx.beginPath();
+      ctx.arc(cp.x, cp.y, i === 0 ? 7 : 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Label the first point
+      if (i === 0 && points.length >= 3) {
+        ctx.fillStyle = "#059669";
+        ctx.font = "bold 11px -apple-system, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("Close", cp.x + 10, cp.y - 5);
+      }
+    });
+  }
+
+  /**
+   * Calculate the length and angle of each side of the glass outline.
+   */
+  calculateSideLengths() {
+    const points = this.getGlassPoints();
+    const n = points.length;
+    const sides = [];
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      sides.push({
+        from: i,
+        to: (i + 1) % n,
+        length: Math.sqrt(dx * dx + dy * dy),
+        angle: Math.atan2(dy, dx),
+      });
+    }
+    return sides;
+  }
+
+  /**
+   * Adjust freeform points based on new side lengths while preserving angles.
+   * Sides 0..N-2 keep their drawn angle; the closing side auto-adjusts.
+   */
+  adjustPointsFromSideLengths(newLengths) {
+    const oldPoints = this.glass.freeformPoints.map((p) => ({ ...p }));
+    const n = oldPoints.length;
+    const newPoints = oldPoints.map((p) => ({ ...p }));
+
+    for (let i = 0; i < n - 1; i++) {
+      const p1 = newPoints[i];
+      const p2 = newPoints[i + 1];
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const currentLength = Math.sqrt(dx * dx + dy * dy);
+      if (currentLength < 0.001) continue;
+
+      const dirX = dx / currentLength;
+      const dirY = dy / currentLength;
+      const newP2x = p1.x + dirX * newLengths[i];
+      const newP2y = p1.y + dirY * newLengths[i];
+
+      const deltaX = newP2x - p2.x;
+      const deltaY = newP2y - p2.y;
+
+      for (let j = i + 1; j < n; j++) {
+        newPoints[j] = {
+          x: newPoints[j].x + deltaX,
+          y: newPoints[j].y + deltaY,
+        };
+      }
+    }
+
+    // Normalize so min coords are at 0
+    const allX = newPoints.map((p) => p.x);
+    const allY = newPoints.map((p) => p.y);
+    const minX = Math.min(...allX);
+    const minY = Math.min(...allY);
+    if (minX < 0 || minY < 0) {
+      newPoints.forEach((p) => {
+        p.x -= Math.min(minX, 0);
+        p.y -= Math.min(minY, 0);
+      });
+    }
+
+    return newPoints;
+  }
+
+  /**
+   * Show modal to set exact side lengths after freeform drawing.
+   */
+  showSideLengthsModal() {
+    const sides = this.calculateSideLengths();
+    const n = sides.length;
+    if (n > 20) return;
+
+    const modal = document.createElement("div");
+    modal.className = "side-lengths-modal";
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex;
+      justify-content: center; align-items: center; z-index: 5000;
+    `;
+
+    let sidesHtml = "";
+    sides.forEach((side, i) => {
+      const isClosing = i === n - 1;
+      sidesHtml += `
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <span style="min-width: 65px; font-weight: 500; font-size: 0.875rem; color: ${isClosing ? "#64748b" : "#1e293b"};">
+            Side ${i + 1}${isClosing ? " *" : ""}:
+          </span>
+          <input type="number" id="side-length-${i}" value="${Math.round(side.length)}" step="1" min="1"
+            style="flex: 1; padding: 0.5rem; border: 1px solid ${isClosing ? "#e2e8f0" : "#cbd5e1"}; border-radius: 4px; font-size: 0.875rem;
+            ${isClosing ? "background: #f8fafc; color: #64748b;" : ""}">
+          <span style="color: #64748b; font-size: 0.875rem;">mm</span>
+        </div>
+      `;
+    });
+
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 450px; width: 90%; box-shadow: 0 20px 25px rgba(0,0,0,0.15);">
+        <h3 style="margin: 0 0 0.5rem; color: #1e293b;">Set Side Lengths</h3>
+        <p style="color: #64748b; font-size: 0.875rem; margin: 0 0 1.5rem;">
+          Enter the exact length for each side. The closing side (*) auto-adjusts to close the shape.
+        </p>
+        ${sidesHtml}
+        <div id="closing-side-info" style="display: none; background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem; border-radius: 4px; margin: 1rem 0; font-size: 0.875rem; color: #1e40af;">
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+          <button class="btn btn-outline" id="side-lengths-skip">Skip</button>
+          <button class="btn btn-primary" id="side-lengths-apply">Apply</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const self = this;
+
+    document
+      .getElementById("side-lengths-skip")
+      .addEventListener("click", () => {
+        modal.remove();
+      });
+
+    document
+      .getElementById("side-lengths-apply")
+      .addEventListener("click", () => {
+        const newLengths = [];
+        for (let i = 0; i < n; i++) {
+          newLengths.push(
+            parseFloat(document.getElementById(`side-length-${i}`).value) ||
+              sides[i].length,
+          );
+        }
+
+        const newPoints = self.adjustPointsFromSideLengths(newLengths);
+        self.glass.freeformPoints = newPoints;
+
+        // Update bounding box to fit shape
+        const maxX = Math.max(...newPoints.map((p) => p.x));
+        const maxY = Math.max(...newPoints.map((p) => p.y));
+        if (maxX > 0) self.glass.width = Math.ceil(maxX);
+        if (maxY > 0) self.glass.height = Math.ceil(maxY);
+
+        // Update dimension inputs
+        const widthInput = document.getElementById("glass-width");
+        const heightInput = document.getElementById("glass-height");
+        if (widthInput) widthInput.value = self.glass.width;
+        if (heightInput) heightInput.value = self.glass.height;
+
+        self.setupCanvas();
+
+        // Calculate closing side
+        const lastP = newPoints[n - 1];
+        const firstP = newPoints[0];
+        const closingLength = Math.sqrt(
+          (firstP.x - lastP.x) ** 2 + (firstP.y - lastP.y) ** 2,
+        );
+
+        const infoDiv = document.getElementById("closing-side-info");
+        infoDiv.style.display = "block";
+        infoDiv.innerHTML = `Closing side (Side ${n}) is now <strong>${Math.round(closingLength)}mm</strong>.`;
+
+        // Update closing side input to show actual value
+        document.getElementById(`side-length-${n - 1}`).value =
+          Math.round(closingLength);
+
+        self.render();
+        self.updateShapeParamsUI();
+      });
+
+    // Close on backdrop click
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  /**
+   * Update a single freeform side length from the sidebar panel.
+   */
+  updateSideLength(sideIndex, newLengthStr) {
+    const newLength = parseFloat(newLengthStr);
+    if (!newLength || newLength <= 0) return;
+
+    const sides = this.calculateSideLengths();
+    const lengths = sides.map((s) => s.length);
+    lengths[sideIndex] = newLength;
+
+    const newPoints = this.adjustPointsFromSideLengths(lengths);
+    this.glass.freeformPoints = newPoints;
+
+    // Update bounding box
+    const maxX = Math.max(...newPoints.map((p) => p.x));
+    const maxY = Math.max(...newPoints.map((p) => p.y));
+    if (maxX > 0) this.glass.width = Math.ceil(maxX);
+    if (maxY > 0) this.glass.height = Math.ceil(maxY);
+
+    const widthInput = document.getElementById("glass-width");
+    const heightInput = document.getElementById("glass-height");
+    if (widthInput) widthInput.value = this.glass.width;
+    if (heightInput) heightInput.value = this.glass.height;
+
+    this.setupCanvas();
+    this.render();
+  }
+
+  /**
+   * Update a side length for a predefined (non-freeform) shape.
+   * Reverse-computes the shape parameters from the desired side length.
+   */
+  updatePredefinedSideLength(sideIndex, newLengthStr) {
+    const val = parseFloat(newLengthStr);
+    if (!val || val <= 0) return;
+
+    const shape = this.glass.shape;
+    const w = this.glass.width;
+    const h = this.glass.height;
+    const params = this.glass.shapeParams;
+
+    switch (shape) {
+      case "right-trapezoid": {
+        // Sides: 0=bottom(w), 1=right hypotenuse, 2=top(topWidth), 3=left(h)
+        const topWidth = params.topWidth || w * 0.6;
+        if (sideIndex === 0) {
+          this.glass.width = val;
+        } else if (sideIndex === 1) {
+          // hyp² = (w - topWidth)² + h²  →  h = sqrt(hyp² - (w-topWidth)²)
+          const diff = w - topWidth;
+          const hSq = val * val - diff * diff;
+          if (hSq > 0) this.glass.height = Math.round(Math.sqrt(hSq));
+        } else if (sideIndex === 2) {
+          this.glass.shapeParams.topWidth = val;
+        } else if (sideIndex === 3) {
+          this.glass.height = val;
+        }
+        break;
+      }
+      case "trapezoid": {
+        // Sides: 0=bottom(w), 1=right leg, 2=top(topWidth), 3=left leg
+        const topWidth = params.topWidth || w * 0.6;
+        if (sideIndex === 0) {
+          this.glass.width = val;
+        } else if (sideIndex === 1 || sideIndex === 3) {
+          // leg = sqrt(offset² + h²)  →  h = sqrt(leg² - offset²)
+          const offset = (w - topWidth) / 2;
+          const hSq = val * val - offset * offset;
+          if (hSq > 0) this.glass.height = Math.round(Math.sqrt(hSq));
+        } else if (sideIndex === 2) {
+          this.glass.shapeParams.topWidth = val;
+        }
+        break;
+      }
+      case "triangle": {
+        // Sides: 0=bottom(w), 1=right leg, 2=left leg
+        if (sideIndex === 0) {
+          this.glass.width = val;
+        } else if (sideIndex === 1 || sideIndex === 2) {
+          const halfW = w / 2;
+          const hSq = val * val - halfW * halfW;
+          if (hSq > 0) this.glass.height = Math.round(Math.sqrt(hSq));
+        }
+        break;
+      }
+      case "right-triangle": {
+        // Sides: 0=bottom(w), 1=hypotenuse, 2=left(h)
+        if (sideIndex === 0) {
+          this.glass.width = val;
+        } else if (sideIndex === 1) {
+          const hSq = val * val - w * w;
+          if (hSq > 0) this.glass.height = Math.round(Math.sqrt(hSq));
+        } else if (sideIndex === 2) {
+          this.glass.height = val;
+        }
+        break;
+      }
+      case "l-shape": {
+        // Points: (0,0),(w,0),(w,h-nh),(w-nw,h-nh),(w-nw,h),(0,h)
+        // Sides: 0=w, 1=h-nh, 2=nw, 3=nh, 4=w-nw, 5=h
+        const nw = params.notchWidth || w * 0.4;
+        const nh = params.notchHeight || h * 0.4;
+        if (sideIndex === 0) {
+          this.glass.width = val;
+        } else if (sideIndex === 1) {
+          // h - nh = val  →  h = val + nh
+          this.glass.height = val + nh;
+        } else if (sideIndex === 2) {
+          this.glass.shapeParams.notchWidth = val;
+        } else if (sideIndex === 3) {
+          this.glass.shapeParams.notchHeight = val;
+        } else if (sideIndex === 4) {
+          // w - nw = val  →  w = val + nw
+          this.glass.width = val + nw;
+        } else if (sideIndex === 5) {
+          this.glass.height = val;
+        }
+        break;
+      }
+      default:
+        return;
+    }
+
+    // Update dimension inputs
+    const widthInput = document.getElementById("glass-width");
+    const heightInput = document.getElementById("glass-height");
+    if (widthInput) widthInput.value = Math.round(this.glass.width);
+    if (heightInput) heightInput.value = Math.round(this.glass.height);
+
+    this.setupCanvas();
+    this.render();
+    this.updateShapeParamsUI();
+  }
+
+  /**
+   * Draw side length labels on the glass outline for non-rectangular shapes.
+   */
+  drawSideLengths() {
+    const shape = this.glass.shape;
+    if (shape === "rectangle" || shape === "circle") return;
+
+    const points = this.getGlassPoints();
+    const n = points.length;
+    if (n > 12) return; // Skip arch curves with many segments
+
+    const ctx = this.ctx;
+    ctx.save();
+
+    // Centroid for outward direction
+    let cx = 0,
+      cy = 0;
+    points.forEach((p) => {
+      cx += p.x;
+      cy += p.y;
+    });
+    cx /= n;
+    cy /= n;
+
+    ctx.font =
+      'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length < 10) continue;
+
+      // Midpoint
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+
+      // Direction away from centroid
+      const toCX = cx - midX;
+      const toCY = cy - midY;
+      const toCDist = Math.sqrt(toCX * toCX + toCY * toCY);
+      if (toCDist < 0.001) continue;
+
+      const normalX = -toCX / toCDist;
+      const normalY = -toCY / toCDist;
+
+      const offsetMM = 14 / this.scale;
+      const labelCanvas = this.glassToCanvas(
+        midX + normalX * offsetMM,
+        midY + normalY * offsetMM,
+      );
+
+      const text = Math.round(length) + "mm";
+      const textWidth = ctx.measureText(text).width;
+      const pillW = textWidth + 8;
+      const pillH = 15;
+
+      // Background pill
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.25)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(
+          labelCanvas.x - pillW / 2,
+          labelCanvas.y - pillH / 2,
+          pillW,
+          pillH,
+          3,
+        );
+      } else {
+        ctx.rect(
+          labelCanvas.x - pillW / 2,
+          labelCanvas.y - pillH / 2,
+          pillW,
+          pillH,
+        );
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Text
+      ctx.fillStyle = "#1e40af";
+      ctx.fillText(text, labelCanvas.x, labelCanvas.y);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw side length labels on a target canvas context (for print).
+   */
+  drawSideLengthsOnCanvas(ctx) {
+    const points = this.getGlassPoints();
+    const n = points.length;
+    if (n > 12) return;
+
+    ctx.save();
+
+    let cx = 0,
+      cy = 0;
+    points.forEach((p) => {
+      cx += p.x;
+      cy += p.y;
+    });
+    cx /= n;
+    cy /= n;
+
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length < 10) continue;
+
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+
+      const toCX = cx - midX;
+      const toCY = cy - midY;
+      const toCDist = Math.sqrt(toCX * toCX + toCY * toCY);
+      if (toCDist < 0.001) continue;
+
+      const normalX = -toCX / toCDist;
+      const normalY = -toCY / toCDist;
+
+      const offsetMM = 18 / this.scale;
+      const labelCanvas = this.glassToCanvas(
+        midX + normalX * offsetMM,
+        midY + normalY * offsetMM,
+      );
+
+      const text = Math.round(length) + "mm";
+      const textWidth = ctx.measureText(text).width;
+      const pillW = textWidth + 10;
+      const pillH = 18;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(
+          labelCanvas.x - pillW / 2,
+          labelCanvas.y - pillH / 2,
+          pillW,
+          pillH,
+          3,
+        );
+      } else {
+        ctx.rect(
+          labelCanvas.x - pillW / 2,
+          labelCanvas.y - pillH / 2,
+          pillW,
+          pillH,
+        );
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillText(text, labelCanvas.x, labelCanvas.y);
+    }
+
+    ctx.restore();
+  }
+
   // Window resize handler for responsive canvas
   onWindowResize() {
     // Debounce resize events
@@ -574,11 +1596,20 @@ class GlassDesigner {
         // Build common herraje selection HTML
           const herrajes_herraje_id = hole.herrajes_herraje_id || "";
           const herraje_html = `
-                              <label>
-                                  ${t("hardware")}:
-                                  <select id="herraje-select-${index}" onchange="designer.updateHoleProperty(${index}, 'herrajes_herraje_id', this.value)">
-                                      <option value="">-- ${t("selectHardware")} --</option>
-                                  </select>
+                              <label style="display: block; margin-bottom: 0.5rem;">
+                                  <span style="font-size: 0.875rem; color: #374151;">${t("hardware")}:</span>
+                                  <div id="herraje-menu-${index}" class="herraje-menu-wrapper" style="margin-top: 0.25rem; position: relative;">
+                                      <button type="button" id="herraje-btn-${index}" class="herraje-menu-button" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; transition: all 0.2s;">
+                                          <span id="herraje-btn-text-${index}" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-- ${t("selectHardware")} --</span>
+                                          <span style="margin-left: 0.5rem; flex-shrink: 0;">▼</span>
+                                      </button>
+                                      <div id="herraje-dropdown-${index}" class="herraje-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 4px; z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-top: 0.25rem; max-height: 400px; overflow-y: auto;">
+                                          <div style="padding: 0.5rem;">
+                                              <p style="margin: 0; padding: 0.5rem; color: #64748b; font-size: 0.875rem; text-align: center;">Loading hardware...</p>
+                                          </div>
+                                      </div>
+                                      <input type="hidden" id="herraje-select-${index}" value="">
+                                  </div>
                               </label>
                               <div id="herraje-preview-${index}" style="margin-top: 0.5rem; display: none; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.5rem; background: #f8fafc;">
                                   <img id="herraje-img-${index}" style="width: 100%; height: 60px; object-fit: contain; border-radius: 2px;">
@@ -1013,37 +2044,96 @@ class GlassDesigner {
       // Debug logging
       console.log("populateHerrajes: Found", herrajes.length, "herrajes");
 
-      // Update all herraje selects
-      const selects = document.querySelectorAll('select[id^="herraje-select-"]');
-      console.log("populateHerrajes: Found", selects.length, "select elements");
+      // Update all herraje inputs (hidden fields)
+      const inputs = document.querySelectorAll('input[id^="herraje-select-"]');
+      console.log("populateHerrajes: Found", inputs.length, "input elements");
       
-      selects.forEach((select) => {
-        const currentValue = select.value;
-        const holeIndex = select.id.replace('herraje-select-', '');
+      inputs.forEach((input) => {
+        const currentValue = input.value;
+        const holeIndex = input.id.replace('herraje-select-', '');
         
-        console.log(`populateHerrajes: Processing select #${holeIndex}`);
+        console.log(`populateHerrajes: Processing input #${holeIndex}`);
         
-        // Clear existing options except the first one
-        while (select.options.length > 1) {
-          select.remove(1);
-        }
-
-        // Add herraje options
-        herrajes.forEach((herraje) => {
-          const option = document.createElement("option");
-          option.value = herraje.id;
-          option.textContent = `${herraje.code} - ${herraje.name}`;
-          if (herraje.material) {
-            option.textContent += ` (${herraje.material})`;
+        const btn = document.getElementById(`herraje-btn-${holeIndex}`);
+        const dropdown = document.getElementById(`herraje-dropdown-${holeIndex}`);
+        
+        if (!btn || !dropdown) return;
+        
+        // Build dropdown menu items
+        const dropdownHTML = herrajes.map((herraje) => `
+          <div class="herraje-menu-item" data-value="${herraje.id}" data-code="${herraje.code}" data-name="${herraje.name}" data-material="${herraje.material || ''}" data-picture="${herraje.picture_url || ''}" style="padding: 0.5rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: background-color 0.2s; display: flex; gap: 0.5rem; align-items: center;">
+            ${herraje.picture_url ? `<img src="${herraje.picture_url}" style="width: 40px; height: 40px; object-fit: contain; flex-shrink: 0;" alt="${herraje.name}">` : ''}
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 500; font-size: 0.875rem; color: #1f2937;">${herraje.code} - ${herraje.name}</div>
+              ${herraje.material ? `<div style="font-size: 0.75rem; color: #6b7280;">${herraje.material}</div>` : ''}
+            </div>
+          </div>
+        `).join('');
+        
+        dropdown.innerHTML = dropdownHTML;
+        
+        // Add event listeners to menu items
+        dropdown.querySelectorAll('.herraje-menu-item').forEach((item) => {
+          item.addEventListener('click', () => {
+            const value = item.dataset.value;
+            const code = item.dataset.code;
+            const name = item.dataset.name;
+            const material = item.dataset.material;
+            
+            // Update hidden input and button text
+            input.value = value;
+            const btnText = document.getElementById(`herraje-btn-text-${holeIndex}`);
+            btnText.textContent = `${code} - ${name}${material ? ` (${material})` : ''}`;
+            
+            // Close dropdown
+            dropdown.style.display = 'none';
+            
+            // Update property
+            designer.updateHoleProperty(holeIndex, 'herrajes_herraje_id', value);
+            
+            // Update preview
+            this.updateHerrrajePreview(holeIndex, value);
+          });
+          
+          // Add hover effect
+          item.addEventListener('mouseenter', () => {
+            item.style.backgroundColor = '#f0f9ff';
+          });
+          item.addEventListener('mouseleave', () => {
+            item.style.backgroundColor = 'transparent';
+          });
+        });
+        
+        // Setup button click to toggle dropdown
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const isOpen = dropdown.style.display !== 'none';
+          
+          // Close all other dropdowns
+          document.querySelectorAll('.herraje-dropdown-menu').forEach((d) => {
+            d.style.display = 'none';
+          });
+          
+          // Toggle this dropdown
+          dropdown.style.display = isOpen ? 'none' : 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
           }
-          option.dataset.picture = herraje.picture_url || '';
-          select.appendChild(option);
         });
 
         // Restore selected value if it existed
         if (currentValue) {
-          select.value = currentValue;
-          this.updateHerrrajePreview(holeIndex, currentValue);
+          input.value = currentValue;
+          const selectedHerraje = herrajes.find(h => h.id == currentValue);
+          if (selectedHerraje) {
+            const btnText = document.getElementById(`herraje-btn-text-${holeIndex}`);
+            btnText.textContent = `${selectedHerraje.code} - ${selectedHerraje.name}${selectedHerraje.material ? ` (${selectedHerraje.material})` : ''}`;
+            this.updateHerrrajePreview(holeIndex, currentValue);
+          }
         }
       });
     } catch (error) {
@@ -1227,6 +2317,14 @@ class GlassDesigner {
 
     // Draw dimensions
     this.drawDimensions();
+
+    // Draw side length labels for non-rectangular shapes
+    this.drawSideLengths();
+
+    // Draw freeform overlay if in drawing mode
+    if (this.isDrawingFreeform) {
+      this.drawFreeformOverlay();
+    }
   }
 
   renderForPrint(targetCanvas) {
@@ -1279,6 +2377,11 @@ class GlassDesigner {
 
     // Draw glass dimensions (pass target canvas height)
     this.drawDimensionsOnCanvas(ctx, targetCanvas.height, true);
+
+    // Draw side lengths on print canvas for non-rectangular shapes
+    if (this.glass.shape !== "rectangle" && this.glass.shape !== "circle") {
+      this.drawSideLengthsOnCanvas(ctx);
+    }
 
     // Restore original values
     this.offsetX = originalOffsetX;
@@ -1610,6 +2713,58 @@ class GlassDesigner {
   }
 
   // Generate HTML for paint areas in print template
+  /**
+   * Generate HTML for glass dimensions in print template.
+   * Shows side lengths for non-rectangular shapes instead of just width/height.
+   */
+  getPrintDimensionsHTML(t) {
+    const shape = this.glass.shape;
+
+    if (shape === "rectangle" || shape === "circle") {
+      // Rectangle/circle: show width and height
+      return `
+        <div class="print-property">
+            <span class="print-property-label">${t("width")}:</span>
+            <span>${this.glass.width}mm</span>
+        </div>
+        <div class="print-property">
+            <span class="print-property-label">${t("height")}:</span>
+            <span>${this.glass.height}mm</span>
+        </div>
+      `;
+    }
+
+    // Non-rectangular shapes: show each side length
+    const points = this.getGlassPoints();
+    const n = points.length;
+
+    if (n > 12) {
+      // Arch or other complex curve — fall back to bounding box
+      return `
+        <div class="print-property">
+            <span class="print-property-label">${t("width")}:</span>
+            <span>${this.glass.width}mm</span>
+        </div>
+        <div class="print-property">
+            <span class="print-property-label">${t("height")}:</span>
+            <span>${this.glass.height}mm</span>
+        </div>
+      `;
+    }
+
+    const sides = this.calculateSideLengths();
+    let html = "";
+    sides.forEach((side, i) => {
+      html += `
+        <div class="print-property">
+            <span class="print-property-label">${t("side") || "Side"} ${i + 1}:</span>
+            <span>${Math.round(side.length)}mm</span>
+        </div>
+      `;
+    });
+    return html;
+  }
+
   getPaintAreasHTML(t) {
     if (this.paintAreas.length === 0) {
       return `<p style="color: #64748b; font-style: italic;">${t("noPaintAreas")}</p>`;
@@ -1636,6 +2791,11 @@ class GlassDesigner {
   drawGridOnCanvas(ctx) {
     const gridSize = 100; // 100mm grid
 
+    // Clip grid to glass shape
+    ctx.save();
+    this.createGlassCanvasPath(ctx);
+    ctx.clip();
+
     ctx.strokeStyle = "#e2e8f0";
     ctx.lineWidth = 1;
 
@@ -1656,6 +2816,8 @@ class GlassDesigner {
       ctx.lineTo(this.glass.width * this.scale + this.offsetX, canvasY);
       ctx.stroke();
     }
+
+    ctx.restore();
   }
 
   drawGlassOnCanvas(ctx) {
@@ -1683,19 +2845,11 @@ class GlassDesigner {
     ctx.strokeStyle = "#2563eb";
     ctx.lineWidth = 2;
 
-    ctx.fillRect(
-      this.offsetX,
-      this.offsetY,
-      this.glass.width * this.scale,
-      this.glass.height * this.scale,
-    );
+    this.createGlassCanvasPath(ctx);
+    ctx.fill();
 
-     ctx.strokeRect(
-       this.offsetX,
-       this.offsetY,
-       this.glass.width * this.scale,
-       this.glass.height * this.scale,
-     );
+    this.createGlassCanvasPath(ctx);
+    ctx.stroke();
 
      // Draw paint areas for print
      this.drawPaintAreasOnCanvas(ctx);
@@ -1705,6 +2859,10 @@ class GlassDesigner {
      if (this.paintAreas.length === 0) return;
 
      ctx.save();
+
+      // Clip to glass shape
+      this.createGlassCanvasPath(ctx);
+      ctx.clip();
 
       // Draw paint areas with darker color for print
       const printColor = this.hexToRgba(this.paintColor, 0.8);
@@ -2020,39 +3178,45 @@ class GlassDesigner {
     // Use provided canvas height or fallback to this.canvas.height
     const targetHeight = canvasHeight || this.canvas.height;
 
+    const hasSideLabels =
+      this.glass.shape !== "rectangle" &&
+      this.glass.shape !== "circle" &&
+      this.getGlassPoints().length <= 12;
+
     ctx.fillStyle = "#64748b";
     ctx.font = "12px -apple-system, sans-serif";
     ctx.textAlign = "center";
 
-    // Width dimension (bottom of canvas)
-    const widthText = this.glass.width + "mm";
-    const glassBottomY = this.offsetY + this.glass.height * this.scale;
-    ctx.fillText(
-      widthText,
-      this.offsetX + (this.glass.width * this.scale) / 2,
-      glassBottomY + 30,
-    );
-
-    // Height dimension (left side)
-    ctx.save();
-    if (forPrint) {
-      // For print: display text horizontally
-      ctx.textAlign = "center";
+    // Width and height labels — skip when side lengths are shown
+    if (!hasSideLabels) {
+      // Width dimension (bottom of canvas)
+      const widthText = this.glass.width + "mm";
+      const glassBottomY = this.offsetY + this.glass.height * this.scale;
       ctx.fillText(
-        this.glass.height + "mm",
-        this.offsetX - 30,
-        this.offsetY + (this.glass.height * this.scale) / 2 + 4,
+        widthText,
+        this.offsetX + (this.glass.width * this.scale) / 2,
+        glassBottomY + 30,
       );
-    } else {
-      // For screen: display text rotated 90 degrees
-      ctx.translate(
-        this.offsetX - 30,
-        this.offsetY + (this.glass.height * this.scale) / 2,
-      );
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillText(this.glass.height + "mm", 0, 0);
+
+      // Height dimension (left side)
+      ctx.save();
+      if (forPrint) {
+        ctx.textAlign = "center";
+        ctx.fillText(
+          this.glass.height + "mm",
+          this.offsetX - 30,
+          this.offsetY + (this.glass.height * this.scale) / 2 + 4,
+        );
+      } else {
+        ctx.translate(
+          this.offsetX - 30,
+          this.offsetY + (this.glass.height * this.scale) / 2,
+        );
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(this.glass.height + "mm", 0, 0);
+      }
+      ctx.restore();
     }
-    ctx.restore();
 
     // Thickness (top)
     ctx.fillText(
@@ -2075,6 +3239,11 @@ class GlassDesigner {
     const ctx = this.ctx;
     const gridSize = 100; // 100mm grid
     const minorGridSize = 10; // 10mm minor grid
+
+    // Clip grid to glass shape
+    ctx.save();
+    this.createGlassCanvasPath(ctx);
+    ctx.clip();
 
     // Draw minor grid (lighter)
     ctx.strokeStyle = "rgba(226, 232, 240, 0.3)";
@@ -2121,6 +3290,8 @@ class GlassDesigner {
       ctx.lineTo(this.glass.width * this.scale + this.offsetX, canvasY);
       ctx.stroke();
     }
+
+    ctx.restore();
   }
 
   drawGlass() {
@@ -2202,7 +3373,8 @@ class GlassDesigner {
     }
 
     ctx.fillStyle = glassFillStyle;
-    ctx.fillRect(this.offsetX, this.offsetY, glassWidth, glassHeight);
+    this.createGlassCanvasPath(ctx);
+    ctx.fill();
 
     // Reset shadow
     ctx.shadowColor = "transparent";
@@ -2222,17 +3394,20 @@ class GlassDesigner {
 
     ctx.strokeStyle = borderGradient;
     ctx.lineWidth = 3;
-    ctx.strokeRect(this.offsetX, this.offsetY, glassWidth, glassHeight);
+    this.createGlassCanvasPath(ctx);
+    ctx.stroke();
 
-    // Add inner highlight for glass effect
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-      this.offsetX + 2,
-      this.offsetY + 2,
-      glassWidth - 4,
-      glassHeight - 4,
-    );
+    // Add inner highlight for glass effect (only for rectangle)
+    if (this.glass.shape === "rectangle") {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        this.offsetX + 2,
+        this.offsetY + 2,
+        glassWidth - 4,
+        glassHeight - 4,
+      );
+    }
 
     // Draw paint areas
     this.drawPaintAreas(ctx);
@@ -2242,6 +3417,10 @@ class GlassDesigner {
     if (this.paintAreas.length === 0 && !this.currentPaintArea) return;
 
     ctx.save();
+
+    // Clip paint areas to glass shape
+    this.createGlassCanvasPath(ctx);
+    ctx.clip();
 
     // Draw existing paint areas
     this.paintAreas.forEach((area) => {
@@ -2588,6 +3767,11 @@ class GlassDesigner {
   drawDimensions() {
     const ctx = this.ctx;
 
+    const hasSideLabels =
+      this.glass.shape !== "rectangle" &&
+      this.glass.shape !== "circle" &&
+      this.getGlassPoints().length <= 12;
+
     // Modern dimension text styling
     ctx.fillStyle = "#1e293b";
     ctx.font =
@@ -2600,20 +3784,23 @@ class GlassDesigner {
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
 
-    // Width dimension
-    const widthText = this.glass.width + "mm";
-    ctx.fillText(
-      widthText,
-      this.offsetX + (this.glass.width * this.scale) / 2,
-      this.canvas.height - 10,
-    );
+    // Width and height labels — skip when side lengths are shown
+    if (!hasSideLabels) {
+      // Width dimension
+      const widthText = this.glass.width + "mm";
+      ctx.fillText(
+        widthText,
+        this.offsetX + (this.glass.width * this.scale) / 2,
+        this.canvas.height - 10,
+      );
 
-    // Height dimension
-    ctx.save();
-    ctx.translate(10, this.offsetY + (this.glass.height * this.scale) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(this.glass.height + "mm", 0, 0);
-    ctx.restore();
+      // Height dimension
+      ctx.save();
+      ctx.translate(10, this.offsetY + (this.glass.height * this.scale) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(this.glass.height + "mm", 0, 0);
+      ctx.restore();
+    }
 
     // Thickness
     ctx.fillText(
@@ -2640,7 +3827,11 @@ class GlassDesigner {
 
   getDesignData() {
     return {
-      glass: { ...this.glass },
+      glass: {
+        ...this.glass,
+        shapeParams: { ...this.glass.shapeParams },
+        freeformPoints: this.glass.freeformPoints.map((p) => ({ ...p })),
+      },
       holes: this.holes.map((hole) => ({ ...hole })),
     };
   }
@@ -2679,6 +3870,7 @@ class GlassDesigner {
       area: (this.glass.width * this.glass.height / 1000000).toFixed(2),
       unit: 'm²',
       type: this.glass.type,
+      shape: this.glass.shape,
       cpb: this.glass.cpb,
       painted: paintedAreas > 0,
       paintedAreas: paintedAreas,
@@ -2881,6 +4073,7 @@ class GlassDesigner {
             <div><label style="color: #64748b;">Area:</label> <strong>${bom.glass.area}m²</strong></div>
             <div><label style="color: #64748b;">Thickness:</label> <strong>${bom.glass.thickness}mm</strong></div>
             <div><label style="color: #64748b;">Type:</label> <strong style="text-transform: capitalize;">${bom.glass.type}</strong></div>
+            ${bom.glass.shape && bom.glass.shape !== "rectangle" ? `<div><label style="color: #64748b;">Shape:</label> <strong style="text-transform: capitalize;">${bom.glass.shape.replace("-", " ")}</strong></div>` : ''}
             ${bom.glass.cpb ? `<div style="grid-column: 1/-1;"><label style="color: #64748b;">✓ Polished Edge (CPB)</label></div>` : ''}
             ${bom.glass.painted ? `<div style="grid-column: 1/-1;"><label style="color: #64748b;">Painted Areas:</label> <strong>${bom.glass.paintedAreas} area(s) = ${bom.glass.paintedArea}m²</strong></div>` : ''}
           </div>
@@ -2906,7 +4099,26 @@ class GlassDesigner {
 
   loadDesignData(data) {
     if (data.glass) {
-      this.glass = { ...data.glass };
+      this.glass = {
+        width: 1200,
+        height: 800,
+        thickness: 6,
+        type: "clear",
+        cpb: false,
+        shape: "rectangle",
+        shapeParams: {},
+        freeformPoints: [],
+        ...data.glass,
+      };
+      // Ensure nested objects are properly copied
+      if (data.glass.shapeParams) {
+        this.glass.shapeParams = { ...data.glass.shapeParams };
+      }
+      if (data.glass.freeformPoints) {
+        this.glass.freeformPoints = data.glass.freeformPoints.map((p) => ({
+          ...p,
+        }));
+      }
       this.setupCanvas();
     }
 
@@ -2916,12 +4128,36 @@ class GlassDesigner {
 
     this.selectedHoleIndex = -1;
     this.render();
+
+    // Update shape selector UI
+    document.querySelectorAll(".shape-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    document
+      .querySelector('[data-shape="' + this.glass.shape + '"]')
+      ?.classList.add("active");
+    this.updateShapeParamsUI();
   }
 
   clearDesign() {
     this.holes = [];
+    this.paintAreas = [];
     this.selectedHoleIndex = -1;
+    this.glass.shape = "rectangle";
+    this.glass.shapeParams = {};
+    this.glass.freeformPoints = [];
+    this.isDrawingFreeform = false;
+    this.freeformTempPoints = [];
     this.render();
+
+    // Reset shape selector UI
+    document.querySelectorAll(".shape-btn").forEach((btn) => {
+      btn.classList.remove("active");
+    });
+    document
+      .querySelector('[data-shape="rectangle"]')
+      ?.classList.add("active");
+    this.updateShapeParamsUI();
   }
 
   printDesign() {
@@ -3075,14 +4311,7 @@ class GlassDesigner {
                 </div>
                 <div class="print-specs-area">
                     <h3>${t("glassProperties")}</h3>
-                    <div class="print-property">
-                        <span class="print-property-label">${t("width")}:</span>
-                        <span>${this.glass.width}mm</span>
-                    </div>
-                    <div class="print-property">
-                        <span class="print-property-label">${t("height")}:</span>
-                        <span>${this.glass.height}mm</span>
-                    </div>
+                    ${this.getPrintDimensionsHTML(t)}
                      <div class="print-property">
                          <span class="print-property-label">${t("thickness")}:</span>
                          <span>${this.glass.thickness}mm</span>
@@ -3091,6 +4320,10 @@ class GlassDesigner {
                           <span class="print-property-label">${t("glassType")}:</span>
                           <span>${this.getTranslatedGlassType(t)}</span>
                       </div>
+                      ${this.glass.shape !== "rectangle" ? `<div class="print-property">
+                          <span class="print-property-label">${t("glassShape") || "Shape"}:</span>
+                          <span style="text-transform: capitalize;">${this.glass.shape.replace("-", " ")}</span>
+                      </div>` : ""}
                       ${this.glass.cpb ? `<div class="print-property">
                           <span class="print-property-label">${t("cpb")}:</span>
                           <span>${t("yes")}</span>
@@ -3218,12 +4451,18 @@ async function loadDesignFromBackend(designId) {
     // Convert backend format to frontend format
     const holes = convertFromBackendFormat(design.elements);
 
+    // Restore glass shape metadata from elements if available
+    const glassShape = design.elements?.glassShape || {};
+
     // Load into designer
     designer.loadDesignData({
       glass: {
         width: design.width,
         height: design.height,
         thickness: design.thickness,
+        shape: glassShape.shape || "rectangle",
+        shapeParams: glassShape.shapeParams || {},
+        freeformPoints: glassShape.freeformPoints || [],
       },
       holes: holes,
     });
@@ -3267,6 +4506,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const tool = btn.getAttribute("data-tool");
         if (tool) {
           designer.setTool(tool);
+        }
+      });
+    });
+
+    // Setup glass shape selector buttons
+    document.querySelectorAll(".shape-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const shape = btn.getAttribute("data-shape");
+        if (shape) {
+          designer.updateGlassShape(shape);
         }
       });
     });
@@ -3697,13 +4946,22 @@ function findParentProject(projects, childId, parent = null) {
  * @param {Array} holes - Array of holes from designer
  * @returns {Object} Elements object compatible with backend
  */
-function convertToBackendFormat(holes) {
+function convertToBackendFormat(holes, glassData) {
   const elements = {
     shapes: [],
     holes: [],
     cuts: [],
     notes: [],
   };
+
+  // Store glass shape metadata for round-tripping
+  if (glassData && glassData.shape && glassData.shape !== "rectangle") {
+    elements.glassShape = {
+      shape: glassData.shape,
+      shapeParams: glassData.shapeParams || {},
+      freeformPoints: glassData.freeformPoints || [],
+    };
+  }
 
   holes.forEach((hole, index) => {
     const defaultStyle = {
@@ -3820,7 +5078,7 @@ async function saveDesignToProject() {
   const designData = designer.getDesignData();
 
   // Convert frontend format to backend Elements format
-  const elements = convertToBackendFormat(designData.holes);
+  const elements = convertToBackendFormat(designData.holes, designData.glass);
 
   const payload = {
     name: designName,
