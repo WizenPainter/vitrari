@@ -3298,161 +3298,217 @@ class GlassDesigner {
     this.offsetY = originalOffsetY;
   }
 
+  /**
+   * Cast rays from a point in 4 directions and find the nearest glass edge intersection.
+   * Returns {left, right, bottom, top} each with {distance, edgePos}.
+   */
+  findNearestGlassEdges(holeX, holeY) {
+    const points = this.getGlassPoints();
+    const n = points.length;
+
+    // Start with bounding box as fallback
+    let leftDist = holeX, leftPos = 0;
+    let rightDist = this.glass.width - holeX, rightPos = this.glass.width;
+    let bottomDist = holeY, bottomPos = 0;
+    let topDist = this.glass.height - holeY, topPos = this.glass.height;
+
+    for (let i = 0; i < n; i++) {
+      const p1 = points[i];
+      const p2 = points[(i + 1) % n];
+
+      // Horizontal ray intersections (left/right edges)
+      if ((p1.y < holeY && p2.y >= holeY) || (p2.y < holeY && p1.y >= holeY)) {
+        const t = (holeY - p1.y) / (p2.y - p1.y);
+        const ix = p1.x + t * (p2.x - p1.x);
+        if (ix <= holeX) {
+          const d = holeX - ix;
+          if (d < leftDist) { leftDist = d; leftPos = ix; }
+        }
+        if (ix >= holeX) {
+          const d = ix - holeX;
+          if (d < rightDist) { rightDist = d; rightPos = ix; }
+        }
+      }
+
+      // Vertical ray intersections (bottom/top edges)
+      if ((p1.x < holeX && p2.x >= holeX) || (p2.x < holeX && p1.x >= holeX)) {
+        const t = (holeX - p1.x) / (p2.x - p1.x);
+        const iy = p1.y + t * (p2.y - p1.y);
+        if (iy <= holeY) {
+          const d = holeY - iy;
+          if (d < bottomDist) { bottomDist = d; bottomPos = iy; }
+        }
+        if (iy >= holeY) {
+          const d = iy - holeY;
+          if (d < topDist) { topDist = d; topPos = iy; }
+        }
+      }
+    }
+
+    return {
+      left:   { distance: leftDist,   edgePos: leftPos },
+      right:  { distance: rightDist,  edgePos: rightPos },
+      bottom: { distance: bottomDist, edgePos: bottomPos },
+      top:    { distance: topDist,    edgePos: topPos },
+    };
+  }
+
   drawDimensionLines(ctx, hole, forPrint = false) {
     // Get the hole center position
     let holeX = hole.x;
     let holeY = hole.y;
 
-    // For rectangles, use center
     if (hole.shape === "rectangle") {
       holeX = hole.x + hole.width / 2;
       holeY = hole.y + hole.height / 2;
     }
 
-    // Calculate distances to each edge
-    const distToLeft = holeX;
-    const distToRight = this.glass.width - holeX;
-    const distToBottom = holeY;
-    const distToTop = this.glass.height - holeY;
+    // Find nearest actual glass edges by ray casting
+    const edges = this.findNearestGlassEdges(holeX, holeY);
 
-    // Determine nearest edges
-    const useLeftEdge = distToLeft <= distToRight;
-    const useBottomEdge = distToBottom <= distToTop;
+    // Pick nearest horizontal edge (left or right)
+    const useLeft = edges.left.distance <= edges.right.distance;
+    const xDistance = useLeft ? edges.left.distance : edges.right.distance;
+    const xEdgePos = useLeft ? edges.left.edgePos : edges.right.edgePos;
 
-    // Draw dimension line for X axis (horizontal)
-    const xDistance = useLeftEdge ? distToLeft : distToRight;
-    const xEdgePos = useLeftEdge ? 0 : this.glass.width;
+    // Pick nearest vertical edge (bottom or top)
+    const useBottom = edges.bottom.distance <= edges.top.distance;
+    const yDistance = useBottom ? edges.bottom.distance : edges.top.distance;
+    const yEdgePos = useBottom ? edges.bottom.edgePos : edges.top.edgePos;
+
+    const holeCanvasPos = this.glassToCanvas(holeX, holeY);
+
+    // --- Horizontal dimension line (X axis) ---
+    const hEdgeCanvas = this.glassToCanvas(xEdgePos, holeY);
+    // Draw the line above hole, offset varies per hole to reduce overlap
+    const holeIdx = this.holes.indexOf(hole);
+    const yOffsetBase = 25;
+    const yOffsetStep = forPrint ? 20 : 18;
+    const yOffset = yOffsetBase + (holeIdx % 3) * yOffsetStep;
 
     ctx.strokeStyle = "#64748b";
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = 1;
 
-    // Horizontal dimension line
-    const yOffset = 30; // Offset from the hole center
-    const holeCanvasPos = this.glassToCanvas(holeX, holeY);
-    const edgeCanvasPos = this.glassToCanvas(xEdgePos, holeY);
-
-    // Draw dotted line from edge to hole
     ctx.beginPath();
-    ctx.moveTo(edgeCanvasPos.x, holeCanvasPos.y - yOffset);
+    ctx.moveTo(hEdgeCanvas.x, holeCanvasPos.y - yOffset);
     ctx.lineTo(holeCanvasPos.x, holeCanvasPos.y - yOffset);
     ctx.stroke();
 
-    // Draw small vertical ticks at ends
+    // Ticks
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(edgeCanvasPos.x, holeCanvasPos.y - yOffset - 5);
-    ctx.lineTo(edgeCanvasPos.x, holeCanvasPos.y - yOffset + 5);
+    ctx.moveTo(hEdgeCanvas.x, holeCanvasPos.y - yOffset - 5);
+    ctx.lineTo(hEdgeCanvas.x, holeCanvasPos.y - yOffset + 5);
     ctx.moveTo(holeCanvasPos.x, holeCanvasPos.y - yOffset - 5);
     ctx.lineTo(holeCanvasPos.x, holeCanvasPos.y - yOffset + 5);
     ctx.stroke();
 
-    // Draw measurement text with collision detection
+    // Label
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 12px -apple-system, sans-serif";
     ctx.textAlign = "center";
 
-    const textX = (edgeCanvasPos.x + holeCanvasPos.x) / 2;
-    let textY = holeCanvasPos.y - yOffset - 10;
+    const hTextX = (hEdgeCanvas.x + holeCanvasPos.x) / 2;
+    let hTextY = holeCanvasPos.y - yOffset - 10;
 
-    // Check for collision with existing labels and adjust position
-    const labelWidth = ctx.measureText(Math.round(xDistance) + "mm").width + 10;
-    const labelHeight = 16;
-    const labelRect = {
-      x: textX - labelWidth / 2,
-      y: textY - labelHeight / 2,
-      width: labelWidth,
-      height: labelHeight
+    const hLabelW = ctx.measureText(Math.round(xDistance) + "mm").width + 10;
+    const labelH = 16;
+    const hRect = {
+      x: hTextX - hLabelW / 2, y: hTextY - labelH / 2,
+      width: hLabelW, height: labelH,
     };
 
-    // Find overlapping labels and stack vertically
-    let stackOffset = 0;
-    for (const existingLabel of this.measurementLabels) {
-      if (this.rectsOverlap(labelRect, existingLabel)) {
-        stackOffset += labelHeight + 2; // Add spacing between stacked labels
-      }
+    // Collision avoidance
+    let hStack = 0;
+    for (const el of this.measurementLabels) {
+      if (this.rectsOverlap(hRect, el)) hStack += labelH + 4;
     }
+    hTextY -= hStack;
 
-    // Apply stacking offset
-    textY -= stackOffset;
-
-    // Store this label position for future collision detection
     this.measurementLabels.push({
-      x: textX - labelWidth / 2,
-      y: textY - labelHeight / 2,
-      width: labelWidth,
-      height: labelHeight
+      x: hTextX - hLabelW / 2, y: hTextY - labelH / 2,
+      width: hLabelW, height: labelH,
     });
 
-    ctx.fillText(Math.round(xDistance) + "mm", textX, textY);
-
-    // Draw dimension line for Y axis (vertical)
-    const yDistance = useBottomEdge ? distToBottom : distToTop;
-    const yEdgePos = useBottomEdge ? 0 : this.glass.height;
-
-    ctx.setLineDash([5, 5]);
-    const xOffset = 30; // Offset from the hole center
-    const edgeYCanvasPos = this.glassToCanvas(holeX, yEdgePos);
-
-    // Draw dotted line from edge to hole
+    // Draw background pill for readability
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.beginPath();
-    ctx.moveTo(holeCanvasPos.x + xOffset, edgeYCanvasPos.y);
+    if (ctx.roundRect) {
+      ctx.roundRect(hTextX - hLabelW / 2, hTextY - labelH / 2, hLabelW, labelH, 3);
+    } else {
+      ctx.rect(hTextX - hLabelW / 2, hTextY - labelH / 2, hLabelW, labelH);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = "#0f172a";
+    ctx.fillText(Math.round(xDistance) + "mm", hTextX, hTextY + 1);
+
+    // --- Vertical dimension line (Y axis) ---
+    const vEdgeCanvas = this.glassToCanvas(holeX, yEdgePos);
+    const xOffsetBase = 25;
+    const xOffsetStep = forPrint ? 20 : 18;
+    const xOffset = xOffsetBase + (holeIdx % 3) * xOffsetStep;
+
+    ctx.strokeStyle = "#64748b";
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(holeCanvasPos.x + xOffset, vEdgeCanvas.y);
     ctx.lineTo(holeCanvasPos.x + xOffset, holeCanvasPos.y);
     ctx.stroke();
 
-    // Draw small horizontal ticks at ends
+    // Ticks
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(holeCanvasPos.x + xOffset - 5, edgeYCanvasPos.y);
-    ctx.lineTo(holeCanvasPos.x + xOffset + 5, edgeYCanvasPos.y);
+    ctx.moveTo(holeCanvasPos.x + xOffset - 5, vEdgeCanvas.y);
+    ctx.lineTo(holeCanvasPos.x + xOffset + 5, vEdgeCanvas.y);
     ctx.moveTo(holeCanvasPos.x + xOffset - 5, holeCanvasPos.y);
     ctx.lineTo(holeCanvasPos.x + xOffset + 5, holeCanvasPos.y);
     ctx.stroke();
 
-    // Draw measurement text (rotated for screen, horizontal for print) with collision detection
+    // Label
     ctx.save();
-    let verticalTextX = holeCanvasPos.x + xOffset + 15;
-    let verticalTextY = (edgeYCanvasPos.y + holeCanvasPos.y) / 2 + 4;
+    let vTextX = holeCanvasPos.x + xOffset + 15;
+    let vTextY = (vEdgeCanvas.y + holeCanvasPos.y) / 2 + 4;
+
+    const vLabelW = ctx.measureText(Math.round(yDistance) + "mm").width + 10;
 
     if (forPrint) {
-      // For print: display text horizontally with collision detection
       ctx.textAlign = "center";
-
-      // Check for collision with existing labels
-      const verticalLabelWidth = ctx.measureText(Math.round(yDistance) + "mm").width + 10;
-      const verticalLabelHeight = 16;
-      const verticalLabelRect = {
-        x: verticalTextX - verticalLabelWidth / 2,
-        y: verticalTextY - verticalLabelHeight / 2,
-        width: verticalLabelWidth,
-        height: verticalLabelHeight
+      const vRect = {
+        x: vTextX - vLabelW / 2, y: vTextY - labelH / 2,
+        width: vLabelW, height: labelH,
       };
 
-      // Find overlapping labels and stack horizontally
-      let horizontalStackOffset = 0;
-      for (const existingLabel of this.measurementLabels) {
-        if (this.rectsOverlap(verticalLabelRect, existingLabel)) {
-          horizontalStackOffset += verticalLabelWidth + 5; // Add spacing between stacked labels
-        }
+      let vStack = 0;
+      for (const el of this.measurementLabels) {
+        if (this.rectsOverlap(vRect, el)) vStack += vLabelW + 8;
       }
+      vTextX += vStack;
 
-      // Apply horizontal stacking offset
-      verticalTextX += horizontalStackOffset;
-
-      // Store this label position
       this.measurementLabels.push({
-        x: verticalTextX - verticalLabelWidth / 2,
-        y: verticalTextY - verticalLabelHeight / 2,
-        width: verticalLabelWidth,
-        height: verticalLabelHeight
+        x: vTextX - vLabelW / 2, y: vTextY - labelH / 2,
+        width: vLabelW, height: labelH,
       });
 
-      ctx.fillText(Math.round(yDistance) + "mm", verticalTextX, verticalTextY);
+      // Background pill
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(vTextX - vLabelW / 2, vTextY - labelH / 2, vLabelW, labelH, 3);
+      } else {
+        ctx.rect(vTextX - vLabelW / 2, vTextY - labelH / 2, vLabelW, labelH);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = "#0f172a";
+      ctx.fillText(Math.round(yDistance) + "mm", vTextX, vTextY + 1);
     } else {
-      // For screen: display text rotated 90 degrees
       ctx.translate(
         holeCanvasPos.x + xOffset + 15,
-        (edgeYCanvasPos.y + holeCanvasPos.y) / 2,
+        (vEdgeCanvas.y + holeCanvasPos.y) / 2,
       );
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = "center";
@@ -3460,7 +3516,6 @@ class GlassDesigner {
     }
     ctx.restore();
 
-    // Reset line dash
     ctx.setLineDash([]);
   }
 
