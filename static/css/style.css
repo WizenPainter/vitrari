@@ -660,6 +660,22 @@ select {
         border: 2px solid #000;
     }
 
+    .print-svg-mount {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .print-svg-mount svg {
+        max-width: 100% !important;
+        max-height: 100% !important;
+        width: auto;
+        height: auto;
+        display: block;
+    }
+
     .print-specs-area {
         display: flex;
         flex-direction: column;
@@ -717,6 +733,109 @@ select {
 /* Hide print template on screen */
 .print-template {
     display: none;
+}
+
+/* ===== Works Library palette ===== */
+.works-panel {
+    margin-top: 0.5rem;
+}
+.works-search {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+.works-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.4rem;
+}
+.works-group-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin: 0.5rem 0 0.25rem;
+}
+.work-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    margin-bottom: 0.2rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    text-align: left;
+    color: #1e293b;
+    transition:
+        background 0.12s,
+        border-color 0.12s;
+}
+.work-item:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+.work-item.active {
+    background: #dbeafe;
+    border-color: #2563eb;
+}
+.work-thumb {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    color: #ea7e3f;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.work-thumb svg {
+    width: 100%;
+    height: 100%;
+}
+.work-properties {
+    margin-top: 0.75rem;
+    padding: 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+}
+.work-prop-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+.work-prop-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+}
+.work-prop-row input {
+    width: 80px;
+    padding: 0.3rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+}
+.work-prop-mirror {
+    display: flex;
+    gap: 1rem;
+    margin: 0.5rem 0;
+    font-size: 0.8rem;
+}
+.work-prop-delete {
+    width: 100%;
+    margin-top: 0.4rem;
 }
 
 /* Projects Section */

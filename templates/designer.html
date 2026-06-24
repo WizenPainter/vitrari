@@ -108,6 +108,22 @@
                          </button>
                      </div>
 
+                    <div id="works-panel" class="works-panel">
+                        <h3 data-i18n="worksLibrary">Works Library</h3>
+                        <input
+                            id="works-search"
+                            class="works-search"
+                            type="text"
+                            placeholder="Search works (hinge, slot, notch...)"
+                        />
+                        <div id="works-list" class="works-list"></div>
+                        <div
+                            id="work-properties"
+                            class="work-properties"
+                            style="display: none"
+                        ></div>
+                    </div>
+
                     <h3 data-i18n="glassProperties">Glass Properties</h3>
                     <div class="properties">
                         <label>
@@ -318,6 +334,14 @@
                            data-i18n="printDesign"
                        >
                            Print Design
+                       </button>
+                       <button
+                           class="btn"
+                           id="btn-export-svg"
+                           onclick="designer.exportSVG()"
+                           title="Export design as vector SVG"
+                       >
+                           Export SVG
                        </button>
                        <button class="btn" id="btn-clear" data-i18n="clearAll">
                            Clear All
@@ -552,6 +576,13 @@
         <script src="/static/js/mobile.js"></script>
         <script src="/static/js/app.js"></script>
         <script src="/static/js/herrajes.js"></script>
+        <!-- Designer rendering pipeline (shared scene model -> canvas + SVG) -->
+        <script src="/static/js/designer/theme.js"></script>
+        <script src="/static/js/designer/works-library.js"></script>
+        <script src="/static/js/designer/scene.js"></script>
+        <script src="/static/js/designer/dimension-layout.js"></script>
+        <script src="/static/js/designer/render-canvas.js"></script>
+        <script src="/static/js/designer/render-svg.js"></script>
         <script src="/static/js/designer.js"></script>
         <script>
             // Check production environment and hide/show elements accordingly

@@ -849,6 +849,25 @@ class GlassDesigner {
       this.selectedHoleIndex = this.holes.length - 1;
       this.updatePropertiesPanel();
       this.render();
+     } else if (this.currentTool === "work" && this.pendingWorkTemplate) {
+       // Place a parametric work from the works library at the cursor.
+       const id = this.pendingWorkTemplate;
+       const params = window.WorksLibrary
+         ? window.WorksLibrary.defaultParams(id)
+         : {};
+       const newWork = {
+         shape: "work",
+         templateId: id,
+         params,
+         x: glassCoords.x,
+         y: glassCoords.y,
+         mirror: { h: false, v: false },
+       };
+       this.holes.push(newWork);
+       this.selectedHoleIndex = this.holes.length - 1;
+       this.render();
+       this.renderWorkProperties();
+       if (typeof this.renderHolesList === "function") this.renderHolesList();
      } else if (this.currentTool === "paint") {
        // Start painting - create a new paint area
        this.isPainting = true;
@@ -1043,6 +1062,18 @@ class GlassDesigner {
     for (let i = this.holes.length - 1; i >= 0; i--) {
       const hole = this.holes[i];
 
+      if (hole.shape === "work") {
+        // Use the resolved scene bounding box for hit testing.
+        const sw = this.scene && this.scene.works && this.scene.works[i];
+        if (sw && sw.bbox) {
+          const b = sw.bbox;
+          if (x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY) {
+            return i;
+          }
+        }
+        continue;
+      }
+
       if (hole.shape === "clip") {
         // Check if click is within the triangular notch area
         const distToLeft = hole.x;
@@ -1146,6 +1177,200 @@ class GlassDesigner {
     document
       .querySelector('[data-tool="' + tool + '"]')
       ?.classList.add("active");
+
+    // Leaving the works tool clears the pending placement template.
+    if (tool !== "work") this.pendingWorkTemplate = null;
+  }
+
+  // ----- Works library palette (Phase 5) -----
+
+  /** Build the searchable, categorised works palette. */
+  buildWorksPalette(filter) {
+    const list = document.getElementById("works-list");
+    if (!list || !window.WORKS_CATEGORIES || !window.WORKS_LIBRARY) return;
+    const q = (filter || "").trim().toLowerCase();
+    list.innerHTML = "";
+
+    window.WORKS_CATEGORIES.forEach((cat) => {
+      const items = Object.keys(window.WORKS_LIBRARY)
+        .filter((id) => window.WORKS_LIBRARY[id].category === cat.id)
+        .filter((id) => {
+          if (!q) return true;
+          return (
+            window.WORKS_LIBRARY[id].name.toLowerCase().includes(q) ||
+            cat.name.toLowerCase().includes(q)
+          );
+        });
+      if (items.length === 0) return;
+
+      const group = document.createElement("div");
+      group.className = "works-group";
+      const h = document.createElement("div");
+      h.className = "works-group-title";
+      h.textContent = cat.name;
+      group.appendChild(h);
+
+      items.forEach((id) => {
+        const tpl = window.WORKS_LIBRARY[id];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "work-item";
+        btn.dataset.work = id;
+        btn.innerHTML =
+          '<span class="work-thumb">' +
+          this.workThumbnailSVG(id) +
+          "</span><span>" +
+          tpl.name +
+          "</span>";
+        btn.addEventListener("click", () => this.selectWorkTemplate(id));
+        group.appendChild(btn);
+      });
+      list.appendChild(group);
+    });
+  }
+
+  /** Tiny preview SVG of a work, drawn in its own little viewport. */
+  workThumbnailSVG(id) {
+    const tpl = window.WORKS_LIBRARY[id];
+    if (!tpl) return "";
+    const params = window.WorksLibrary.defaultParams(id);
+    const res = tpl.generate(params, { h: false, v: false }, this.glass) || {};
+    const items = res.items || [];
+    // bounds
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    const eat = (x, y) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    };
+    items.forEach((it) => {
+      if (it.t === "circle" || it.t === "ring") {
+        eat(it.cx - it.r, it.cy - it.r);
+        eat(it.cx + it.r, it.cy + it.r);
+      } else if (it.t === "rect") {
+        eat(it.x, it.y);
+        eat(it.x + it.w, it.y + it.h);
+      } else if (it.t === "slot") {
+        const hw = (it.vertical ? it.width : it.length) / 2;
+        const hh = (it.vertical ? it.length : it.width) / 2;
+        eat(it.cx - hw, it.cy - hh);
+        eat(it.cx + hw, it.cy + hh);
+      } else if (it.t === "poly") {
+        it.points.forEach((p) => eat(p.x, p.y));
+      }
+    });
+    if (!isFinite(minX)) return "";
+    const w = maxX - minX || 1;
+    const hh = maxY - minY || 1;
+    const pad = Math.max(w, hh) * 0.15 + 1;
+    const vb = `${minX - pad} ${-(maxY + pad)} ${w + pad * 2} ${hh + pad * 2}`;
+    const parts = [];
+    const yf = (y) => -y; // flip Y for SVG
+    items.forEach((it) => {
+      if (it.t === "circle") {
+        parts.push(`<circle cx="${it.cx}" cy="${yf(it.cy)}" r="${it.r}"/>`);
+      } else if (it.t === "ring") {
+        parts.push(`<circle cx="${it.cx}" cy="${yf(it.cy)}" r="${it.r}"/>`);
+        parts.push(`<circle cx="${it.cx}" cy="${yf(it.cy)}" r="${it.rInner}"/>`);
+      } else if (it.t === "rect") {
+        parts.push(`<rect x="${it.x}" y="${yf(it.y + it.h)}" width="${it.w}" height="${it.h}"/>`);
+      } else if (it.t === "slot") {
+        const ww = it.vertical ? it.width : it.length;
+        const hgt = it.vertical ? it.length : it.width;
+        parts.push(
+          `<rect x="${it.cx - ww / 2}" y="${yf(it.cy + hgt / 2)}" width="${ww}" height="${hgt}" rx="${it.width / 2}"/>`,
+        );
+      } else if (it.t === "poly") {
+        parts.push(
+          `<polygon points="${it.points.map((p) => p.x + "," + yf(p.y)).join(" ")}"/>`,
+        );
+      }
+    });
+    const sw = Math.max(w, hh) * 0.04;
+    return `<svg viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linejoin="round">${parts.join("")}</svg>`;
+  }
+
+  /** Enter placement mode for a works-library template. */
+  selectWorkTemplate(id) {
+    this.pendingWorkTemplate = id;
+    this.setTool("work");
+    document.querySelectorAll(".work-item").forEach((b) => {
+      b.classList.toggle("active", b.dataset.work === id);
+    });
+  }
+
+  /** Render the parameter + mirror editor for the selected work. */
+  renderWorkProperties() {
+    const panel = document.getElementById("work-properties");
+    if (!panel) return;
+    const hole = this.holes[this.selectedHoleIndex];
+    if (!hole || hole.shape !== "work") {
+      panel.style.display = "none";
+      panel.innerHTML = "";
+      return;
+    }
+    const tpl = window.WORKS_LIBRARY[hole.templateId];
+    if (!tpl) {
+      panel.style.display = "none";
+      return;
+    }
+    panel.style.display = "block";
+    let html = '<div class="work-prop-title">' + tpl.name + "</div>";
+    tpl.params.forEach((p) => {
+      const val = hole.params[p.key] != null ? hole.params[p.key] : p.def;
+      html +=
+        '<label class="work-prop-row"><span>' +
+        p.label +
+        ' (mm)</span><input type="number" data-param="' +
+        p.key +
+        '" value="' +
+        Math.round(val) +
+        '" min="' +
+        (p.min != null ? p.min : 0) +
+        '" step="1"></label>';
+    });
+    html +=
+      '<div class="work-prop-mirror">' +
+      '<label><input type="checkbox" data-mirror="h"' +
+      (hole.mirror && hole.mirror.h ? " checked" : "") +
+      "> Mirror H</label>" +
+      '<label><input type="checkbox" data-mirror="v"' +
+      (hole.mirror && hole.mirror.v ? " checked" : "") +
+      "> Mirror V</label></div>";
+    html +=
+      '<button type="button" class="btn btn-outline work-prop-delete">Delete Work</button>';
+    panel.innerHTML = html;
+
+    const self = this;
+    panel.querySelectorAll("input[data-param]").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        const v = parseFloat(inp.value);
+        if (!isNaN(v)) {
+          hole.params[inp.dataset.param] = v;
+          self.render();
+        }
+      });
+    });
+    panel.querySelectorAll("input[data-mirror]").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        hole.mirror = hole.mirror || { h: false, v: false };
+        hole.mirror[inp.dataset.mirror] = inp.checked;
+        self.render();
+      });
+    });
+    const del = panel.querySelector(".work-prop-delete");
+    if (del)
+      del.addEventListener("click", () => {
+        self.holes.splice(self.selectedHoleIndex, 1);
+        self.selectedHoleIndex = -1;
+        self.render();
+        self.renderWorkProperties();
+        if (typeof self.renderHolesList === "function") self.renderHolesList();
+      });
   }
 
   updateGlassDimensions(width, height, thickness) {
@@ -1344,6 +1569,10 @@ class GlassDesigner {
     let applied = false;
     const self = this;
 
+    // The new scene-based hit areas carry an `editable` descriptor. Older call
+    // sites may still pass a flat `{type, sideIndex}` shape, so support both.
+    const ed = hitArea.editable || hitArea;
+
     const applyValue = () => {
       if (applied) return;
       applied = true;
@@ -1352,37 +1581,53 @@ class GlassDesigner {
 
       if (!newVal || newVal <= 0) return;
 
-      if (hitArea.type === "width") {
-        self.glass.width = newVal;
-        const el = document.getElementById("glass-width");
-        if (el) el.value = Math.round(newVal);
-        self.setupCanvas();
-        self.render();
-        self.updateShapeParamsUI();
-      } else if (hitArea.type === "height") {
-        self.glass.height = newVal;
-        const el = document.getElementById("glass-height");
-        if (el) el.value = Math.round(newVal);
-        self.setupCanvas();
-        self.render();
-        self.updateShapeParamsUI();
-      } else if (hitArea.type === "thickness") {
-        self.glass.thickness = newVal;
-        const el = document.getElementById("glass-thickness");
-        if (el) el.value = newVal;
-        const sel = document.getElementById("glass-thickness-select");
-        if (sel) {
-          const presets = ["4", "6", "8", "9.5", "12"];
-          sel.value = presets.includes(String(newVal))
-            ? String(newVal)
-            : "custom";
+      switch (ed.type) {
+        case "glassW":
+        case "width": {
+          self.glass.width = newVal;
+          const el = document.getElementById("glass-width");
+          if (el) el.value = Math.round(newVal);
+          self.setupCanvas();
+          self.render();
+          self.updateShapeParamsUI();
+          break;
         }
-        self.render();
-      } else if (hitArea.type === "side") {
-        if (self.glass.shape === "freeform") {
-          self.updateSideLength(hitArea.sideIndex, String(newVal));
-        } else {
-          self.updatePredefinedSideLength(hitArea.sideIndex, String(newVal));
+        case "glassH":
+        case "height": {
+          self.glass.height = newVal;
+          const el = document.getElementById("glass-height");
+          if (el) el.value = Math.round(newVal);
+          self.setupCanvas();
+          self.render();
+          self.updateShapeParamsUI();
+          break;
+        }
+        case "thickness": {
+          self.glass.thickness = newVal;
+          const el = document.getElementById("glass-thickness");
+          if (el) el.value = newVal;
+          const sel = document.getElementById("glass-thickness-select");
+          if (sel) {
+            const presets = ["4", "6", "8", "9.5", "12"];
+            sel.value = presets.includes(String(newVal))
+              ? String(newVal)
+              : "custom";
+          }
+          self.render();
+          break;
+        }
+        case "side": {
+          if (self.glass.shape === "freeform") {
+            self.updateSideLength(ed.sideIndex, String(newVal));
+          } else {
+            self.updatePredefinedSideLength(ed.sideIndex, String(newVal));
+          }
+          break;
+        }
+        case "workX":
+        case "workY": {
+          self.setWorkDistance(ed, newVal);
+          break;
         }
       }
     };
@@ -1403,6 +1648,29 @@ class GlassDesigner {
       if (!ready) return;
       setTimeout(applyValue, 100);
     });
+  }
+
+  /**
+   * Move a work (hole/cutout) so its centre sits `newVal` mm from the
+   * reference edge described by an editable dimension descriptor.
+   */
+  setWorkDistance(ed, newVal) {
+    const hole = this.holes[ed.workIndex];
+    if (!hole) return;
+    const isRect = hole.shape === "rectangle";
+
+    if (ed.type === "workX") {
+      const newCenterX =
+        ed.ref === "right" ? ed.edge - newVal : ed.edge + newVal;
+      hole.x = isRect ? newCenterX - (hole.width || 0) / 2 : newCenterX;
+    } else if (ed.type === "workY") {
+      const newCenterY =
+        ed.ref === "top" ? ed.edge - newVal : ed.edge + newVal;
+      hole.y = isRect ? newCenterY - (hole.height || 0) / 2 : newCenterY;
+    }
+
+    this.render();
+    if (typeof this.renderHolesList === "function") this.renderHolesList();
   }
 
   /**
@@ -2373,6 +2641,7 @@ class GlassDesigner {
 
   updatePropertiesPanel() {
     this.renderHolesList();
+    this.renderWorkProperties();
   }
 
   renderHolesList() {
@@ -3193,45 +3462,81 @@ class GlassDesigner {
     ctx.restore();
   }
 
-  render() {
+  /**
+   * Build the renderer-agnostic scene from the current editable state.
+   * Both the live canvas and the SVG print/export consume this same scene.
+   */
+  buildScene() {
     const ctx = this.ctx;
+    const theme = window.DESIGNER_THEME.live;
+    const measureText = (t, fontPx) => {
+      ctx.font = "600 " + fontPx + "px " + theme.fontFamily;
+      return ctx.measureText(t).width;
+    };
+    return window.DesignerScene.buildScene(
+      {
+        glass: this.glass,
+        outlinePoints: this.getGlassPoints(),
+        works: this.holes,
+        paint: this.paintAreas,
+        selectedIndex: this.selectedHoleIndex,
+      },
+      { scale: this.scale, measureText, theme, showDims: true },
+    );
+  }
 
-    // Reset clickable measurement hit areas
+  render() {
+    // New pipeline: build a shared scene, then draw it with the canvas renderer.
+    // The same scene drives the SVG print/export so screen == paper.
+    if (
+      window.DesignerScene &&
+      window.renderSceneToCanvas &&
+      window.DESIGNER_THEME
+    ) {
+      const theme = window.DESIGNER_THEME.live;
+      this.scene = this.buildScene();
+      const view = {
+        scale: this.scale,
+        offsetX: this.offsetX,
+        offsetY: this.offsetY,
+        glassHeight: this.glass.height,
+        canvasWidth: this.canvas.width,
+        canvasHeight: this.canvas.height,
+      };
+      this.measurementHitAreas = window.renderSceneToCanvas(
+        this.ctx,
+        this.scene,
+        view,
+        theme,
+      );
+
+      // Interaction overlays (live-only) drawn on top of the scene.
+      this.drawSnapGuides();
+      if (this.isDrawingFreeform) this.drawFreeformOverlay();
+      return;
+    }
+
+    // Fallback to the legacy renderer if modules failed to load.
+    this.renderLegacy();
+  }
+
+  renderLegacy() {
+    const ctx = this.ctx;
     this.measurementHitAreas = [];
-
-    // Enable smooth rendering
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-
-    // Clear canvas
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw modern gradient background
     const gradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
     gradient.addColorStop(0, "#f0f9ff");
     gradient.addColorStop(1, "#e0f2fe");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw grid
     this.drawGrid();
-
-    // Draw glass piece
     this.drawGlass();
-
-    // Draw holes
     this.drawHoles();
-
-    // Draw snap alignment guides
     this.drawSnapGuides();
-
-    // Draw dimensions
     this.drawDimensions();
-
-    // Draw side length labels for non-rectangular shapes
     this.drawSideLengths();
-
-    // Draw freeform overlay if in drawing mode
     if (this.isDrawingFreeform) {
       this.drawFreeformOverlay();
     }
@@ -5313,7 +5618,7 @@ class GlassDesigner {
             </div>
             <div class="print-content">
                 <div class="print-drawing-area">
-                    <canvas id="print-canvas"></canvas>
+                    <div id="print-svg-mount" class="print-svg-mount"></div>
                 </div>
                 <div class="print-specs-area">
                     <h3>${t("glassProperties")}</h3>
@@ -5352,15 +5657,50 @@ class GlassDesigner {
     const printContainer = document.getElementById("print-template");
     printContainer.innerHTML = printTemplate;
 
-    // Render design to print canvas with dimension lines
-    const printCanvas = document.getElementById("print-canvas");
-    if (printCanvas) {
-      // renderForPrint will set the canvas size with proper padding
-      this.renderForPrint(printCanvas);
+    // Render the design as crisp vector SVG using the SAME scene as the screen,
+    // themed for paper. This guarantees the print matches what is on screen with
+    // zero measurement overlap.
+    const mount = document.getElementById("print-svg-mount");
+    if (mount && window.renderSceneToSVG) {
+      mount.innerHTML = this.buildPrintSVG();
+    } else if (mount) {
+      mount.textContent = "SVG renderer unavailable.";
     }
 
     // Trigger print dialog
     window.print();
+  }
+
+  /**
+   * Build the print/export SVG string from the current design, themed for paper.
+   */
+  buildPrintSVG() {
+    const scene = this.buildScene();
+    return window.renderSceneToSVG(scene, {
+      theme: window.DESIGNER_THEME.print,
+      targetWidth: 1000,
+      padding: 28,
+    });
+  }
+
+  /**
+   * Export the current design as a downloadable, crisp .svg file.
+   */
+  exportSVG() {
+    if (!window.renderSceneToSVG) return;
+    const svg = this.buildPrintSVG();
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const name =
+      (this.currentDesignName || "glass-design").replace(/[^\w.-]+/g, "_") +
+      ".svg";
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
 
@@ -5430,6 +5770,22 @@ function convertFromBackendFormat(elements) {
           shape: "clip",
         });
       }
+    });
+  }
+
+  // Restore parametric works (Phase 5)
+  if (elements.works && Array.isArray(elements.works)) {
+    elements.works.forEach((w) => {
+      holes.push({
+        id: w.id,
+        shape: "work",
+        templateId: w.template_id || w.templateId,
+        params: w.params || {},
+        x: w.x,
+        y: w.y,
+        mirror: w.mirror || { h: false, v: false },
+        herrajes_herraje_id: w.herrajes_herraje_id || null,
+      });
     });
   }
 
@@ -5517,6 +5873,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     });
+
+    // Build the works library palette and wire its search box.
+    designer.buildWorksPalette();
+    const worksSearch = document.getElementById("works-search");
+    if (worksSearch) {
+      worksSearch.addEventListener("input", () => {
+        designer.buildWorksPalette(worksSearch.value);
+      });
+    }
 
     // Initialize shape picker button with default shape
     const pickerIcon = document.getElementById("shape-picker-icon");
@@ -5954,6 +6319,7 @@ function convertToBackendFormat(holes, glassData) {
     holes: [],
     cuts: [],
     notes: [],
+    works: [], // parametric works library items (Phase 5)
   };
 
   // Store glass shape metadata for round-tripping
@@ -5978,6 +6344,20 @@ function convertToBackendFormat(holes, glassData) {
       font_family: "Arial, sans-serif",
       text_color: "#000000",
     };
+
+    if (hole.shape === "work") {
+      // Parametric works persist verbatim (template + params + placement).
+      elements.works.push({
+        id: hole.id || `work-${Date.now()}-${index}`,
+        template_id: hole.templateId,
+        params: hole.params || {},
+        x: hole.x,
+        y: hole.y,
+        mirror: hole.mirror || { h: false, v: false },
+        herrajes_herraje_id: hole.herrajes_herraje_id || null,
+      });
+      return;
+    }
 
     if (hole.shape === "clip") {
       // Edge clips are represented as notched cuts in the backend

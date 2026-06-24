@@ -23,10 +23,40 @@ type Design struct {
 
 // Elements holds all design elements within a glass piece
 type Elements struct {
-	Shapes []Shape `json:"shapes"`
-	Holes  []Hole  `json:"holes"`
-	Cuts   []Cut   `json:"cuts"`
-	Notes  []Note  `json:"notes"`
+	Shapes     []Shape         `json:"shapes"`
+	Holes      []Hole          `json:"holes"`
+	Cuts       []Cut           `json:"cuts"`
+	Notes      []Note          `json:"notes"`
+	Works      []WorkElement   `json:"works,omitempty"`      // parametric works library items
+	GlassShape *GlassShapeMeta `json:"glassShape,omitempty"` // non-rectangular outline metadata
+}
+
+// WorkElement persists a placed parametric work (notch/cutout) from the works
+// library: its template, editable parameters and placement.
+type WorkElement struct {
+	ID         string             `json:"id"`
+	TemplateID string             `json:"template_id"`
+	Params     map[string]float64 `json:"params"`
+	X          float64            `json:"x"`
+	Y          float64            `json:"y"`
+	Mirror     WorkMirror         `json:"mirror"`
+	HerrajeID  *string            `json:"herrajes_herraje_id,omitempty"`
+}
+
+// WorkMirror records horizontal/vertical mirroring of a work.
+type WorkMirror struct {
+	H bool `json:"h"`
+	V bool `json:"v"`
+}
+
+// GlassShapeMeta round-trips the outline shape selection for non-rectangular
+// glass so saved designs reload with the correct shape.
+type GlassShapeMeta struct {
+	Shape          string             `json:"shape"`
+	ShapeParams    map[string]float64 `json:"shapeParams"`
+	FreeformPoints []Point            `json:"freeformPoints"`
+	FlipH          bool               `json:"flipH"`
+	FlipV          bool               `json:"flipV"`
 }
 
 // Shape represents the main outline of the glass piece
