@@ -320,6 +320,117 @@
   }
 
   /**
+   * Signature that identifies works as "the same" (same type + same specs),
+   * so identical notches share one legend number. Orientation/position and
+   * mirroring are intentionally ignored — only the cut specification matters.
+   */
+  function workSignature(work) {
+    const r = (n) => Math.round(n || 0);
+    const raw = work.raw || {};
+    switch (work.shape) {
+      case "circle":
+        return "circle|" + r(raw.diameter);
+      case "taladro":
+        return "taladro|" + r(raw.diameter);
+      case "avellanado":
+        return "avellanado|" + r(raw.diameter) + "/" + r(raw.holeDiameter);
+      case "rectangle":
+        return "rect|" + r(raw.width) + "x" + r(raw.height);
+      case "clip":
+        return "clip|" + r(raw.width) + "x" + r(raw.depth);
+      case "work": {
+        const p = work.params || {};
+        const keys = Object.keys(p).sort();
+        return "work|" + work.templateId + "|" + keys.map((k) => k + r(p[k])).join(",");
+      }
+      default:
+        return work.shape || "unknown";
+    }
+  }
+
+  /** Human label for a work's type (legend heading). */
+  function workTypeName(work) {
+    switch (work.shape) {
+      case "circle":
+        return "Circular hole";
+      case "taladro":
+        return "Drill hole";
+      case "avellanado":
+        return "Countersink";
+      case "rectangle":
+        return "Rectangular cutout";
+      case "clip":
+        return "Edge clip";
+      case "work": {
+        const tpl = (global.WORKS_LIBRARY || {})[work.templateId];
+        return tpl ? tpl.name : "Work";
+      }
+      default:
+        return "Work";
+    }
+  }
+
+  /** Spec string for a work (e.g. "Ø50 mm" or "W 25 · H 110 · R 3 mm"). */
+  function workSpecLabel(work) {
+    const r = (n) => Math.round(n || 0);
+    const raw = work.raw || {};
+    switch (work.shape) {
+      case "circle":
+      case "taladro":
+        return "Ø" + r(raw.diameter) + " mm";
+      case "avellanado":
+        return "Ø" + r(raw.diameter) + " / Ø" + r(raw.holeDiameter) + " mm";
+      case "rectangle":
+        return r(raw.width) + " × " + r(raw.height) + " mm";
+      case "clip":
+        return r(raw.width) + " × " + r(raw.depth) + " mm (W×D)";
+      case "work": {
+        const tpl = (global.WORKS_LIBRARY || {})[work.templateId];
+        const p = work.params || {};
+        if (tpl) {
+          return (
+            tpl.params
+              .map((pp) => pp.label + " " + r(p[pp.key] != null ? p[pp.key] : pp.def))
+              .join(" · ") + " mm"
+          );
+        }
+        return work.templateId || "";
+      }
+      default:
+        return "";
+    }
+  }
+
+  /**
+   * Number the works: identical works (same signature) get the same number.
+   * Sets `work.tag` on each and returns the legend entries in number order.
+   */
+  function tagWorks(works) {
+    const sigToTag = {};
+    const legend = [];
+    let next = 1;
+    works.forEach((w) => {
+      const sig = workSignature(w);
+      if (sigToTag[sig] == null) {
+        sigToTag[sig] = next++;
+        legend.push({
+          tag: sigToTag[sig],
+          signature: sig,
+          typeName: workTypeName(w),
+          label: workSpecLabel(w),
+          work: w,
+          count: 1,
+        });
+      } else {
+        const e = legend.find((l) => l.signature === sig);
+        if (e) e.count++;
+      }
+      w.tag = sigToTag[sig];
+    });
+    return legend;
+  }
+
+  /**
    * Build the complete scene.
    *
    * @param {object} state
@@ -358,11 +469,56 @@
       dims: [],
     };
 
+    // Number the works (identical specs share a number) for the legend + badges.
+    scene.legend = tagWorks(scene.works);
+
     if (opts.showDims !== false && global.DesignerDimensions) {
       scene.dims = global.DesignerDimensions.layout(scene, opts);
     }
 
     return scene;
+  }
+
+  /**
+   * Full mm bounding box of everything drawable in a scene — the part, every
+   * work, and all dimension lines/leaders/labels. Used to fit the drawing into
+   * the viewport (so dimensions never go offscreen) and to size the SVG export.
+   */
+  function sceneBounds(scene) {
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    const eat = (x, y) => {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    };
+    scene.outline.points.forEach((p) => eat(p.x, p.y));
+    scene.works.forEach((w) => {
+      eat(w.bbox.minX, w.bbox.minY);
+      eat(w.bbox.maxX, w.bbox.maxY);
+    });
+    (scene.dims || []).forEach((d) => {
+      if (d.kind === "linear") {
+        (d.ext || []).forEach((e) => {
+          eat(e.x, e.y);
+          eat(e.x2, e.y2);
+        });
+        eat(d.lineA.x, d.lineA.y);
+        eat(d.lineB.x, d.lineB.y);
+      }
+      const hw = d.hitHalfW || 0;
+      const hh = d.hitHalfH || 0;
+      eat(d.textPos.x - hw, d.textPos.y - hh);
+      eat(d.textPos.x + hw, d.textPos.y + hh);
+    });
+    if (!isFinite(minX)) {
+      minX = minY = 0;
+      maxX = maxY = 1;
+    }
+    return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
   }
 
   global.DesignerScene = {
@@ -371,5 +527,10 @@
     resolveWork,
     nearestEdges,
     bboxOf,
+    sceneBounds,
+    workSignature,
+    workTypeName,
+    workSpecLabel,
+    tagWorks,
   };
 })(typeof window !== "undefined" ? window : this);

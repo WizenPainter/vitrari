@@ -78,97 +78,96 @@
     const labelWmm = (text) => measure(text, fontPx) / scale;
 
     // ---- collect band requests ----
-    const bottom = []; // horizontal dims
-    const left = []; // vertical dims
+    // Four bands, one per side of the part. Each dimension is placed on the side
+    // NEAREST its feature so its dotted leader stays short and never crosses the
+    // part: horizontal dims go to top/bottom, vertical dims to left/right.
+    // Each item has two endpoints: `pos` along the band axis, `anchor` is where
+    // the extension line meets the feature, `dash` marks the dotted notch leader.
+    const bands = { top: [], bottom: [], left: [], right: [] };
 
-    // Glass overall width (bottom) and height (left).
-    {
-      const wText = roundMM(bb.w) + "mm";
-      bottom.push({
-        s: bb.minX,
-        e: bb.maxX,
-        aX: bb.minX,
-        bX: bb.maxX,
-        anchorY: bb.minY,
-        text: wText,
-        value: bb.w,
-        priority: 0,
-        editable: { type: "glassW", value: roundMM(bb.w) },
-      });
-      const hText = roundMM(bb.h) + "mm";
-      left.push({
-        s: bb.minY,
-        e: bb.maxY,
-        aY: bb.minY,
-        bY: bb.maxY,
-        anchorX: bb.minX,
-        text: hText,
-        value: bb.h,
-        priority: 0,
-        editable: { type: "glassH", value: roundMM(bb.h) },
-      });
-    }
+    // Glass overall width (bottom) and height (left) — conventional datum sides.
+    bands.bottom.push({
+      s: bb.minX,
+      e: bb.maxX,
+      p0: { pos: bb.minX, anchor: bb.minY, dash: false },
+      p1: { pos: bb.maxX, anchor: bb.minY, dash: false },
+      text: roundMM(bb.w) + "mm",
+      value: bb.w,
+      editable: { type: "glassW", value: roundMM(bb.w) },
+    });
+    bands.left.push({
+      s: bb.minY,
+      e: bb.maxY,
+      p0: { pos: bb.minY, anchor: bb.minX, dash: false },
+      p1: { pos: bb.maxY, anchor: bb.minX, dash: false },
+      text: roundMM(bb.h) + "mm",
+      value: bb.h,
+      editable: { type: "glassH", value: roundMM(bb.h) },
+    });
 
-    // Per-work positional dimensions (distance from the nearest edges).
+    // Per-work positional dimensions: gap from the NEAREST glass edge to the
+    // notch's near edge, in each axis. Each dim sits on the hole's nearest side.
     scene.works.forEach((work) => {
       const c = work.center;
+      const wbx = work.bbox;
       const edges = global.DesignerScene.nearestEdges(scene.outline, c.x, c.y);
 
-      // Horizontal: distance to nearest vertical edge -> bottom band.
-      const dLeft = c.x - edges.left;
-      const dRight = edges.right - c.x;
-      const fromRight = dRight < dLeft;
-      const exA = fromRight ? edges.right : edges.left;
-      const exB = c.x;
-      const hVal = Math.abs(exB - exA);
+      const gapLeft = wbx.minX - edges.left;
+      const gapRight = edges.right - wbx.maxX;
+      const useRight = gapRight < gapLeft;
+      const gapBottom = wbx.minY - edges.bottom;
+      const gapTop = edges.top - wbx.maxY;
+      const useTop = gapTop < gapBottom;
+
+      // ----- horizontal dim (gap to nearest L/R edge), placed top or bottom -----
+      const hVal = useRight ? gapRight : gapLeft;
       if (hVal > 1) {
+        const datumX = useRight ? edges.right : edges.left;
+        const notchX = useRight ? wbx.maxX : wbx.minX;
         const t = roundMM(hVal) + "mm";
-        const w = Math.max(labelWmm(t), Math.abs(exB - exA)) + marginMM;
-        const ctr = (exA + exB) / 2;
-        bottom.push({
+        const w = Math.max(labelWmm(t), Math.abs(notchX - datumX)) + marginMM;
+        const ctr = (datumX + notchX) / 2;
+        const hBand = useTop ? "top" : "bottom"; // nearest horizontal side
+        const datumAnchorY = useTop ? bb.maxY : bb.minY;
+        bands[hBand].push({
           s: ctr - w / 2,
           e: ctr + w / 2,
-          aX: exA,
-          bX: exB,
-          anchorY: bb.minY,
+          p0: { pos: datumX, anchor: datumAnchorY, dash: false }, // glass edge
+          p1: { pos: notchX, anchor: c.y, dash: true }, // dotted notch leader
           text: t,
           value: hVal,
-          priority: 1,
           editable: {
             type: "workX",
             workIndex: work.index,
-            ref: fromRight ? "right" : "left",
-            edge: exA,
+            ref: useRight ? "right" : "left",
+            edge: datumX,
             value: roundMM(hVal),
           },
         });
       }
 
-      // Vertical: distance to nearest horizontal edge -> left band.
-      const dBottom = c.y - edges.bottom;
-      const dTop = edges.top - c.y;
-      const fromTop = dTop < dBottom;
-      const eyA = fromTop ? edges.top : edges.bottom;
-      const eyB = c.y;
-      const vVal = Math.abs(eyB - eyA);
+      // ----- vertical dim (gap to nearest T/B edge), placed left or right -----
+      const vVal = useTop ? gapTop : gapBottom;
       if (vVal > 1) {
+        const datumY = useTop ? edges.top : edges.bottom;
+        const notchY = useTop ? wbx.maxY : wbx.minY;
         const t = roundMM(vVal) + "mm";
-        const h = Math.max(labelWmm(t), Math.abs(eyB - eyA)) + marginMM;
-        const ctr = (eyA + eyB) / 2;
-        left.push({
+        const h = Math.max(labelWmm(t), Math.abs(notchY - datumY)) + marginMM;
+        const ctr = (datumY + notchY) / 2;
+        const vBand = useRight ? "right" : "left"; // nearest vertical side
+        const datumAnchorX = useRight ? bb.maxX : bb.minX;
+        bands[vBand].push({
           s: ctr - h / 2,
           e: ctr + h / 2,
-          aY: eyA,
-          bY: eyB,
-          anchorX: bb.minX,
+          p0: { pos: datumY, anchor: datumAnchorX, dash: false },
+          p1: { pos: notchY, anchor: c.x, dash: true },
           text: t,
           value: vVal,
-          priority: 1,
           editable: {
             type: "workY",
             workIndex: work.index,
-            ref: fromTop ? "top" : "bottom",
-            edge: eyA,
+            ref: useTop ? "top" : "bottom",
+            edge: datumY,
             value: roundMM(vVal),
           },
         });
@@ -176,41 +175,58 @@
     });
 
     // ---- resolve lanes & emit primitives ----
-    assignLanes(bottom).forEach((it) => {
-      const lineY = bb.minY - (gapMM + it.lane * stepMM);
-      dims.push({
-        kind: "linear",
-        orient: "h",
-        extA: { x: it.aX, y: it.anchorY },
-        extB: { x: it.bX, y: it.anchorY },
-        lineA: { x: it.aX, y: lineY },
-        lineB: { x: it.bX, y: lineY },
-        textPos: { x: (it.aX + it.bX) / 2, y: lineY - textHmm * 0.55 },
-        text: it.text,
-        value: it.value,
-        hitHalfW: labelWmm(it.text) / 2 + marginMM / 2,
-        hitHalfH: textHmm / 2,
-        editable: it.editable,
+    const emitH = (items, side) => {
+      assignLanes(items).forEach((it) => {
+        const off = gapMM + it.lane * stepMM;
+        const lineY = side === "bottom" ? bb.minY - off : bb.maxY + off;
+        const textY =
+          side === "bottom" ? lineY - textHmm * 0.55 : lineY + textHmm * 0.55;
+        dims.push({
+          kind: "linear",
+          orient: "h",
+          ext: [
+            { x: it.p0.pos, y: it.p0.anchor, x2: it.p0.pos, y2: lineY, dash: it.p0.dash },
+            { x: it.p1.pos, y: it.p1.anchor, x2: it.p1.pos, y2: lineY, dash: it.p1.dash },
+          ],
+          lineA: { x: it.p0.pos, y: lineY },
+          lineB: { x: it.p1.pos, y: lineY },
+          textPos: { x: (it.p0.pos + it.p1.pos) / 2, y: textY },
+          text: it.text,
+          value: it.value,
+          hitHalfW: labelWmm(it.text) / 2 + marginMM / 2,
+          hitHalfH: textHmm / 2,
+          editable: it.editable,
+        });
       });
-    });
-
-    assignLanes(left).forEach((it) => {
-      const lineX = bb.minX - (gapMM + it.lane * stepMM);
-      dims.push({
-        kind: "linear",
-        orient: "v",
-        extA: { x: it.anchorX, y: it.aY },
-        extB: { x: it.anchorX, y: it.bY },
-        lineA: { x: lineX, y: it.aY },
-        lineB: { x: lineX, y: it.bY },
-        textPos: { x: lineX - textHmm * 0.55, y: (it.aY + it.bY) / 2 },
-        text: it.text,
-        value: it.value,
-        hitHalfW: textHmm / 2,
-        hitHalfH: labelWmm(it.text) / 2 + marginMM / 2,
-        editable: it.editable,
+    };
+    const emitV = (items, side) => {
+      assignLanes(items).forEach((it) => {
+        const off = gapMM + it.lane * stepMM;
+        const lineX = side === "left" ? bb.minX - off : bb.maxX + off;
+        const textX =
+          side === "left" ? lineX - textHmm * 0.55 : lineX + textHmm * 0.55;
+        dims.push({
+          kind: "linear",
+          orient: "v",
+          ext: [
+            { x: it.p0.anchor, y: it.p0.pos, x2: lineX, y2: it.p0.pos, dash: it.p0.dash },
+            { x: it.p1.anchor, y: it.p1.pos, x2: lineX, y2: it.p1.pos, dash: it.p1.dash },
+          ],
+          lineA: { x: lineX, y: it.p0.pos },
+          lineB: { x: lineX, y: it.p1.pos },
+          textPos: { x: textX, y: (it.p0.pos + it.p1.pos) / 2 },
+          text: it.text,
+          value: it.value,
+          hitHalfW: textHmm / 2,
+          hitHalfH: labelWmm(it.text) / 2 + marginMM / 2,
+          editable: it.editable,
+        });
       });
-    });
+    };
+    emitH(bands.bottom, "bottom");
+    emitH(bands.top, "top");
+    emitV(bands.left, "left");
+    emitV(bands.right, "right");
 
     // ---- polygon side-length labels (non-rectangular shapes) ----
     const shape = scene.glass.shape;

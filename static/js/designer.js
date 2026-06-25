@@ -626,6 +626,9 @@ class GlassDesigner {
 
     // Use the smaller scale to ensure glass fits in both dimensions
     this.scale = Math.min(scaleX, scaleY);
+    // Remember the glass-only fit scale; render() auto-fits down from this so
+    // dimension bands/leaders always stay on screen.
+    this.baseScale = this.scale;
 
     // Calculate actual glass size on canvas
     const glassCanvasWidth = this.glass.width * this.scale;
@@ -1651,21 +1654,61 @@ class GlassDesigner {
   }
 
   /**
-   * Move a work (hole/cutout) so its centre sits `newVal` mm from the
-   * reference edge described by an editable dimension descriptor.
+   * Fit the whole dimensioned scene into the canvas. Only ever shrinks from the
+   * glass-only base scale (never zooms past it) and recentres the drawing so the
+   * dimension bands, dotted leaders and labels are always visible.
+   */
+  fitViewToScene() {
+    if (!window.DesignerScene || !this.scene) return;
+    const b = window.DesignerScene.sceneBounds(this.scene);
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    const margin = 22;
+    const base = this.baseScale || this.scale;
+    let fit = Math.min((cw - 2 * margin) / (b.w || 1), (ch - 2 * margin) / (b.h || 1));
+    if (!isFinite(fit) || fit <= 0) fit = base;
+    this.scale = Math.min(base, fit);
+    this.offsetX = (cw - b.w * this.scale) / 2 - b.minX * this.scale;
+    this.offsetY =
+      (ch - b.h * this.scale) / 2 - (this.glass.height - b.maxY) * this.scale;
+  }
+
+  /**
+   * Move a work (hole/cutout) so the gap between the reference glass edge and
+   * the work's near edge equals `newVal` mm (matches the nearest-edge dimension
+   * shown on screen).
    */
   setWorkDistance(ed, newVal) {
     const hole = this.holes[ed.workIndex];
     if (!hole) return;
     const isRect = hole.shape === "rectangle";
+    const sw = this.scene && this.scene.works && this.scene.works[ed.workIndex];
 
     if (ed.type === "workX") {
-      const newCenterX =
-        ed.ref === "right" ? ed.edge - newVal : ed.edge + newVal;
+      let newCenterX;
+      if (sw) {
+        const offMin = sw.center.x - sw.bbox.minX; // centre -> left edge
+        const offMax = sw.bbox.maxX - sw.center.x; // centre -> right edge
+        newCenterX =
+          ed.ref === "right"
+            ? ed.edge - newVal - offMax
+            : ed.edge + newVal + offMin;
+      } else {
+        newCenterX = ed.ref === "right" ? ed.edge - newVal : ed.edge + newVal;
+      }
       hole.x = isRect ? newCenterX - (hole.width || 0) / 2 : newCenterX;
     } else if (ed.type === "workY") {
-      const newCenterY =
-        ed.ref === "top" ? ed.edge - newVal : ed.edge + newVal;
+      let newCenterY;
+      if (sw) {
+        const offMin = sw.center.y - sw.bbox.minY; // centre -> bottom edge
+        const offMax = sw.bbox.maxY - sw.center.y; // centre -> top edge
+        newCenterY =
+          ed.ref === "top"
+            ? ed.edge - newVal - offMax
+            : ed.edge + newVal + offMin;
+      } else {
+        newCenterY = ed.ref === "top" ? ed.edge - newVal : ed.edge + newVal;
+      }
       hole.y = isRect ? newCenterY - (hole.height || 0) / 2 : newCenterY;
     }
 
@@ -3494,6 +3537,11 @@ class GlassDesigner {
       window.DESIGNER_THEME
     ) {
       const theme = window.DESIGNER_THEME.live;
+      this.scene = this.buildScene();
+      // Auto-fit the full dimensioned drawing (part + dimension bands + dotted
+      // leaders + labels) into the canvas so nothing goes offscreen, then
+      // rebuild at the fitted scale so label/lane sizing stays correct.
+      this.fitViewToScene();
       this.scene = this.buildScene();
       const view = {
         scale: this.scale,
@@ -5607,7 +5655,34 @@ class GlassDesigner {
       holesSpecHTML += "</div>";
     }
 
-    if (holesSpecHTML === "") {
+    // Build the works list as actual drawings + specs, numbered. Identical
+    // works share a number (via the scene's tagWorks), and those same numbers
+    // appear as badges on the drawing above for cross-reference.
+    const printScene = this.buildScene();
+    if (printScene.legend && printScene.legend.length > 0) {
+      holesSpecHTML =
+        '<div class="print-works-legend">' +
+        printScene.legend
+          .map((e) => {
+            const thumb = window.renderWorkThumbnail
+              ? window.renderWorkThumbnail(e.work, {
+                  theme: window.DESIGNER_THEME.print,
+                })
+              : "";
+            return (
+              '<div class="print-work-row">' +
+              `<div class="print-work-num">${e.tag}</div>` +
+              `<div class="print-work-thumb">${thumb}</div>` +
+              '<div class="print-work-info">' +
+              `<div class="print-work-name">${e.typeName}</div>` +
+              `<div class="print-work-spec">${e.label}</div>` +
+              `<div class="print-work-qty">${t("quantity")}: ${e.count}</div>` +
+              "</div></div>"
+            );
+          })
+          .join("") +
+        "</div>";
+    } else {
       holesSpecHTML = `<p style="color: #64748b; font-style: italic;">${t("noHolesClipsInDesign")}</p>`;
     }
 

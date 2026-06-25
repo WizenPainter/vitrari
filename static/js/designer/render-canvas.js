@@ -72,6 +72,12 @@
     // ---- works ----
     for (const work of scene.works) drawWork(work);
 
+    // ---- work number badges (cross-reference to the print legend) ----
+    ctx.font = "700 10px " + theme.fontFamily;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const work of scene.works) drawWorkTag(work);
+
     // ---- dimensions ----
     ctx.font = "600 " + theme.dimFontPx + "px " + theme.fontFamily;
     ctx.textAlign = "center";
@@ -247,6 +253,20 @@
       ctx.closePath();
     }
 
+    function drawWorkTag(work) {
+      if (work.tag == null) return;
+      // Badge sits just off the work's top-right corner.
+      const corner = g2c(work.bbox.maxX, work.bbox.maxY);
+      const bx = corner.x + 9;
+      const by = corner.y - 9;
+      ctx.fillStyle = work.selected ? theme.workSelected : theme.workStroke;
+      ctx.beginPath();
+      ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = theme.background;
+      ctx.fillText(String(work.tag), bx, by);
+    }
+
     function drawCenter(c, color) {
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -268,17 +288,19 @@
     function drawLinearDim(d) {
       ctx.strokeStyle = theme.dimLine;
       ctx.lineWidth = 1;
-      const eA1 = g2c(d.extA.x, d.extA.y);
+      // extension / leader lines (dotted ones point at the notch they measure)
+      (d.ext || []).forEach((e) => {
+        const a = g2c(e.x, e.y);
+        const b = g2c(e.x2, e.y2);
+        ctx.setLineDash(e.dash ? [2, 3] : []);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
       const lA = g2c(d.lineA.x, d.lineA.y);
-      const eB1 = g2c(d.extB.x, d.extB.y);
       const lB = g2c(d.lineB.x, d.lineB.y);
-      // extension lines
-      ctx.beginPath();
-      ctx.moveTo(eA1.x, eA1.y);
-      ctx.lineTo(lA.x, lA.y);
-      ctx.moveTo(eB1.x, eB1.y);
-      ctx.lineTo(lB.x, lB.y);
-      ctx.stroke();
       // dimension line
       ctx.beginPath();
       ctx.moveTo(lA.x, lA.y);
@@ -288,8 +310,7 @@
       tick(lA, Math.PI / 4);
       tick(lB, Math.PI / 4);
       // label
-      const tp = g2c(d.textPos.x, d.textPos.y);
-      drawDimLabel(d, tp);
+      drawDimLabel(d, g2c(d.textPos.x, d.textPos.y));
     }
 
     function drawDimLabel(d, tp) {

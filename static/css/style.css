@@ -717,6 +717,62 @@ select {
         font-size: 0.8rem;
     }
 
+    /* Works legend: numbered drawing + specs for each notch type */
+    .print-works-legend {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .print-work-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: 1px solid #000;
+        border-radius: 4px;
+        padding: 0.3rem;
+        break-inside: avoid;
+    }
+    .print-work-num {
+        flex: 0 0 22px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #000;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .print-work-thumb {
+        flex: 0 0 72px;
+        width: 72px;
+        height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .print-work-thumb svg {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    .print-work-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .print-work-name {
+        font-weight: 600;
+        font-size: 0.78rem;
+    }
+    .print-work-spec {
+        font-size: 0.72rem;
+    }
+    .print-work-qty {
+        font-size: 0.7rem;
+        color: #333;
+    }
+
     /* Hide regular canvas during print */
     #design-canvas {
         display: none !important;
