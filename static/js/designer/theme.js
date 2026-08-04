@@ -81,7 +81,7 @@
 
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      dimFontPx: 12,
+      dimFontPx: 19, // larger so printed measurements are easy to read
     },
   };
 

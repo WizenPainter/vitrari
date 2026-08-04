@@ -112,18 +112,25 @@
       const wbx = work.bbox;
       const edges = global.DesignerScene.nearestEdges(scene.outline, c.x, c.y);
 
-      const gapLeft = wbx.minX - edges.left;
-      const gapRight = edges.right - wbx.maxX;
+      // Round holes are dimensioned to their centre; cutouts to their near edge.
+      const toCenter = work.dimRef === "center";
+      const leftRef = toCenter ? c.x : wbx.minX;
+      const rightRef = toCenter ? c.x : wbx.maxX;
+      const bottomRef = toCenter ? c.y : wbx.minY;
+      const topRef = toCenter ? c.y : wbx.maxY;
+
+      const gapLeft = leftRef - edges.left;
+      const gapRight = edges.right - rightRef;
       const useRight = gapRight < gapLeft;
-      const gapBottom = wbx.minY - edges.bottom;
-      const gapTop = edges.top - wbx.maxY;
+      const gapBottom = bottomRef - edges.bottom;
+      const gapTop = edges.top - topRef;
       const useTop = gapTop < gapBottom;
 
       // ----- horizontal dim (gap to nearest L/R edge), placed top or bottom -----
       const hVal = useRight ? gapRight : gapLeft;
       if (hVal > 1) {
         const datumX = useRight ? edges.right : edges.left;
-        const notchX = useRight ? wbx.maxX : wbx.minX;
+        const notchX = useRight ? rightRef : leftRef;
         const t = roundMM(hVal) + "mm";
         const w = Math.max(labelWmm(t), Math.abs(notchX - datumX)) + marginMM;
         const ctr = (datumX + notchX) / 2;
@@ -150,7 +157,7 @@
       const vVal = useTop ? gapTop : gapBottom;
       if (vVal > 1) {
         const datumY = useTop ? edges.top : edges.bottom;
-        const notchY = useTop ? wbx.maxY : wbx.minY;
+        const notchY = useTop ? topRef : bottomRef;
         const t = roundMM(vVal) + "mm";
         const h = Math.max(labelWmm(t), Math.abs(notchY - datumY)) + marginMM;
         const ctr = (datumY + notchY) / 2;

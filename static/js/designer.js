@@ -1683,10 +1683,13 @@ class GlassDesigner {
     if (!hole) return;
     const isRect = hole.shape === "rectangle";
     const sw = this.scene && this.scene.works && this.scene.works[ed.workIndex];
+    // Round holes are measured to their centre (no edge offset); cutouts to the
+    // near edge, so we shift by the centre->edge distance.
+    const toCenter = !sw || sw.dimRef === "center";
 
     if (ed.type === "workX") {
       let newCenterX;
-      if (sw) {
+      if (sw && !toCenter) {
         const offMin = sw.center.x - sw.bbox.minX; // centre -> left edge
         const offMax = sw.bbox.maxX - sw.center.x; // centre -> right edge
         newCenterX =
@@ -1699,7 +1702,7 @@ class GlassDesigner {
       hole.x = isRect ? newCenterX - (hole.width || 0) / 2 : newCenterX;
     } else if (ed.type === "workY") {
       let newCenterY;
-      if (sw) {
+      if (sw && !toCenter) {
         const offMin = sw.center.y - sw.bbox.minY; // centre -> bottom edge
         const offMax = sw.bbox.maxY - sw.center.y; // centre -> top edge
         newCenterY =
@@ -3509,9 +3512,9 @@ class GlassDesigner {
    * Build the renderer-agnostic scene from the current editable state.
    * Both the live canvas and the SVG print/export consume this same scene.
    */
-  buildScene() {
+  buildScene(themeOverride) {
     const ctx = this.ctx;
-    const theme = window.DESIGNER_THEME.live;
+    const theme = themeOverride || window.DESIGNER_THEME.live;
     const measureText = (t, fontPx) => {
       ctx.font = "600 " + fontPx + "px " + theme.fontFamily;
       return ctx.measureText(t).width;
@@ -5750,7 +5753,9 @@ class GlassDesigner {
    * Build the print/export SVG string from the current design, themed for paper.
    */
   buildPrintSVG() {
-    const scene = this.buildScene();
+    // Lay the print scene out with the print theme so dimension lanes account
+    // for the larger print font and labels stay collision-free.
+    const scene = this.buildScene(window.DESIGNER_THEME.print);
     return window.renderSceneToSVG(scene, {
       theme: window.DESIGNER_THEME.print,
       targetWidth: 1000,

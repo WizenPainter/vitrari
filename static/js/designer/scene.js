@@ -221,6 +221,7 @@
         const r = (hole.diameter || 0) / 2;
         return Object.assign(base, {
           center: { x: hole.x, y: hole.y },
+          dimRef: "center", // round holes are located to their centre
           geom: {
             kind: hole.shape === "taladro" ? "drill" : "circle",
             cx: hole.x,
@@ -236,6 +237,7 @@
         const rInner = (hole.holeDiameter || 0) / 2;
         return Object.assign(base, {
           center: { x: hole.x, y: hole.y },
+          dimRef: "center",
           geom: { kind: "ring", cx: hole.x, cy: hole.y, r, rInner },
           bbox: { minX: hole.x - r, minY: hole.y - r, maxX: hole.x + r, maxY: hole.y + r },
           size: { d: hole.diameter || 0, dInner: hole.holeDiameter || 0 },
@@ -247,6 +249,7 @@
         // (x,y) is the bottom-left corner.
         return Object.assign(base, {
           center: { x: hole.x + w / 2, y: hole.y + h / 2 },
+          dimRef: "edge", // cutouts are located to their near edge
           geom: { kind: "rect", x: hole.x, y: hole.y, w, h },
           bbox: { minX: hole.x, minY: hole.y, maxX: hole.x + w, maxY: hole.y + h },
           size: { w, h },
@@ -281,6 +284,7 @@
         const poly = [p1, tip, p2];
         return Object.assign(base, {
           center: { x: hole.x, y: hole.y },
+          dimRef: "edge",
           geom: { kind: "clip", points: poly },
           bbox: bboxOf(poly),
           size: { w, depth },
@@ -297,11 +301,18 @@
           items = res.items || [];
         }
         const placed = placeItems(items, hole.x, hole.y, mirror);
+        // Works made only of round holes (drill, standoff, cylinder, TV
+        // pass-through, pull pairs, countersink) are located to their centre;
+        // everything else (rectangular cutouts, notches, slots) to the near edge.
+        const circularOnly =
+          placed.items.length > 0 &&
+          placed.items.every((it) => it.t === "circle" || it.t === "ring");
         return Object.assign(base, {
           templateId: hole.templateId,
           params: hole.params || {},
           mirror,
           center: { x: hole.x, y: hole.y },
+          dimRef: circularOnly ? "center" : "edge",
           geom: { kind: "group", items: placed.items },
           bbox: placed.bbox,
           size: {},
@@ -311,6 +322,7 @@
         // Unknown shape: render a small marker so it is never silently dropped.
         return Object.assign(base, {
           center: { x: hole.x || 0, y: hole.y || 0 },
+          dimRef: "center",
           geom: { kind: "circle", cx: hole.x || 0, cy: hole.y || 0, r: 5 },
           bbox: { minX: hole.x - 5, minY: hole.y - 5, maxX: hole.x + 5, maxY: hole.y + 5 },
           size: {},
